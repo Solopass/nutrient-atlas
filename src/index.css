@@ -1,0 +1,110 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: dark;
+  --bg: #080b11;
+  --panel: #0f151f;
+  --panel-2: #161f2d;
+  --line: #222d3f;
+  --fg: #e8eef7;
+  --dim: #b0bdcf;
+  --muted: #718199;
+
+  /* status */
+  --c-deficient: #f25a5a;
+  --c-attention: #e6b546;
+  --c-good: #3fbf62;
+  --c-above: #4f8fff;
+  --c-over: #f2883a;
+  --c-nodata: #56657a;
+  --c-notarget: #9fb0c6;
+
+  /* category accents (thin bands and labels only, so they never compete with status) */
+  --k-macro: #5eead4;
+  --k-vitamin: #c4a7ff;
+  --k-mineral: #f9a8d4;
+  --k-bvitamin: #a5b4fc;
+  --k-trace: #67e8f9;
+  --k-fatty: #fcd34d;
+  --k-amino: #d8b4fe;
+  --k-advanced: #94a3b8;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+}
+
+button:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid var(--c-above);
+  outline-offset: 2px;
+}
+
+/* Hairline gradient border for cards. In the components layer so utilities (e.g. `fixed`) can override it. */
+@layer components {
+  .card {
+    position: relative;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.025), transparent 40%), var(--panel);
+    box-shadow:
+      inset 0 0 0 1px var(--line),
+      0 1px 0 0 rgb(255 255 255 / 0.03) inset,
+      0 20px 40px -24px rgb(0 0 0 / 0.6);
+  }
+}
+
+@keyframes atlas-grow {
+  from {
+    transform: scale(0.35) rotate(-25deg);
+    opacity: 0;
+  }
+}
+.atlas-grow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: atlas-grow 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes atlas-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.atlas-sweep {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: atlas-sweep 14s linear infinite;
+}
+
+@keyframes pulse-ring {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.pulse {
+  animation: pulse-ring 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-grow,
+  .atlas-sweep,
+  .pulse {
+    animation: none;
+  }
+}
