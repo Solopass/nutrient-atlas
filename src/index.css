@@ -111,7 +111,24 @@ button:focus-visible,
   animation: pulse-ring 2.4s ease-in-out infinite;
 }
 
+/* Wedges glide to new sizes (logging, replaying days) where the browser can animate `d`. */
+.atlas path {
+  transition: d 450ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes ghost-in {
+  from {
+    opacity: 0;
+  }
+}
+.atlas-ghost {
+  animation: ghost-in 250ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .atlas path {
+    transition: none;
+  }
+  .atlas-ghost,
   .atlas-grow,
   .atlas-sweep,
   .pulse {

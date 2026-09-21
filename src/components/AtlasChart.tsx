@@ -116,7 +116,21 @@ interface Props {
   meals?: Partial<Record<LogGroup, Record<string, number>>> | null
   /** 7-day view: lowest and highest daily % per nutrient, drawn as a whisker. */
   range?: Map<string, { min: number; max: number; days: number } | null> | null
+  /** A food drawn on top: what it would add (preview) or what it supplied (footprint). */
+  overlay?: AtlasOverlay | null
 }
+
+export interface AtlasOverlay {
+  kind: 'preview' | 'footprint'
+  name: string
+  /** % of target per nutrient that the food adds (preview) or supplied (footprint). */
+  pct: Map<string, number>
+  /** Preview only: nourishment score now and with the food. */
+  score?: { from: number; to: number }
+}
+
+const statusFor = (p: number): Status => (p < 50 ? 'deficient' : p < 80 ? 'attention' : p <= 120 ? 'good' : 'above')
+const clip = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1) + '…' : t)
 
 export const MEAL_ORDER: LogGroup[] = ['breakfast', 'lunch', 'dinner', 'snack', 'supplement']
 export const MEAL_SHORT: Record<LogGroup, string> = { breakfast: 'B', lunch: 'L', dinner: 'D', snack: 'S', supplement: 'Supp' }
@@ -149,6 +163,17 @@ function MealSegments({ stack, r, a0, a1 }: { stack: ReturnType<typeof mealStack
   )
 }
 
+/** What a previewed food would add: a translucent, dashed segment in the colour the nutrient would reach. */
+function Ghost({ r0, r1, a0, a1, color }: { r0: number; r1: number; a0: number; a1: number; color: string }) {
+  if (r1 - r0 < 0.5) return null
+  return (
+    <g pointerEvents="none" className="atlas-ghost">
+      <path d={sector(r0, r1, a0, a1)} style={{ fill: color, fillOpacity: 0.32 }} />
+      <path d={sector(r0, r1, a0 + 0.3, a1 - 0.3)} fill="none" style={{ stroke: color }} strokeWidth="1.3" strokeDasharray="3 2.5" />
+    </g>
+  )
+}
+
 /** One-paragraph text version of the chart for screen readers. */
 function describe(states: NutrientState[], score: DayScore) {
   const name = (s: NutrientState) => `${s.nutrient.name} ${s.pct != null ? Math.round(s.pct) + '%' : ''}`.trim()
@@ -174,7 +199,7 @@ function split(state: NutrientState) {
   return { suppPct, foodPct: Math.max(0, pct - suppPct) }
 }
 
-export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, compare = null, colorBy = 'status', meals = null, range = null }: Props) {
+export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, compare = null, colorBy = 'status', meals = null, range = null, overlay = null }: Props) {
   const byMeal = colorBy === 'meal' && meals != null
   const [hoverId, setHoverId] = useState<string | null>(null)
   const coreSegs = layout(core, 4, 1.2)
@@ -183,7 +208,11 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
   const outerGroups = groupsOf(outerSegs)
   const hovered = [...core, ...outer].find((s) => s.nutrient.id === hoverId) ?? null
   const k = compact ? 1.45 : 1 // font scale when the chart is drawn small
-  const view = compact ? `${C - 352} ${C - 352} 704 704` : `0 0 ${SIZE} ${SIZE}`
+  const view = compact ? `${C - 380} ${C - 380} 760 760` : `0 0 ${SIZE} ${SIZE}`
+  const o0 = compact ? 356 : OUT0
+  const o1 = compact ? 371 : OUT1
+  const ringR = (p: number) => o0 + ((o1 - o0) * Math.min(Math.max(p, 0), 100)) / 100
+  const footprintCount = overlay?.kind === 'footprint' ? [...core, ...outer].filter((st) => (overlay.pct.get(st.nutrient.id) ?? 0) >= 10).length : 0
   const scaleAngle = coreSegs[0].a0 - 2 // the gap before the first wedge holds the % scale labels
 
   const interact = (id: string) => ({
@@ -215,7 +244,7 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
   })
 
   return (
-    <svg viewBox={view} className="mx-auto block h-auto w-full max-w-[880px] select-none" role="group" aria-label="Nutrient Atlas" aria-describedby="atlas-desc">
+    <svg id="atlas-svg" viewBox={view} className="atlas mx-auto block h-auto w-full max-w-[880px] select-none" role="group" aria-label="Nutrient Atlas" aria-describedby="atlas-desc">
       <desc id="atlas-desc">{describe([...core, ...outer], score)}</desc>
       <defs>
         {STATUSES.map((s) => (
@@ -296,11 +325,13 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
           const { suppPct, foodPct } = split(state)
           const prev = compare?.pct.get(n.id) ?? null
           const rg = range?.get(n.id) ?? null
+          const ov = overlay?.pct.get(n.id) ?? 0
+          const faded = overlay?.kind === 'footprint' && ov < 1
           return (
             <g
               key={n.id}
               {...interact(n.id)}
-              opacity={dimmed ? 0.32 : 1}
+              opacity={dimmed ? 0.32 : faded ? 0.3 : 1}
               style={{ transition: 'opacity 200ms' }}
               aria-label={`${n.name} ${pct != null ? Math.round(pct) + '%' : STATUS_META[status].label}`}
             >
@@ -337,6 +368,15 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
                   <path d={sector(rOf(foodPct), rOf(pct), a0, a1)} fill="url(#supp)" />
                   <path d={arc(rOf(foodPct), a0 + 0.4, a1 - 0.4)} fill="none" stroke="var(--bg)" strokeOpacity="0.8" strokeWidth="1.2" />
                 </g>
+              )}
+              {overlay?.kind === 'footprint' && ov >= 1 && (
+                <g pointerEvents="none">
+                  <path d={sector(R0, rOf(ov), a0, a1)} fill="#fff" fillOpacity="0.24" />
+                  <path d={arc(rOf(ov), a0 + 0.4, a1 - 0.4)} fill="none" stroke="#fff" strokeWidth="2.2" />
+                </g>
+              )}
+              {overlay?.kind === 'preview' && ov >= 0.5 && (
+                <Ghost r0={rOf(pct ?? 0)} r1={rOf((pct ?? 0) + ov)} a0={a0} a1={a1} color={STATUS_META[statusFor((pct ?? 0) + ov)].color} />
               )}
               {rg && (
                 <g pointerEvents="none" opacity={hot ? 0.95 : 0.6}>
@@ -414,48 +454,56 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
       ))}
 
       {/* ── Outer ring: every secondary nutrient as a mini radial gauge ── */}
-      {!compact && (
-        <g>
+      <g>
           {outerSegs.map(({ state, a0, a1, mid }) => {
             const { nutrient: n, status, pct } = state
             const color = STATUS_META[status].color
             const hot = hoverId === n.id
             const selected = selectedId === n.id
-            const fillR = status === 'noTarget' ? OUT1 : pct != null ? OUT0 + ((OUT1 - OUT0) * Math.min(pct, 100)) / 100 : OUT0
+            const fillR = status === 'noTarget' ? o1 : pct != null ? ringR(pct) : o0
             const { suppPct, foodPct } = split(state)
-            const foodR = OUT0 + ((OUT1 - OUT0) * Math.min(foodPct, 100)) / 100
+            const foodR = ringR(foodPct)
+            const ov = overlay?.pct.get(n.id) ?? 0
+            const faded = overlay?.kind === 'footprint' && ov < 1
             return (
-              <g key={n.id} {...interact(n.id)} opacity={hoverId != null && !hot ? 0.4 : 1} style={{ transition: 'opacity 200ms' }} aria-label={`${n.name} ${pct != null ? Math.round(pct) + '%' : STATUS_META[status].label}`}>
-                <path d={sector(OUT0, OUT1, a0, a1)} fill="var(--panel-2)" opacity={hot ? 1 : 0.8} />
-                {status === 'noData' && <path d={sector(OUT0, OUT1, a0, a1)} fill="url(#hatch)" />}
+              <g key={n.id} {...interact(n.id)} opacity={hoverId != null && !hot ? 0.4 : faded ? 0.3 : 1} style={{ transition: 'opacity 200ms' }} aria-label={`${n.name} ${pct != null ? Math.round(pct) + '%' : STATUS_META[status].label}`}>
+                <path d={sector(o0, o1, a0, a1)} fill="var(--panel-2)" opacity={hot ? 1 : 0.8} />
+                {status === 'noData' && <path d={sector(o0, o1, a0, a1)} fill="url(#hatch)" />}
                 {byMeal && status !== 'noTarget' && pct != null ? (
-                  <MealSegments stack={mealStack(n, meals)} r={(p) => OUT0 + ((OUT1 - OUT0) * Math.min(p, 100)) / 100} a0={a0} a1={a1} />
+                  <MealSegments stack={mealStack(n, meals)} r={ringR} a0={a0} a1={a1} />
                 ) : (
-                  fillR > OUT0 && <path d={sector(OUT0, fillR, a0, a1)} fill={color} opacity={status === 'noTarget' ? 0.22 : hot ? 0.95 : 0.75} />
+                  fillR > o0 && <path d={sector(o0, fillR, a0, a1)} fill={color} opacity={status === 'noTarget' ? 0.22 : hot ? 0.95 : 0.75} />
+                )}
+                {overlay?.kind === 'footprint' && ov >= 1 && <path d={sector(o0, ringR(ov), a0, a1)} fill="#fff" fillOpacity="0.45" pointerEvents="none" />}
+                {overlay?.kind === 'preview' && ov >= 0.5 && n.target != null && (pct ?? 0) < 100 && (
+                  <Ghost r0={ringR(pct ?? 0)} r1={ringR((pct ?? 0) + ov)} a0={a0} a1={a1} color={STATUS_META[statusFor((pct ?? 0) + ov)].color} />
                 )}
                 {!byMeal && suppPct > 0 && fillR - foodR > 0.5 && <path d={sector(foodR, fillR, a0, a1)} fill="url(#supp)" pointerEvents="none" />}
                 {(hot || selected) && (
-                  <path d={sector(OUT0 - 1.5, OUT1 + 1.5, a0 - 0.2, a1 + 0.2)} fill="none" stroke="var(--fg)" strokeOpacity={selected ? 0.9 : 0.5} strokeWidth="1.3" />
+                  <path d={sector(o0 - 1.5, o1 + 1.5, a0 - 0.2, a1 + 0.2)} fill="none" stroke="var(--fg)" strokeOpacity={selected ? 0.9 : 0.5} strokeWidth="1.3" />
                 )}
-                <TangentText r={(OUT0 + OUT1) / 2} angle={mid} fontSize={n.symbol.length > 2 ? 9.5 : 11} fontWeight="700" fill="var(--fg)" style={HALO}>
-                  {n.symbol}
-                </TangentText>
-                {state.partial && <circle {...polar(OUT1 - 5, a1 - 1.6)} r="2" fill="var(--c-attention)" />}
+                {!compact && (
+                  <TangentText r={(o0 + o1) / 2} angle={mid} fontSize={n.symbol.length > 2 ? 9.5 : 11} fontWeight="700" fill="var(--fg)" style={HALO}>
+                    {n.symbol}
+                  </TangentText>
+                )}
+                {state.partial && !compact && <circle {...polar(o1 - 5, a1 - 1.6)} r="2" fill="var(--c-attention)" />}
               </g>
             )
           })}
           {outerGroups.map((g) => (
             <g key={g.cat} pointerEvents="none">
-              <path d={arc(BAND, g.a0, g.a1)} fill="none" stroke={`var(--k-${g.cat})`} strokeOpacity="0.8" strokeWidth="2.5" strokeLinecap="round" />
-              <text fontSize="10" fontWeight="600" letterSpacing="2.4" fill={`var(--k-${g.cat})`} fillOpacity="0.85">
-                <textPath href={`#out-${g.cat}`} startOffset="50%" textAnchor="middle">
-                  {CATEGORY_LABEL[g.cat].replace('Essential ', '').toUpperCase()}
-                </textPath>
-              </text>
+              <path d={arc(compact ? o1 + 5 : BAND, g.a0, g.a1)} fill="none" stroke={`var(--k-${g.cat})`} strokeOpacity="0.8" strokeWidth="2.5" strokeLinecap="round" />
+              {!compact && (
+                <text fontSize="10" fontWeight="600" letterSpacing="2.4" fill={`var(--k-${g.cat})`} fillOpacity="0.85">
+                  <textPath href={`#out-${g.cat}`} startOffset="50%" textAnchor="middle">
+                    {CATEGORY_LABEL[g.cat].replace('Essential ', '').toUpperCase()}
+                  </textPath>
+                </text>
+              )}
             </g>
           ))}
         </g>
-      )}
 
       {/* ── Hub ── */}
       <circle cx={C} cy={C} r={HUB} fill="var(--bg)" stroke="var(--line)" strokeWidth="1.5" />
@@ -469,7 +517,16 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
           </textPath>
         </text>
       ))}
-      <Hub state={hovered} score={score} k={k} compare={compare} meals={byMeal ? meals : null} range={hovered ? (range?.get(hovered.nutrient.id) ?? null) : null} />
+      <Hub
+        state={hovered}
+        score={score}
+        k={k}
+        compare={compare}
+        meals={byMeal ? meals : null}
+        range={hovered ? (range?.get(hovered.nutrient.id) ?? null) : null}
+        overlay={overlay}
+        footprintCount={footprintCount}
+      />
     </svg>
   )
 }
@@ -481,6 +538,8 @@ function Hub({
   compare,
   meals,
   range,
+  overlay,
+  footprintCount,
 }: {
   state: NutrientState | null
   score: DayScore
@@ -488,7 +547,30 @@ function Hub({
   compare: Props['compare']
   meals: Props['meals']
   range: { min: number; max: number; days: number } | null
+  overlay: AtlasOverlay | null
+  footprintCount: number
 }) {
+  if (!state && overlay) {
+    const preview = overlay.kind === 'preview'
+    const to = overlay.score?.to ?? 0
+    return (
+      <g pointerEvents="none">
+        <text x={C} y={C - 34} textAnchor="middle" fontSize="7.5" letterSpacing="1.6" fill="var(--muted)">
+          {preview ? 'IF YOU ADD' : 'FOOTPRINT OF'}
+        </text>
+        <text x={C} y={C - 20} textAnchor="middle" fontSize="9.5" fill="var(--fg)" fontWeight="600">
+          {clip(overlay.name, 24)}
+        </text>
+        <text x={C} y={C + 12} textAnchor="middle" fontSize="30" fontWeight="750" fill={preview ? scoreColor(to) : 'var(--fg)'} fontFamily="var(--font-mono)">
+          {preview ? Math.round(to) : footprintCount}
+          {preview && <tspan fontSize="13" fill="var(--muted)">%</tspan>}
+        </text>
+        <text x={C} y={C + 30} textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="var(--font-mono)">
+          {preview ? `score, now ${Math.round(overlay.score?.from ?? 0)}% (+${Math.round(to - (overlay.score?.from ?? 0))})` : 'nutrients ≥ 10% of target'}
+        </text>
+      </g>
+    )
+  }
   if (!state) {
     const color = scoreColor(score.score)
     const r = HUB - 26
@@ -525,8 +607,14 @@ function Hub({
   const meta = STATUS_META[status]
   const { suppPct, foodPct } = split(state)
   const prev = compare?.pct.get(n.id) ?? null
+  const ov = overlay?.pct.get(n.id) ?? 0
   return (
     <g pointerEvents="none">
+      {overlay && (
+        <text x={C} y={C - 58} textAnchor="middle" fontSize="7.5" fill="var(--fg)" fontFamily="var(--font-mono)">
+          {overlay.kind === 'preview' ? `+${Math.round(ov)}% → ${Math.round((pct ?? 0) + ov)}%` : `${clip(overlay.name, 14)}: ${Math.round(ov)}%`}
+        </text>
+      )}
       <text x={C} y={C - 30} textAnchor="middle" fontSize="10" fill="var(--dim)">
         {n.name.length > 16 ? n.symbol : n.name}
       </text>

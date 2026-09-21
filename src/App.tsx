@@ -1,7 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import { AtlasChart } from './components/AtlasChart'
-import { AtlasToolbar } from './components/AtlasToolbar'
+import { AtlasChart, type AtlasOverlay } from './components/AtlasChart'
+import { AtlasToolbar, ReplayBar } from './components/AtlasToolbar'
+import { FoodStrip, type FoodSummary } from './components/FoodStrip'
+import { foodLabel } from './components/log/QuickAdd'
 import { DetailPanel, type NutrientHistory } from './components/DetailPanel'
 import { HistoryPage } from './components/history/HistoryPage'
 import { CalendarIcon, GearIcon } from './components/icons'
@@ -10,7 +12,7 @@ import { Logo } from './components/Logo'
 import { LimitsPanel } from './components/LimitsPanel'
 import { PeriodicTable } from './components/PeriodicTable'
 import { CategoryPanel, GapsPanel } from './components/SidePanels'
-import { StatCards } from './components/StatCards'
+import { StatCards, type FoodPreview } from './components/StatCards'
 import { LogSheet, type LogTab } from './components/log/LogSheet'
 import { BottomNav } from './components/BottomNav'
 import { SettingsPage } from './components/settings/SettingsPage'
@@ -27,7 +29,9 @@ import { loadSampleData } from './lib/sampleData'
 import { ensurePersistentStorage } from './lib/storage'
 import { applyDailySupplements } from './lib/supplements'
 import { foodStreak } from './lib/streak'
-import { dayScore, nutrientState } from './lib/status'
+import { dayScore, nutrientState, scoreColor } from './lib/status'
+import { atlasPng, shareOrDownload } from './lib/atlasImage'
+import { itemsKcal } from './lib/quickLog'
 import { useProfile } from './state/profile'
 import type { Category, Intake } from './types'
 
@@ -207,6 +211,108 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
   const core = states.filter((s) => CORE_CATEGORIES.includes(s.nutrient.category))
   const outer = outerCats.flatMap((c) => states.filter((s) => s.nutrient.category === c))
 
+  // ── Replay: step the Atlas through the last 30 days (rolling 7-day averages in the 7-day view) ──
+  const lapseDates = useMemo(() => dateRange(date, 30), [date])
+  const [lapse, setLapse] = useState<{ i: number; playing: boolean } | null>(null)
+  useEffect(() => setLapse(null), [date, week])
+  // Playback steps through logged days only (the slider still reaches every day).
+  const lapseLogged = useMemo(
+    () => lapseDates.flatMap((d, i) => ((week ? dateRange(d, 7) : [d]).some((x) => hasFood(byDate.get(x))) ? [i] : [])),
+    [lapseDates, week, byDate],
+  )
+  const nextLogged = useCallback((i: number) => lapseLogged.find((x) => x > i) ?? null, [lapseLogged])
+  useEffect(() => {
+    if (!lapse?.playing) return
+    const t = setTimeout(() => setLapse((l) => {
+      if (!l) return l
+      const n = nextLogged(l.i)
+      return n == null ? { ...l, playing: false } : { ...l, i: n }
+    }), 650)
+    return () => clearTimeout(t)
+  }, [lapse, nextLogged])
+  const startLapse = () => setLapse({ i: lapseLogged[0] ?? 0, playing: true })
+  const lapseDate = lapse ? lapseDates[lapse.i] : null
+  const lapseView = useMemo(() => {
+    if (!lapseDate) return null
+    const days = week ? dateRange(lapseDate, 7) : [lapseDate]
+    const intake = week ? averageIntake(byDate, days).intake : intakeFromLogs(byDate.get(lapseDate) ?? [])
+    const st = nutrients.map((n) => nutrientState(n, intake[n.id]))
+    const logged = days.some((d) => hasFood(byDate.get(d)))
+    return { states: st, score: dayScore(st), logged, meals: week ? mealBreakdown(byDate, days) : mealBreakdown(byDate, days, false) }
+  }, [lapseDate, week, byDate, nutrients])
+  const atlasStates = lapseView?.states ?? states
+  const atlasCore = lapseView ? atlasStates.filter((s) => CORE_CATEGORIES.includes(s.nutrient.category)) : core
+  const atlasOuter = lapseView ? outerCats.flatMap((c) => atlasStates.filter((s) => s.nutrient.category === c)) : outer
+
+  // ── Food overlays: preview a suggestion (what it would add) or a logged food's footprint ──
+  const [hoverPreview, setHoverPreview] = useState<FoodPreview | null>(null)
+  const [pinnedPreview, setPinnedPreview] = useState<FoodPreview | null>(null)
+  const [footprint, setFootprint] = useState<string | null>(null)
+  useEffect(() => {
+    setFootprint(null)
+    setPinnedPreview(null)
+  }, [date, week])
+  const onPreview = useCallback((p: FoodPreview | null, pin = false) => {
+    if (!pin) return setHoverPreview(p)
+    setPinnedPreview(p)
+    if (p) {
+      setFootprint(null)
+      // On small screens the Atlas is below the cards: bring it into view.
+      const svg = document.getElementById('atlas-svg')
+      const r = svg?.getBoundingClientRect()
+      if (svg && r && (r.top > innerHeight * 0.6 || r.bottom < 0)) svg.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [])
+  const foods = useMemo<FoodSummary[]>(() => {
+    if (demo) return []
+    const days = week ? week7.filter((d) => hasFood(byDate.get(d))) : [date]
+    const map = new Map<string, FoodSummary>()
+    for (const l of days.flatMap((d) => byDate.get(d) ?? [])) {
+      const f = map.get(l.name) ?? { name: l.name, nutrients: {}, kcal: 0, supplement: l.supplementId != null }
+      for (const [id, v] of Object.entries(l.nutrients)) f.nutrients[id] = (f.nutrients[id] ?? 0) + (v * l.multiplier) / days.length
+      f.kcal += itemsKcal([l]) / days.length
+      map.set(l.name, f)
+    }
+    return [...map.values()].sort((a, b) => Number(a.supplement) - Number(b.supplement) || b.kcal - a.kcal)
+  }, [demo, week, week7, byDate, date])
+  const preview = hoverPreview ?? pinnedPreview
+  const overlay = useMemo<AtlasOverlay | null>(() => {
+    if (lapse) return null
+    const toPct = (amounts: Record<string, number>) => new Map(nutrients.filter((n) => n.target).map((n) => [n.id, ((amounts[n.id] ?? 0) / n.target!) * 100]))
+    if (preview) {
+      const withFood = nutrients.map((n) => {
+        const add = preview.nutrients[n.id]
+        const cur = intake[n.id]
+        return nutrientState(n, add ? { ...(cur ?? { coverage: 1 }), amount: (cur?.amount ?? 0) + add } : cur)
+      })
+      return { kind: 'preview', name: preview.name, pct: toPct(preview.nutrients), score: { from: score.score, to: dayScore(withFood).score } }
+    }
+    const f = footprint ? foods.find((x) => x.name === footprint) : null
+    return f ? { kind: 'footprint', name: foodLabel(f.name), pct: toPct(f.nutrients) } : null
+  }, [lapse, preview, footprint, foods, nutrients, intake, score.score])
+
+  // ── Save the Atlas as an image ──
+  const [snapping, setSnapping] = useState(false)
+  const snapshot = async () => {
+    const svg = document.getElementById('atlas-svg') as SVGSVGElement | null
+    if (!svg || snapping) return
+    setSnapping(true)
+    try {
+      const shownDate = lapseDate ?? (week ? weekEnd : date)
+      const blob = await atlasPng(svg, {
+        title: 'Nutrient Atlas',
+        subtitle: `${week ? '7-day average to ' : ''}${formatDay(shownDate)} · ${describeProfile(profile)}`,
+        score: (lapseView?.score ?? score).score,
+        scoreColor: scoreColor((lapseView?.score ?? score).score),
+      })
+      await shareOrDownload(blob, `nutrient-atlas-${shownDate}.png`)
+    } catch (e) {
+      alert(`Couldn't save the image: ${(e as Error).message}`)
+    } finally {
+      setSnapping(false)
+    }
+  }
+
   const history14 = useMemo(
     () => (demo ? [...SCORE_HISTORY.slice(0, -1), score.score] : dateRange(date, 14).map((d) => scoreForLogs(nutrients, byDate.get(d)))),
     [demo, date, nutrients, byDate, score.score],
@@ -354,7 +460,7 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
           </div>
         )}
 
-        <StatCards states={states} score={score} onSelect={setSelectedId} history={history14} streak={streak} week={week} date={date} eatenNames={eatenNames} prev={compare} inProgress={date === today} />
+        <StatCards states={states} score={score} onSelect={setSelectedId} history={history14} streak={streak} week={week} date={date} eatenNames={eatenNames} prev={compare} inProgress={date === today} onPreview={onPreview} pinnedPreview={pinnedPreview?.key ?? null} />
 
         {!demo && <InsightsCard report={report} onSelect={setSelectedId} />}
 
@@ -363,8 +469,53 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
             <CategoryPanel states={states} categories={[...CORE_CATEGORIES, ...outerCats]} {...sel} />
           </div>
           <div className="order-1 xl:order-none">
-            {!demo && <AtlasToolbar colorBy={profile.atlasColor} onChange={(atlasColor) => update({ atlasColor })} meals={meals} week={week} />}
-            <AtlasChart core={core} outer={outer} score={score} compact={compact} compare={compare} colorBy={profile.atlasColor} meals={meals} range={range} {...sel} />
+            {!demo && (
+              <AtlasToolbar
+                colorBy={profile.atlasColor}
+                onChange={(atlasColor) => update({ atlasColor })}
+                meals={lapseView?.meals ?? meals}
+                week={week}
+                onReplay={startLapse}
+                onSnapshot={snapshot}
+                snapshotBusy={snapping}
+                overlayLabel={
+                  lapse ? null : pinnedPreview ? `Previewing ${pinnedPreview.name}` : footprint && overlay ? `Footprint of ${overlay.name}` : null
+                }
+                onClearOverlay={() => {
+                  setPinnedPreview(null)
+                  setFootprint(null)
+                }}
+              />
+            )}
+            {lapse && lapseView && (
+              <ReplayBar
+                dates={lapseDates}
+                index={lapse.i}
+                playing={lapse.playing}
+                score={lapseView.score.score}
+                logged={lapseView.logged}
+                week={week}
+                onIndex={(i) => setLapse({ i, playing: false })}
+                onToggle={() => setLapse((l) => l && (l.playing ? { ...l, playing: false } : { i: nextLogged(l.i) == null ? (lapseLogged[0] ?? 0) : l.i, playing: true }))}
+                onClose={() => setLapse(null)}
+              />
+            )}
+            <AtlasChart
+              core={atlasCore}
+              outer={atlasOuter}
+              score={lapseView?.score ?? score}
+              compact={compact}
+              compare={lapse ? null : compare}
+              colorBy={profile.atlasColor}
+              meals={lapseView?.meals ?? meals}
+              range={lapse ? null : range}
+              overlay={overlay}
+              {...sel}
+            />
+            {!lapse && <FoodStrip foods={foods} active={footprint} week={week} onToggle={(name) => {
+              setPinnedPreview(null)
+              setFootprint((f) => (f === name ? null : name))
+            }} />}
           </div>
           <div className="order-3 xl:order-none">
             <GapsPanel states={states} {...sel} />

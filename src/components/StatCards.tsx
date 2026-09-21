@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { loadUsda, nameParts, nutrientsForGrams, type UsdaDb } from '../data/usda'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, localDate, mealForTime } from '../db/db'
@@ -25,6 +25,15 @@ interface Props {
   prev: { score: number; label: string } | null
   /** The last day in `history` is today and still being logged. */
   inProgress: boolean
+  /** Show a suggestion on the Atlas: on hover (transient) or pinned with the Preview button. */
+  onPreview: (p: FoodPreview | null, pin?: boolean) => void
+  pinnedPreview: string | null
+}
+
+export interface FoodPreview {
+  key: string
+  name: string
+  nutrients: Record<string, number>
 }
 
 function Card({ label, children, className = '' }: { label: string; children: ReactNode; className?: string }) {
@@ -36,14 +45,14 @@ function Card({ label, children, className = '' }: { label: string; children: Re
   )
 }
 
-export function StatCards({ states, score, onSelect, history, streak, week, date, eatenNames, prev, inProgress }: Props) {
+export function StatCards({ states, score, onSelect, history, streak, week, date, eatenNames, prev, inProgress, onPreview, pinnedPreview }: Props) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
       <ScoreCard history={history} current={score.score} week={week} prev={prev} inProgress={inProgress} />
       <StreakCard history={history} streak={streak} inProgress={inProgress} />
       <EnergyCard states={states} week={week} />
       <CoverageCard score={score} />
-      <NextFoodCard states={states} onSelect={onSelect} date={date} eatenNames={eatenNames} />
+      <NextFoodCard states={states} onSelect={onSelect} date={date} eatenNames={eatenNames} onPreview={onPreview} pinnedPreview={pinnedPreview} />
     </div>
   )
 }
@@ -225,7 +234,21 @@ function CoverageCard({ score }: { score: DayScore }) {
   )
 }
 
-function NextFoodCard({ states, onSelect, date, eatenNames }: { states: NutrientState[]; onSelect: (id: string) => void; date: string; eatenNames: string[] }) {
+function NextFoodCard({
+  states,
+  onSelect,
+  date,
+  eatenNames,
+  onPreview,
+  pinnedPreview,
+}: {
+  states: NutrientState[]
+  onSelect: (id: string) => void
+  date: string
+  eatenNames: string[]
+  onPreview: Props['onPreview']
+  pinnedPreview: string | null
+}) {
   const { profile } = useProfile()
   const [usda, setUsda] = useState<UsdaDb | null>(null)
   const [logged, setLogged] = useState<string | null>(null)
@@ -267,7 +290,27 @@ function NextFoodCard({ states, onSelect, date, eatenNames }: { states: Nutrient
     }
     setLogged(s.key)
     setTimeout(() => setLogged(null), 2000)
+    // It's in the log now; a ghost on top would count it twice.
+    onPreview(null, true)
+    onPreview(null)
   }
+
+  const asPreview = (s: FoodSuggestion): FoodPreview => ({ key: s.key, name: shortName(s.name), nutrients: s.nutrients })
+  // Hover previews on the Atlas (mouse only; a tap is for logging).
+  const hover = (s: FoodSuggestion) => ({
+    onPointerEnter: (e: ReactPointerEvent) => e.pointerType === 'mouse' && onPreview(asPreview(s)),
+    onPointerLeave: () => onPreview(null),
+  })
+  const previewBtn = (s: FoodSuggestion) => (
+    <button
+      onClick={() => onPreview(pinnedPreview === s.key ? null : asPreview(s), true)}
+      aria-pressed={pinnedPreview === s.key}
+      title="Show on the Atlas what this would add"
+      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] transition ${pinnedPreview === s.key ? 'bg-(--fg) text-(--bg)' : 'text-(--muted) shadow-[inset_0_0_0_1px_var(--line)] hover:text-(--fg)'}`}
+    >
+      ◎ Preview
+    </button>
+  )
 
   const [best, ...alts] = picks ?? []
   return (
@@ -278,7 +321,7 @@ function NextFoodCard({ states, onSelect, date, eatenNames }: { states: Nutrient
         <p className="mt-2 text-sm text-(--dim)">No gaps a single food can close. Nice.</p>
       ) : (
         <>
-          <div className="mt-2 flex items-start justify-between gap-2">
+          <div className="mt-2 flex items-start justify-between gap-2" {...hover(best)}>
             <div className="min-w-0">
               <div className="truncate text-lg leading-tight font-semibold" title={best.name}>
                 {shortName(best.name)}
@@ -289,12 +332,12 @@ function NextFoodCard({ states, onSelect, date, eatenNames }: { states: Nutrient
                 {best.kcal != null && ` · ${Math.round(best.kcal)} kcal`}
               </div>
             </div>
-            <button
-              onClick={() => log(best)}
-              className="shrink-0 rounded-full bg-(--c-good) px-3 py-1 text-xs font-semibold text-black hover:brightness-110"
-            >
-              {logged === best.key ? 'Logged ✓' : '+ Log'}
-            </button>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {previewBtn(best)}
+              <button onClick={() => log(best)} className="shrink-0 rounded-full bg-(--c-good) px-3 py-1 text-xs font-semibold text-black hover:brightness-110">
+                {logged === best.key ? 'Logged ✓' : '+ Log'}
+              </button>
+            </div>
           </div>
           <div className="mt-2 flex flex-wrap gap-1">
             {[...best.closes, ...best.helps].slice(0, 7).map((st) => {
@@ -318,12 +361,13 @@ function NextFoodCard({ states, onSelect, date, eatenNames }: { states: Nutrient
           {alts.length > 0 && (
             <ul className="mt-auto space-y-1 border-t border-(--line) pt-2">
               {alts.map((a) => (
-                <li key={a.key} className="flex items-center gap-2 text-xs">
+                <li key={a.key} className="flex items-center gap-2 text-xs" {...hover(a)}>
                   <span className="min-w-0 flex-1 truncate text-(--dim)" title={a.name}>
                     {shortName(a.name)}
                     {a.kind !== 'usda' && <OwnBadge kind={a.kind} />}
                     <span className="text-(--muted)"> · closes {a.closes.map((c) => c.nutrient.symbol).join(' ') || '—'}</span>
                   </span>
+                  {previewBtn(a)}
                   <button onClick={() => log(a)} className="shrink-0 text-(--c-above) hover:underline">
                     {logged === a.key ? '✓' : '+ Log'}
                   </button>
