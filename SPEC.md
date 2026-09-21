@@ -1,4 +1,4 @@
-# Nutrient Atlas: Product Specification v1.13
+# Nutrient Atlas: Product Specification v1.14
 
 What the app is and how it behaves today. For what's next, see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -122,6 +122,20 @@ The meal defaults from time of day.
 - Supplement entries count toward intake but **not** toward data coverage, and a supplements-only day is not a "logged day" for streaks, averages or history.
 - **Supplement-only ULs** (magnesium 350 mg, niacin 35 mg, vitamin E 1,000 mg, folic acid 1,000 mcg ≈ 1,700 mcg DFE) are checked against supplement intake alone; no UL marker is drawn on the wedge for these.
 - Detail panel shows supplement amount, share of intake and a food-vs-supplement bar.
+
+### Products (`#/products`)
+Rate the branded supplements and packaged foods you use or are considering. Stored in the `products` table (Dexie v5), separate from supplements you take and foods you log; included in backups.
+- **Adding:** paste a Supplement/Nutrition Facts label (nutrients, serving, servings per container, calories and ingredient forms such as “(as magnesium glycinate)” are read automatically), type it, import a JSON product pack or CSV (downloadable template; columns are nutrient names/ids with an optional unit, e.g. “Vitamin D (IU)”, plus “<Nutrient> form”), or copy an AI prompt, attach label photos in any AI chat and paste the JSON reply. Imports match existing products on kind + brand + name and update them, keeping your rating and notes. “Add to compare” pulls in supplements you already take.
+- **Score (0–100, grade A–E)** from explainable parts, re-weighted when a part has no data:
+  - *Your gaps:* how much it fills of what you are short on over the last 7 complete days. Supplements are judged against food alone. Relevance (share of what it offers that lands in a gap) and size (gap points closed).
+  - *Dose (supplements):* meaningful amounts per day (≥ 50% of target counts fully; under 10% is a token amount).
+  - *Density (foods):* NRF9.3 per 100 kcal (protein, fiber, A, C, E, calcium, iron, potassium, magnesium minus saturated fat, added sugar, sodium) with your own targets and limits.
+  - *Forms (supplements):* well-established differences only (magnesium/zinc oxide poor; glycinate, citrate etc. good; D3 over D2; MK-7; chelated iron; B12 and folate forms treated as equivalent). Unknown forms are not penalised.
+  - *Value:* cost per useful dose, compared with the cheapest product in the list that provides the same nutrients (≥ 25% of target a day for supplements, ≥ 10% per serving for foods).
+  - Over an upper limit on its own caps the score at 40 and is flagged; close to it, or over it together with what you already get, is a warning. Poor forms, high sodium/sugar/saturated fat, token doses and nutrients your current supplements already cover are flagged.
+- **List:** supplements / foods, search, tags, sort (overall, fills my gaps, value, my rating, newest), currency, your 1–5 star rating and notes, “Take daily” (creates a daily supplement) or “Log a serving”.
+- **Compare** up to 4 side by side: score parts, cost per day, serving, and every nutrient as % of your target with form markers; best in each row highlighted (past 100% counts as a tie; over the upper limit never wins).
+- **Export** writes a JSON product pack others can import.
 
 ### Settings (`#/settings`)
 - **Body:** sex, age (14+), weight, height, units (metric/imperial), life stage (pregnant / breastfeeding).

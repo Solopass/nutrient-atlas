@@ -93,6 +93,16 @@ Still to do:
 - **Lab values ✅:** vitamin D, ferritin and B12 with reference bands, read against intake in the detail panel and weekly report. Next: more tests (folate, magnesium, omega-3 index, HbA1c for context) and a history of results over time.
 - AI coach: ask "why am I always low on magnesium?" against your own logs.
 
+## Products and brands
+
+**Shipped ✅:** Products page: add branded supplements and foods from labels, CSV, shared JSON packs or AI-read photos; personal A–E scores (gaps, dose/UL, forms, density, value); star ratings and notes; compare up to 4.
+
+Next:
+- Barcode lookup (OpenFoodFacts) straight into Products once hosted.
+- Rated products as candidates in Best next food.
+- Shared community lists (needs hosting + sync): publish a product pack, see others' ratings.
+- Third-party testing badges (USP, NSF, Informed Sport) as a field and score bonus.
+
 ## Engineering backlog
 
 - **Tests ✅:** `bun test` (~100 tests). Next: component tests for the Atlas and log sheet, and a Playwright smoke test of the first-run → log → dashboard flow.

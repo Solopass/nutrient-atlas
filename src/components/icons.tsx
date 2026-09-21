@@ -27,3 +27,13 @@ export function PillIcon() {
     </svg>
   )
 }
+
+/** A bottle with a rating star: the Products shelf. */
+export function ShelfIcon() {
+  return (
+    <svg {...base} className="size-4">
+      <path d="M9 2.5h6M9.5 2.5v3.2c0 .6-.3 1.1-.8 1.4A4 4 0 0 0 6.5 10.7V19a2.5 2.5 0 0 0 2.5 2.5h6a2.5 2.5 0 0 0 2.5-2.5v-8.3a4 4 0 0 0-2.2-3.6 1.6 1.6 0 0 1-.8-1.4V2.5" />
+      <path d="M12 11.3l.9 1.9 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2-1.45-1.4 2-.3z" />
+    </svg>
+  )
+}

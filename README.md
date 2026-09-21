@@ -101,6 +101,10 @@ Log food → **Supplements** (or the pill in the phone tab bar). Add one from it
 - **First-run setup** (`#/welcome`) walks through profile, goals and supplements, then shows your targets. Re-run it from Settings.
 - **Weekly insights:** "This week" on the dashboard and a full weekly report in History, with gaps plus food ideas, limits, diet risks and food-pairing tips.
 
+## Products: rate brands
+
+Products (phone tab bar, or the bottle icon on desktop) ranks branded supplements and packaged foods for you: paste a label, import a CSV (template included) or a shared product file, or have any AI chat read label photos with the built-in prompt. Each gets an A–E score from how well it fills your gaps, dose and upper limits, ingredient forms or nutrient density, and cost; compare up to four side by side.
+
 ## Blood tests and spreadsheets
 
 - **Blood tests** (Settings → Blood tests): add a vitamin D, ferritin or B12 result and the Vitamin D, Iron and B12 detail panels show your level next to your intake, with what a mismatch usually means. Out-of-range results show up in the weekly report.

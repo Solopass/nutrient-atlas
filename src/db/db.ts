@@ -77,6 +77,39 @@ export interface SavedMeal {
   lastUsedAt: number
 }
 
+/**
+ * A branded food or supplement in your comparison shelf: added from its label,
+ * an imported file or an AI reply, then scored and ranked on the Products page.
+ * Separate from supplements you take (auto-logged) and foods you log.
+ */
+export interface Product {
+  id: number
+  kind: 'supplement' | 'food'
+  brand: string
+  name: string
+  /** One serving as on the label, e.g. "2 capsules" or "1 bar (60 g)". */
+  serving: string
+  grams?: number
+  /** Label calories per serving (foods). */
+  kcal?: number
+  /** Per serving, app units, keyed by nutrient id. */
+  nutrients: Record<string, number>
+  /** Ingredient form per nutrient as read from the label, e.g. magnesium → "magnesium glycinate". */
+  forms?: Record<string, string>
+  servingsPerContainer?: number
+  /** Supplements: servings taken per day. */
+  servingsPerDay?: number
+  /** Price of one container. */
+  price?: number
+  /** Your rating, 1–5. */
+  rating?: number
+  notes?: string
+  tags?: string[]
+  source: 'label' | 'import' | 'ai' | 'manual'
+  createdAt: number
+  updatedAt: number
+}
+
 export interface Setting {
   key: string
   value: unknown
@@ -88,6 +121,7 @@ export const db = new Dexie('nutrition-app') as Dexie & {
   logs: EntityTable<LogEntry, 'id'>
   supplements: EntityTable<Supplement, 'id'>
   meals: EntityTable<SavedMeal, 'id'>
+  products: EntityTable<Product, 'id'>
 }
 
 db.version(1).stores({
@@ -100,6 +134,7 @@ db.version(3).stores({
   supplements: '++id, active',
 })
 db.version(4).stores({ meals: '++id, lastUsedAt' })
+db.version(5).stores({ products: '++id, kind, updatedAt' })
 
 export const MEALS: Meal[] = ['breakfast', 'lunch', 'dinner', 'snack']
 export const LOG_GROUPS: LogGroup[] = ['supplement', ...MEALS]

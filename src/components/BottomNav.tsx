@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { CalendarIcon, GearIcon, PillIcon } from './icons'
+import { CalendarIcon, GearIcon, ShelfIcon } from './icons'
 import type { LogTab } from './log/LogSheet'
 
 /** Phone-only tab bar: thumb-reachable navigation and a big log button. */
@@ -27,8 +27,8 @@ export function BottomNav({ route, openLog }: { route: string; openLog: (tab?: L
             +
           </button>
         </div>
-        <Tab onClick={() => openLog('supplements')} label="Supps">
-          <PillIcon />
+        <Tab href="#/products" label="Products" active={route === 'products'}>
+          <ShelfIcon />
         </Tab>
         <Tab href="#/settings" label="Settings" active={route === 'settings'}>
           <GearIcon />

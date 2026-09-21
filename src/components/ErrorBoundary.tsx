@@ -24,13 +24,14 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   private async exportBackup() {
     const data = {
       app: 'nutrient-atlas',
-      version: 3,
+      version: 4,
       exportedAt: new Date().toISOString(),
       settings: await db.settings.toArray(),
       foods: await db.foods.toArray(),
       logs: await db.logs.toArray(),
       supplements: await db.supplements.toArray(),
       meals: await db.meals.toArray(),
+      products: await db.products.toArray(),
     }
     const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }))
     const a = document.createElement('a')

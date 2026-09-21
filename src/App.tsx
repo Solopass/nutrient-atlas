@@ -6,7 +6,8 @@ import { FoodStrip, type FoodSummary } from './components/FoodStrip'
 import { foodLabel } from './components/log/QuickAdd'
 import { DetailPanel, type NutrientHistory } from './components/DetailPanel'
 import { HistoryPage } from './components/history/HistoryPage'
-import { CalendarIcon, GearIcon } from './components/icons'
+import { ProductsPage } from './components/products/ProductsPage'
+import { CalendarIcon, GearIcon, ShelfIcon } from './components/icons'
 import { Legend } from './components/Legend'
 import { Logo } from './components/Logo'
 import { LimitsPanel } from './components/LimitsPanel'
@@ -98,11 +99,12 @@ export default function App() {
   if (route === 'welcome' || needsSetup) page = <Onboarding onFinish={finishSetup} />
   else if (route === 'settings') page = <SettingsPage />
   else if (route === 'history') page = <HistoryPage />
+  else if (route === 'products') page = <ProductsPage />
   else if (import.meta.env.DEV && route === 'dev/sample') page = <DevLoadSample />
   else if (import.meta.env.DEV && route === 'dev/crash') page = <DevCrash />
   else page = <Dashboard date={date} openLog={openLog} />
 
-  const title = route === 'welcome' || needsSetup ? 'Setup' : route === 'settings' ? 'Settings' : route === 'history' ? 'History' : date === today ? '' : formatDay(date)
+  const title = route === 'welcome' || needsSetup ? 'Setup' : route === 'settings' ? 'Settings' : route === 'history' ? 'History' : route === 'products' ? 'Products' : date === today ? '' : formatDay(date)
   useEffect(() => {
     document.title = title ? `${title} · Nutrient Atlas` : 'Nutrient Atlas'
   }, [title])
@@ -406,6 +408,9 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
           </label>
           <a href="#/history" aria-label="History" title="History" className="hidden size-8 place-items-center rounded-full border border-(--line) bg-(--panel) text-(--dim) transition hover:text-(--fg) sm:grid">
             <CalendarIcon />
+          </a>
+          <a href="#/products" aria-label="Products" title="Products: rate brands" className="hidden size-8 place-items-center rounded-full border border-(--line) bg-(--panel) text-(--dim) transition hover:text-(--fg) sm:grid">
+            <ShelfIcon />
           </a>
           <a href="#/settings" aria-label="Settings" title="Settings" className="hidden size-8 place-items-center rounded-full border border-(--line) bg-(--panel) text-(--dim) transition hover:text-(--fg) sm:grid">
             <GearIcon />

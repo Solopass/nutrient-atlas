@@ -22,6 +22,8 @@ export interface Profile {
   atlasRange: 'day' | 'week' | null
   /** Atlas wedge colouring: by status (default) or stacked by meal. */
   atlasColor: 'status' | 'meal'
+  /** ISO currency code for product prices. */
+  currency: string
   /** Manual overrides; null = use the calculated value. */
   energyOverride: number | null
   proteinPerKgOverride: number | null
@@ -42,6 +44,7 @@ export const DEFAULT_PROFILE: Profile = {
   showAdvanced: false,
   atlasRange: null,
   atlasColor: 'status',
+  currency: 'USD',
   energyOverride: null,
   proteinPerKgOverride: null,
   labs: {},
