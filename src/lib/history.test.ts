@@ -1,0 +1,80 @@
+import { describe, expect, test } from 'bun:test'
+import type { LogEntry } from '../db/db'
+import { hasFood, intakeFromLogs } from '../db/logging'
+import { addDays, averageIntake, contributors, dateRange, groupByDate, streakEndingAt } from './history'
+
+let id = 0
+const entry = (date: string, nutrients: Record<string, number>, extra: Partial<LogEntry> = {}): LogEntry => ({
+  id: ++id,
+  date,
+  loggedAt: 0,
+  meal: 'lunch',
+  name: `food ${id}`,
+  serving: '1',
+  multiplier: 1,
+  nutrients,
+  ...extra,
+})
+const pill = (date: string, nutrients: Record<string, number>) => entry(date, nutrients, { meal: 'supplement', supplementId: 1, name: 'pill' })
+
+describe('dates', () => {
+  test('addDays crosses months and years', () => {
+    expect(addDays('2026-02-28', 1)).toBe('2026-03-01')
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01')
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28')
+  })
+  test('dateRange ends at the given day, oldest first', () => {
+    expect(dateRange('2026-09-21', 3)).toEqual(['2026-09-19', '2026-09-20', '2026-09-21'])
+  })
+})
+
+describe('intakeFromLogs', () => {
+  test('sums amounts × servings; coverage is the share of foods reporting', () => {
+    const i = intakeFromLogs([entry('d', { iron: 2, vitC: 10 }, { multiplier: 2 }), entry('d', { iron: 1 })])
+    expect(i.iron).toEqual({ amount: 5, coverage: 1, supplement: 0 })
+    expect(i.vitC.amount).toBe(20)
+    expect(i.vitC.coverage).toBe(0.5)
+  })
+
+  test('supplements add to amounts but never lower coverage of other nutrients', () => {
+    const i = intakeFromLogs([entry('d', { protein: 20 }), pill('d', { vitD: 50 })])
+    expect(i.protein.coverage).toBe(1)
+    expect(i.vitD.amount).toBe(50)
+    expect(i.vitD.supplement).toBe(50)
+    expect(i.vitD.coverage).toBe(0.5) // supplement known, food unknown → partial
+  })
+
+  test('a supplements-only day has full coverage for what the pill reports', () => {
+    expect(intakeFromLogs([pill('d', { vitD: 50 })]).vitD.coverage).toBe(1)
+  })
+
+  test('hasFood ignores supplement entries', () => {
+    expect(hasFood([pill('d', {})])).toBe(false)
+    expect(hasFood([pill('d', {}), entry('d', {})])).toBe(true)
+    expect(hasFood(undefined)).toBe(false)
+  })
+})
+
+describe('averageIntake', () => {
+  test('skips unlogged and supplements-only days instead of counting them as zero', () => {
+    const byDate = groupByDate([entry('2026-09-01', { iron: 10 }), entry('2026-09-03', { iron: 20 }), pill('2026-09-02', { iron: 100 })])
+    const { intake, loggedDays } = averageIntake(byDate, dateRange('2026-09-03', 3))
+    expect(loggedDays).toBe(2)
+    expect(intake.iron.amount).toBe(15)
+  })
+})
+
+describe('streakEndingAt', () => {
+  const byDate = groupByDate([entry('2026-09-18', {}), entry('2026-09-19', {}), entry('2026-09-20', {})])
+  test('counts back from a logged day', () => expect(streakEndingAt(byDate, '2026-09-20')).toBe(3))
+  test('an unlogged "today" does not break the streak', () => expect(streakEndingAt(byDate, '2026-09-21')).toBe(3))
+  test('a gap does', () => expect(streakEndingAt(byDate, '2026-09-22')).toBe(0))
+})
+
+describe('contributors', () => {
+  test('ranks foods by amount with shares', () => {
+    const c = contributors([entry('d', { iron: 3 }, { name: 'lentils' }), entry('d', { iron: 1 }, { name: 'bread' })], 'iron')
+    expect(c.map((x) => x.name)).toEqual(['lentils', 'bread'])
+    expect(c[0].share).toBe(0.75)
+  })
+})

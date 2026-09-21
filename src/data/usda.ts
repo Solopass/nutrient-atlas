@@ -22,7 +22,7 @@ export interface UsdaFood {
 }
 
 type RawRow = [number, string, number, 'f' | 's', number | null, (number | null)[], [string, number][]]
-interface RawFile {
+export interface RawFile {
   source: string
   nutrients: string[]
   categories: string[]
@@ -36,6 +36,31 @@ export interface UsdaDb {
 
 const split = (s: string) => s.toLowerCase().split(/[^a-z0-9%]+/).filter(Boolean)
 
+/** Expand the compact foods.json table into searchable foods. */
+export function buildUsdaDb(raw: RawFile): UsdaDb {
+  return {
+    source: raw.source,
+    foods: raw.foods.map(([fdcId, name, cat, src, kcal, values, portions]) => {
+      const per100g: Record<string, number> = {}
+      values.forEach((v, i) => {
+        if (v != null) per100g[raw.nutrients[i]] = v
+      })
+      return {
+        fdcId,
+        name,
+        category: raw.categories[cat],
+        source: src === 'f' ? 'foundation' : 'sr',
+        kcal,
+        per100g,
+        portions: portions.map(([label, grams]) => ({ label, grams })),
+        words: split(name),
+        segments: name.split(',').length,
+        head: split(nameParts(name)[1]),
+      } satisfies UsdaFood
+    }),
+  }
+}
+
 let loading: Promise<UsdaDb> | null = null
 
 export function loadUsda(): Promise<UsdaDb> {
@@ -44,27 +69,7 @@ export function loadUsda(): Promise<UsdaDb> {
       if (!r.ok) throw new Error(`Food database failed to load (${r.status})`)
       return r.json() as Promise<RawFile>
     })
-    .then((raw) => ({
-      source: raw.source,
-      foods: raw.foods.map(([fdcId, name, cat, src, kcal, values, portions]) => {
-        const per100g: Record<string, number> = {}
-        values.forEach((v, i) => {
-          if (v != null) per100g[raw.nutrients[i]] = v
-        })
-        return {
-          fdcId,
-          name,
-          category: raw.categories[cat],
-          source: src === 'f' ? 'foundation' : 'sr',
-          kcal,
-          per100g,
-          portions: portions.map(([label, grams]) => ({ label, grams })),
-          words: split(name),
-          segments: name.split(",").length,
-          head: split(nameParts(name)[1]),
-        } satisfies UsdaFood
-      }),
-    }))
+    .then(buildUsdaDb)
     .catch((e) => {
       loading = null // allow retry
       throw e
