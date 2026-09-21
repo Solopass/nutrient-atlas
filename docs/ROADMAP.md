@@ -30,10 +30,71 @@ Nutrient Atlas wins by being:
 | 2.5 | Settings: profile, DRI personal targets (14+, pregnancy/lactation), goals, energy, diet, backup | ✅ Done |
 | 3 | Real history and weekly view | ✅ Done |
 | 4 | Supplements and "limit" nutrients | ✅ Done |
-| 5 | Daily driver: PWA, quick add, copy meals, saved meals/recipes, USDA suggestions, label foods, first-run setup ✅ · barcode (waiting on hosting) | Mostly done |
+| 5 | Daily driver: PWA, quick add, copy meals, saved meals/recipes, USDA suggestions, label foods, first-run setup, typed-barcode lookup ✅ · phone camera scanning (needs hosting) | Mostly done |
 | 6 | AI automation: API proxy, photo logging, USDA grounding | Planned |
 | 7 | Sync across devices, native wrappers, health-app export · CSV export ✅ | Started |
 | 8 | Insights and coaching: weekly report, diet risks, interaction tips, lab values ✅ · AI coach | Mostly done |
+| 9 | Atlas+: by-meal colouring, 7-day whiskers, replay, what-if preview, food footprint, image export ✅ | Done |
+| 10 | Products: rate brands (labels, CSV, AI, barcode), testing badges, compare ✅ · community ratings | Mostly done |
+
+## The plan from here (September 2026)
+
+Four phases, ordered by what each one unlocks. **Phase A needs nothing from you.** Each later phase starts with a decision only you can make (hosting, an AI budget, accounts), so they wait until you say go.
+
+Every session, whatever the phase, ends the same way: a bug sweep (code review plus a click-through on a separate test port, so your data is never touched), a test for each fix, updated SPEC/ROADMAP, and a local commit.
+
+### Phase A: polish and trust. No hosting, no cost. Next 2–3 sessions
+
+The goal: make it good enough that you want to open it every day, and fix what daily use shows up.
+
+| # | Item | Why | Size |
+|---|---|---|---|
+| A1 | **You use it for a week**, and we keep a friction list (anything slow, confusing or missing) | Real use finds problems no review does | – |
+| A2 | **Colour-blind-safe status** (shapes and patterns alongside red/yellow/green) and a **light theme** | About 1 in 12 men can't tell the status colours apart | M |
+| A3 | **"Day complete" button**, so today counts in the weekly view before midnight | Removes the last "today is still in progress" distortions | S |
+| A4 | **Vitamin D sun setting** ("I get regular sun"), so vitamin D isn't always red for people who get sun | Removes a false alarm, in line with the "honest" principle | S |
+| A5 | **Lab results over time** (a trend per test) plus more tests: folate, magnesium, omega-3 index | Shows whether changes are working | M |
+| A6 | **What's new** tips for Products, Replay, By meal and Preview | These features are hard to find right now | S |
+| A7 | **Speed:** move USDA parsing to a Web Worker; check startup on a low-end phone | First load on phones | S–M |
+| A8 | **End-to-end smoke test** (setup → log → dashboard → products) using the headless Edge script we already have | Catches regressions across the whole app | M |
+| A9 | *Stretch:* drag a wedge on the Atlas to adjust a portion | Makes the chart itself the logging tool | M |
+
+### Phase B: live on your phone. **Decision: hosting** (free: private GitHub repo + Cloudflare Pages, see [HOSTING.md](HOSTING.md))
+
+| # | Item | Size |
+|---|---|---|
+| B1 | Push to a private GitHub repo; Cloudflare Pages builds each push. Needs your OK and two free accounts | S |
+| B2 | Install on your phone; one-week field test (offline, notch, keyboard, storage protection when installed) | – |
+| B3 | Camera barcode scanning everywhere, including iPhone (a small scanning library as a fallback) | M |
+| B4 | Weekly backup reminder, plus "export to Files/Drive" on phones | S |
+| B5 | Optional reminders: "log dinner?", "took your supplements?" (web push works for installed apps, iOS 16.4+) | M |
+
+### Phase C: AI that just works. **Decision: API key and a monthly budget cap** (typical use is cents a day)
+
+| # | Item | Size |
+|---|---|---|
+| C1 | Small server (Cloudflare Worker) that holds the API key and enforces the budget cap; the app never sees the key | M |
+| C2 | One-tap AI meal estimate using the existing review screen (copy/paste stays as the free option) | S |
+| C3 | **Photo logging:** snap a plate → foods and grams → review → log | M |
+| C4 | **USDA grounding:** the AI names foods and grams, nutrients come from USDA (more accurate and consistent) | M–L |
+| C5 | Label or product-page photo → straight into Products | S |
+| C6 | **AI coach:** "why am I always low on magnesium?", answered from your own logs | M |
+
+### Phase D: accounts, sync and community. **Decision: accounts and a backend** (e.g. Supabase or Cloudflare D1)
+
+| # | Item | Size |
+|---|---|---|
+| D1 | Optional account with end-to-end encrypted sync between phone and computer | L |
+| D2 | **Community product ratings:** publish your ratings and see others' averages per brand (with basic moderation) | L |
+| D3 | Native app wrapper (Capacitor) → Apple Health / Google Fit export, app stores | L |
+
+### Decisions waiting on you
+
+1. **Now:** use it for a few days and tell me what bugs you. That drives Phase A.
+2. **When ready:** hosting go-ahead (Phase B). This unlocks phone install and camera scanning.
+3. **Later:** AI budget (Phase C) and accounts (Phase D).
+
+**Recommended next session:** A3 + A4 + A6 (small, visible wins), then A2 (colour-blind safe + light theme), with a bug sweep.
 
 ## Milestone 3: Real history and weekly view ✅
 
@@ -66,7 +127,7 @@ Still open:
 - **Copy ✅:** "same breakfast as yesterday" and recent foods in Quick add.
 - **Custom foods from labels ✅:** paste or type Nutrition Facts; the text reader handles %DV-only and one-line labels. Covers packaged foods until barcode scanning.
 - **First-run setup ✅:** profile → goals → supplements → personal targets.
-- **Barcode scanning (on hold until hosting):** camera → OpenFoodFacts lookup → normalize to our nutrient ids (labels usually list few micronutrients, so coverage flags matter).
+- **Barcode ✅ (typed digits; camera where supported):** Open Food Facts lookup into Products. Phone camera scanning everywhere comes with hosting (B3).
 - **Best next food ✅** from the full USDA database plus your own saved foods and meals, diet-filtered, limit-aware, one tap to log.
 - Quick edit of portion by dragging on the Atlas wedge (stretch goal).
 
@@ -105,7 +166,7 @@ Next:
 
 ## Engineering backlog
 
-- **Tests ✅:** `bun test` (~100 tests). Next: component tests for the Atlas and log sheet, and a Playwright smoke test of the first-run → log → dashboard flow.
+- **Tests ✅:** `bun test` (~140 tests). Next: component tests for the Atlas and log sheet, and a Playwright smoke test of the first-run → log → dashboard flow.
 - Mock data now only powers the demo dashboard (`mockIntake`, `mockHistory`).
 - Accessibility pass: keyboard navigation of the Atlas ✅, screen-reader summary ✅. Still to do: colour-blind safe status palette (add shape/pattern cues).
 - Light theme.
