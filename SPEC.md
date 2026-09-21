@@ -49,7 +49,7 @@ Answers save as you go. Setup stays open until finished or skipped.
 - **Periodic table** of secondary nutrients: rows per category, liquid-fill tiles.
 - **Detail panel:** amount / target / UL, status scale, data-coverage note, **30-day bar trend** of % of target (unlogged days shown as gaps), **top contributing foods** for the day or week, why it matters, signs of low intake, best sources.
 
-**Best next food** searches every USDA whole food (~8,000) for one normal portion (first USDA portion 15–350 g, else 100 g) and ranks by how much of the current gaps it closes, weighted toward the biggest gaps. It:
+**Best next food** searches every USDA whole food (~8,000) for one realistic portion (smallest non-package USDA portion from 25 g, or 10 g for energy-dense foods like nuts and seeds, up to 350 g; else 100 g) and ranks by how much of the current gaps it closes, weighted toward the biggest gaps. It:
 - respects diet style (meat, fish, dairy/egg groups)
 - skips niche, fortified, dried, raw-meat, organ-meat, flour, oil-fried and mixed-dish entries
 - rejects foods that would push a limit or upper limit over (or charges them if already over)

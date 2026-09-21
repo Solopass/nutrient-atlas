@@ -91,16 +91,13 @@ See [AI_INTEGRATION.md](AI_INTEGRATION.md).
 
 Still to do:
 
-- Weekly report: what improved, what's persistently low, 3 concrete food swaps.
-- Diet-aware risk flags: vegan → B12, iodine, EPA/DHA, zinc, iron; pregnancy → folate, iodine, choline, iron.
-- Nutrient interactions: vitamin C with plant iron, calcium competing with iron at the same meal, fat with fat-soluble vitamins.
 - Optional lab values (vitamin D, ferritin, B12) to contextualize intake targets.
 - AI coach: ask "why am I always low on magnesium?" against your own logs.
 
 ## Engineering backlog
 
 - **Tests:** unit tests (Vitest) for `targets.ts`, `parse.ts`, `intakeFromLogs`, `searchUsda`, `dayScore`. `scripts/check-targets.ts` is a stopgap.
-- Mock data now only powers the first-run demo (`mockIntake`, `mockHistory`); `mockFoods` goes when best-next-food moves to USDA (M5).
+- Mock data now only powers the demo dashboard (`mockIntake`, `mockHistory`).
 - Accessibility pass: keyboard navigation of the Atlas, screen-reader summary of the day, colour-blind safe status palette (add shape/pattern cues).
 - Light theme.
 - Performance: move USDA parsing to a Web Worker if load time on low-end phones is noticeable.
