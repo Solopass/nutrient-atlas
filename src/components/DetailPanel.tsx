@@ -47,6 +47,7 @@ export function DetailPanel({ state, onClose, history }: Props) {
 function PanelBody({ state, onClose, history }: { state: NutrientState; onClose: () => void; history: NutrientHistory | null }) {
   const { nutrient: n, intake, status, pct, partial } = state
   const meta = STATUS_META[status]
+  const isLimit = n.category === 'limit'
 
   return (
     <div className="p-6">
@@ -86,9 +87,9 @@ function PanelBody({ state, onClose, history }: { state: NutrientState; onClose:
             </dd>
           </>
         )}
-        <dt className="text-(--muted)">Target</dt>
+        <dt className="text-(--muted)">{isLimit ? 'Daily limit' : 'Target'}</dt>
         <dd className="tabular-nums">
-          {n.target != null ? `${fmt(n.target)} ${n.unit} (${n.targetKind})` : 'No official target'}
+          {n.target != null ? (isLimit ? `${fmt(n.target)} ${n.unit}${n.target === 0 ? ' (avoid)' : ''}` : `${fmt(n.target)} ${n.unit} (${n.targetKind})`) : 'No official target'}
         </dd>
         {(n.upperLimit != null || n.ulNote) && (
           <>
@@ -127,7 +128,7 @@ function PanelBody({ state, onClose, history }: { state: NutrientState; onClose:
         ) : null}
       </dl>
 
-      {pct != null && <Scale pct={pct} ulPct={n.upperLimit && n.target && n.ulAppliesTo !== 'supplements' ? (n.upperLimit / n.target) * 100 : null} />}
+      {pct != null && <Scale limit={isLimit} pct={pct} ulPct={n.upperLimit && n.target && n.ulAppliesTo !== 'supplements' ? (n.upperLimit / n.target) * 100 : null} />}
 
       {(status === 'noData' || partial) && (
         <p className="mt-4 rounded-md border border-dashed border-(--c-nodata) p-3 text-sm text-(--dim)">
@@ -141,7 +142,7 @@ function PanelBody({ state, onClose, history }: { state: NutrientState; onClose:
 
       {history ? (
         <>
-          <Trend series={history.series} dates={history.dates} title="Last 30 days" />
+          <Trend series={history.series} dates={history.dates} title="Last 30 days" limit={isLimit} />
           <Contributors rows={history.contributors} unit={n.unit} title={`Top sources · ${history.rangeLabel}`} />
         </>
       ) : (
@@ -149,8 +150,8 @@ function PanelBody({ state, onClose, history }: { state: NutrientState; onClose:
       )}
 
       <Section title="Why it matters">{n.why}</Section>
-      <Section title="Signs of low intake">{n.lowSigns}</Section>
-      <Section title="Best food sources">
+      <Section title={isLimit ? 'Effects of too much' : 'Signs of low intake'}>{n.lowSigns}</Section>
+      <Section title={isLimit ? 'Biggest usual sources' : 'Best food sources'}>
         <div className="flex flex-wrap gap-1.5">
           {n.sources.map((s) => (
             <span key={s} className="rounded-full border border-(--line) bg-(--panel-2) px-2.5 py-1 text-xs">
@@ -180,12 +181,20 @@ const ZONES = [
   { from: 120, to: SCALE_MAX, color: 'var(--c-above)' },
 ]
 
-function Scale({ pct, ulPct }: { pct: number; ulPct: number | null }) {
+const LIMIT_ZONES = [
+  { from: 0, to: 80, color: 'var(--c-good)' },
+  { from: 80, to: 100, color: 'var(--c-attention)' },
+  { from: 100, to: SCALE_MAX, color: 'var(--c-over)' },
+]
+
+function Scale({ pct, ulPct, limit = false }: { pct: number; ulPct: number | null; limit?: boolean }) {
+  const zones = limit ? LIMIT_ZONES : ZONES
+  const ticks = limit ? [0, 80, 100] : [0, 50, 80, 120]
   const pos = (v: number) => `${(Math.min(v, SCALE_MAX) / SCALE_MAX) * 100}%`
   return (
     <div className="mt-6">
       <div className="relative h-2.5 overflow-hidden rounded-full">
-        {ZONES.map((z) => (
+        {zones.map((z) => (
           <div
             key={z.from}
             className="absolute inset-y-0"
@@ -200,7 +209,7 @@ function Scale({ pct, ulPct }: { pct: number; ulPct: number | null }) {
             UL
           </div>
         )}
-        {[0, 50, 80, 120].map((t) => (
+        {ticks.map((t) => (
           <span key={t} className="absolute top-1 -translate-x-1/2 text-[10px] text-(--muted) tabular-nums" style={{ left: pos(t) }}>
             {t}%
           </span>
@@ -221,7 +230,8 @@ function mockWeek(id: string, today: number) {
 const statusOf = (v: number) => STATUS_META[v < 50 ? 'deficient' : v < 80 ? 'attention' : v <= 120 ? 'good' : 'above'].color
 
 /** Daily % of target as bars; unlogged days show as a faint tick. */
-function Trend({ series, dates, title }: { series: (number | null)[]; dates: string[]; title: string }) {
+function Trend({ series, dates, title, limit = false }: { series: (number | null)[]; dates: string[]; title: string; limit?: boolean }) {
+  const colorOf = (v: number) => (limit ? STATUS_META[v <= 80 ? 'good' : v <= 100 ? 'attention' : 'overLimit'].color : statusOf(v))
   const W = 360
   const H = 120
   const PAD = 14
@@ -254,7 +264,7 @@ function Trend({ series, dates, title }: { series: (number | null)[]; dates: str
               width={bw * 0.7}
               height={Math.max(2, y(0) - y(Math.min(v, max)))}
               rx={Math.min(3, bw * 0.3)}
-              fill={statusOf(v)}
+              fill={colorOf(v)}
               opacity={last ? 1 : 0.7}
             >
               <title>{`${dates[i]}: ${Math.round(v)}%`}</title>

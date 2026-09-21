@@ -29,8 +29,8 @@ Nutrient Atlas wins by being:
 | 2 | Logging: USDA search with portions, AI copy/paste estimate, My foods, Today | ✅ Done |
 | 2.5 | Settings: profile, DRI personal targets (14+, pregnancy/lactation), goals, energy, diet, backup | ✅ Done |
 | 3 | Real history and weekly view | ✅ Done |
-| 4 | Supplements ✅ · "limit" nutrients | **Next** (limits) |
-| 5 | Daily driver: PWA install/offline ✅ · copy meals, recipes, smarter suggestions, barcode | Planned |
+| 4 | Supplements and "limit" nutrients | ✅ Done |
+| 5 | Daily driver: PWA ✅ · quick add, copy meals, saved meals/recipes, USDA suggestions ✅ · barcode | **Next** (barcode) |
 | 6 | AI automation: API proxy, photo logging, USDA grounding | Planned |
 | 7 | Sync across devices, native wrappers, health-app export | Planned |
 | 8 | Insights and coaching | Planned |
@@ -50,21 +50,23 @@ Learned:
 - Partial days distort averages, so "in progress" needs to be a first-class concept (done for today). A "day complete" toggle would let users close a day early.
 - USDA-only diets show persistent gaps in biotin, iodine, chromium and molybdenum that are really missing data. Supplements (M4) and label data (M5 barcodes) are how those get filled honestly.
 
-## Milestone 4: Supplements and limits
+## Milestone 4: Supplements and limits ✅
 
 **Supplements ✅ shipped:** label-based definitions with presets and IU conversion; daily doses auto-logged (14-day back-fill, pause/resume, untick to skip); supplement-only ULs checked against supplement intake; food-vs-supplement share in the detail panel. Supplements never lower data coverage and don't make a day "logged".
 
-Next here:
-- **Limit nutrients:** sodium, saturated fat, added sugars, trans fat, cholesterol, caffeine, alcohol. These are scored in reverse (green under the limit). They get a small separate "Limits" ring or row, so they never pollute the nourishment score. USDA already provides most of them.
+**Limits ✅ shipped:** sodium, saturated fat, trans fat, added sugar, cholesterol, caffeine and alcohol with personalised limits, a "stay under" gauge strip, flags, reversed detail-panel scale, and USDA coverage (safe zeros for whole foods). Not in the score.
+
+Still open:
+- Limits rows in the History heatmap (reverse colours).
 - Vitamin D from sunlight: optional "sun exposure" note so vitamin D isn't always red for people who get sun.
 
 ## Milestone 5: Daily driver
 
 - **PWA ✅ shipped:** installable, offline (app shell + USDA table precached), auto-update; phone tab bar with a big log button. Needs HTTPS hosting to install on a phone. See [HOSTING.md](HOSTING.md).
-- **Recipes / meals:** combine foods into a saved meal ("my usual breakfast") with per-serving nutrients.
-- **Copy** yesterday / a previous meal in one tap; recent foods and favourites on the dashboard.
+- **Recipes / meals ✅:** save any logged meal (optionally "makes N portions"); one tap to log a portion.
+- **Copy ✅:** "same breakfast as yesterday" and recent foods in Quick add.
 - **Barcode scanning:** camera → OpenFoodFacts lookup → normalize to our nutrient ids (labels usually list few micronutrients, so coverage flags matter).
-- **Best next food** from the full USDA database *and* the user's own foods, filtered by diet style, ranked by gap closed per serving (and per calorie as an option). One tap to log it.
+- **Best next food ✅** from the full USDA database, diet-filtered, limit-aware, one tap to log. Still to do: include the user's own foods and saved meals as candidates.
 - Quick edit of portion by dragging on the Atlas wedge (stretch goal).
 
 ## Milestone 6: AI automation

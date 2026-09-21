@@ -3,6 +3,7 @@ import type { Meal } from '../../db/db'
 import { logNewFood } from '../../db/logging'
 import { loadUsda, nameParts, nutrientsForGrams, searchUsda, type UsdaDb, type UsdaFood } from '../../data/usda'
 import { NutrientChips } from './NutrientChips'
+import { QuickAdd } from './QuickAdd'
 
 const SUGGESTIONS = ['egg', 'banana', 'oats', 'salmon', 'spinach', 'greek yogurt', 'almonds', 'lentils']
 
@@ -39,6 +40,9 @@ export function SearchTab({ meal, date, onLogged }: { meal: Meal; date: string; 
 
       {!query.trim() && (
         <div className="mt-4">
+          <div className="mb-5">
+            <QuickAdd meal={meal} date={date} onLogged={onLogged} />
+          </div>
           <p className="mb-2 text-xs text-(--muted)">Try</p>
           <div className="flex flex-wrap gap-1.5">
             {SUGGESTIONS.map((s) => (

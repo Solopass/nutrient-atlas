@@ -7,10 +7,11 @@ export type Category =
   | 'fatty'
   | 'amino'
   | 'advanced'
+  | 'limit'
 
 export type Unit = 'g' | 'mg' | 'mcg'
 
-export type TargetKind = 'RDA' | 'AI' | 'DV' | 'AMDR' | 'Goal'
+export type TargetKind = 'RDA' | 'AI' | 'DV' | 'AMDR' | 'Goal' | 'Limit'
 
 export interface Nutrient {
   id: string

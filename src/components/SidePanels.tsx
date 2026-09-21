@@ -81,7 +81,7 @@ export function CategoryPanel({ states, categories, selectedId, onSelect }: Comm
 /** The lowest nutrients, ranked, with how much is left and what to eat. */
 export function GapsPanel({ states, selectedId, onSelect }: Common) {
   const gaps = states
-    .filter((s) => s.pct != null && s.pct < 80 && s.nutrient.category !== 'advanced')
+    .filter((s) => s.pct != null && s.pct < 80 && s.nutrient.category !== 'advanced' && s.nutrient.category !== 'limit')
     .sort((a, b) => a.pct! - b.pct!)
     .slice(0, 7)
   const flags = states.filter((s) => s.status === 'overLimit')
@@ -142,10 +142,18 @@ export function GapsPanel({ states, selectedId, onSelect }: Common) {
                 <button onClick={() => onSelect(s.nutrient.id)} className="flex w-full items-start gap-2 text-left">
                   <span className="mt-0.5 text-(--c-over)">⚠</span>
                   <span>
-                    <span className="font-medium">{s.nutrient.name}</span> over upper limit
+                    <span className="font-medium">{s.nutrient.name}</span> {s.nutrient.category === 'limit' ? 'over daily limit' : 'over upper limit'}
                     <span className="block text-[10.5px] text-(--muted) font-mono">
-                      {fmt(amountAgainstUL(s.nutrient, s.intake!))} {s.nutrient.unit}
-                      {s.nutrient.ulAppliesTo === 'supplements' ? ' from supplements' : ''} vs {fmt(s.nutrient.upperLimit!)} {s.nutrient.unit} UL
+                      {s.nutrient.category === 'limit' ? (
+                        <>
+                          {fmt(s.intake!.amount)} {s.nutrient.unit} vs {fmt(s.nutrient.target ?? 0)} {s.nutrient.unit} limit
+                        </>
+                      ) : (
+                        <>
+                          {fmt(amountAgainstUL(s.nutrient, s.intake!))} {s.nutrient.unit}
+                          {s.nutrient.ulAppliesTo === 'supplements' ? ' from supplements' : ''} vs {fmt(s.nutrient.upperLimit!)} {s.nutrient.unit} UL
+                        </>
+                      )}
                     </span>
                   </span>
                 </button>

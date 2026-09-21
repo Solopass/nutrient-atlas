@@ -7,7 +7,7 @@ export function NutrientChips({ nutrients, multiplier = 1, max = 6 }: { nutrient
   const top = Object.entries(nutrients)
     .map(([id, v]) => {
       const n = BY_ID.get(id)
-      return n?.target ? { n, pct: ((v * multiplier) / n.target) * 100 } : null
+      return n?.target && n.category !== 'limit' ? { n, pct: ((v * multiplier) / n.target) * 100 } : null
     })
     .filter((x): x is NonNullable<typeof x> => x != null && x.pct >= 5)
     .sort((a, b) => b.pct - a.pct)

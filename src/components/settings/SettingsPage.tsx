@@ -171,7 +171,7 @@ export function SettingsPage() {
   )
 }
 
-const PREVIEW_ORDER: Category[] = ['macro', 'vitamin', 'mineral', 'bvitamin', 'trace', 'fatty', 'amino', 'advanced']
+const PREVIEW_ORDER: Category[] = ['macro', 'vitamin', 'mineral', 'bvitamin', 'trace', 'fatty', 'amino', 'advanced', 'limit']
 
 function TargetsPreview() {
   const { profile: p, nutrients } = useProfile()

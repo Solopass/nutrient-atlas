@@ -65,6 +65,36 @@ const MAP: Record<string, Source> = {
   sulfur: { ids: [[1094, 0.001]] }, // mg → g
   lutein: { ids: [[1121, 1], [1123, 1]] }, // SR Legacy only has lutein + zeaxanthin combined
   zeaxanthin: { ids: [[1119, 1]] },
+  // Limits (stay under)
+  sodium: { ids: [[1093, 1]] },
+  satfat: { ids: [[1258, 1]] },
+  transfat: { ids: [[1257, 1]] },
+  cholesterol: { ids: [[1253, 1]] },
+  addedSugar: { ids: [[1235, 1]] },
+  caffeine: { ids: [[1057, 1]] },
+  alcohol: { ids: [[1018, 1]] },
+}
+
+/**
+ * USDA rarely reports added sugar (4 foods), and Foundation Foods never report
+ * caffeine or alcohol. Where a food *can't* contain them, a missing value is
+ * recorded as 0 rather than "no data". Anything processed, sweetened or
+ * flavoured stays unknown.
+ */
+const WHOLE_FOOD_GROUPS = new Set([
+  'Beef Products', 'Vegetables and Vegetable Products', 'Lamb, Veal, and Game Products', 'Fruits and Fruit Juices',
+  'Poultry Products', 'Pork Products', 'Legumes and Legume Products', 'Dairy and Egg Products', 'Finfish and Shellfish Products',
+  'Fats and Oils', 'Cereal Grains and Pasta', 'Nut and Seed Products', 'Spices and Herbs',
+])
+const MAYBE_SWEETENED = /(?<!un)sweeten|syrup|sugar|honey|candied|glaze|chocolate|cocoa|flavou?red|vanilla|ice cream|jam|jelly|preserves|\bpie\b|cake|cookie|dressing|sauce|baked beans|condensed|eggnog|pudding|frosting|marinated|barbecue|teriyaki|cured|breaded|batter|cocktail|dessert|candy|praline|smoothie|drink|nectar|punch|yogurt, fruit|with fruit|dried, sweetened/i
+const MAYBE_CAFFEINE = /coffee|\btea\b|cocoa|chocolate|cola|energy|mocha|espresso|matcha|guarana|carob/i
+const MAYBE_ALCOHOL = /wine|beer|liqueur|\brum\b|vodka|whiske?y|\bgin\b|alcohol|sake|brandy|cocktail|tequila|liquor/i
+
+function assumeZero(key: string, f: RawFood) {
+  if (key === 'addedSugar') return WHOLE_FOOD_GROUPS.has(f.category) && !MAYBE_SWEETENED.test(f.name)
+  if (key === 'caffeine') return !['Beverages', 'Sweets'].includes(f.category) && !MAYBE_CAFFEINE.test(f.name)
+  if (key === 'alcohol') return f.category !== 'Beverages' && !MAYBE_ALCOHOL.test(f.name)
+  return false
 }
 const ENERGY_IDS = [1008, 2048, 2047]
 const NUTRIENT_ORDER = Object.keys(MAP)
@@ -197,7 +227,7 @@ const out = {
         return sig(parts.reduce((a, [id, k]) => a + f.values.get(id)! * k, 0))
       }
       for (const [id, k] of src.ids) if (f.values.has(id)) return sig(f.values.get(id)! * k)
-      return null
+      return assumeZero(key, f) ? 0 : null
     })
     const kcalId = ENERGY_IDS.find((id) => f.values.has(id))
     return [f.id, f.name, categories.indexOf(f.category), f.source === 'foundation' ? 'f' : 's', kcalId ? Math.round(f.values.get(kcalId)!) : null, values, f.portions]

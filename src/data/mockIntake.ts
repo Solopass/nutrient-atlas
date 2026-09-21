@@ -12,6 +12,7 @@ const PCT: Record<string, number> = {
   b1: 112, b2: 126, b3: 164, b5: 84, b6: 96, b9: 71, b12: 210,
   copper: 94, manganese: 150, selenium: 118, iodine: 38, phosphorus: 182,
   ala: 62, la: 108,
+  sodium: 118, satfat: 92, transfat: 20, addedSugar: 64, cholesterol: 71, caffeine: 45, alcohol: 0,
   leu: 132, ile: 121, val: 118, lys: 97, met: 88, trp: 142, thr: 125, phe: 160, his: 131,
   choline: 64,
 }

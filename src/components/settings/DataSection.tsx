@@ -1,10 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useRef, useState } from 'react'
-import { db, localDate, type Food, type LogEntry, type Setting, type Supplement } from '../../db/db'
+import { db, localDate, type Food, type LogEntry, type SavedMeal, type Setting, type Supplement } from '../../db/db'
 import { loadSampleData, removeSampleData } from '../../lib/sampleData'
 import { Section } from './Controls'
 
-const EXPORT_VERSION = 2
+const EXPORT_VERSION = 3
 
 interface ExportFile {
   app: 'nutrient-atlas'
@@ -14,6 +14,7 @@ interface ExportFile {
   foods: Food[]
   logs: LogEntry[]
   supplements?: Supplement[]
+  meals?: SavedMeal[]
 }
 
 export function DataSection() {
@@ -34,6 +35,7 @@ export function DataSection() {
       foods: await db.foods.toArray(),
       logs: await db.logs.toArray(),
       supplements: await db.supplements.toArray(),
+      meals: await db.meals.toArray(),
     }
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }))
     const a = document.createElement('a')
@@ -49,12 +51,13 @@ export function DataSection() {
       const data = JSON.parse(await file.text()) as ExportFile
       if (data.app !== 'nutrient-atlas' || !Array.isArray(data.logs) || !Array.isArray(data.foods)) throw new Error('Not a Nutrient Atlas export file.')
       if (!confirm(`Replace all current data with this backup from ${data.exportedAt.slice(0, 10)}? (${data.logs.length} log entries, ${data.foods.length} foods)`)) return
-      await db.transaction('rw', [db.settings, db.foods, db.logs, db.supplements], async () => {
-        await Promise.all([db.settings.clear(), db.foods.clear(), db.logs.clear(), db.supplements.clear()])
+      await db.transaction('rw', [db.settings, db.foods, db.logs, db.supplements, db.meals], async () => {
+        await Promise.all([db.settings.clear(), db.foods.clear(), db.logs.clear(), db.supplements.clear(), db.meals.clear()])
         await db.settings.bulkPut(data.settings ?? [])
         await db.foods.bulkPut(data.foods)
         await db.logs.bulkPut(data.logs)
         await db.supplements.bulkPut(data.supplements ?? [])
+        await db.meals.bulkPut(data.meals ?? [])
       })
       setMessage({ text: 'Backup restored.', tone: 'good' })
     } catch (e) {
@@ -63,8 +66,8 @@ export function DataSection() {
   }
 
   const deleteAll = async () => {
-    if (!confirm('Delete your profile, saved foods, supplements and every log entry from this browser? This cannot be undone. Export a backup first if you might want it.')) return
-    await Promise.all([db.settings.clear(), db.foods.clear(), db.logs.clear(), db.supplements.clear()])
+    if (!confirm('Delete your profile, saved foods and meals, supplements and every log entry from this browser? This cannot be undone. Export a backup first if you might want it.')) return
+    await Promise.all([db.settings.clear(), db.foods.clear(), db.logs.clear(), db.supplements.clear(), db.meals.clear()])
     setMessage({ text: 'All data deleted.', tone: 'good' })
   }
 

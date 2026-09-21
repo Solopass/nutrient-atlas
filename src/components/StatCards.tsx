@@ -1,8 +1,10 @@
-import type { ReactNode } from 'react'
-import { DIET_ALLOWS, MOCK_FOODS } from '../data/mockFoods'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { loadUsda, nameParts, nutrientsForGrams, type UsdaDb } from '../data/usda'
+import { localDate, mealForTime } from '../db/db'
+import { logNewFood } from '../db/logging'
 import { useProfile } from '../state/profile'
 import { STATUS_META, fmt, scoreColor, type DayScore } from '../lib/status'
-import { bestNextFood } from '../lib/suggest'
+import { suggestFoods, type FoodSuggestion } from '../lib/suggestUsda'
 import type { NutrientState, Status } from '../types'
 
 interface Props {
@@ -13,6 +15,10 @@ interface Props {
   history: (number | null)[]
   streak: number
   week: boolean
+  /** Day being viewed; "+ Log" on a suggestion logs to it. */
+  date: string
+  /** Foods already eaten in the viewed range, so suggestions add variety. */
+  eatenNames: string[]
 }
 
 function Card({ label, children, className = '' }: { label: string; children: ReactNode; className?: string }) {
@@ -24,14 +30,14 @@ function Card({ label, children, className = '' }: { label: string; children: Re
   )
 }
 
-export function StatCards({ states, score, onSelect, history, streak, week }: Props) {
+export function StatCards({ states, score, onSelect, history, streak, week, date, eatenNames }: Props) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
       <ScoreCard history={history} current={score.score} week={week} />
       <StreakCard history={history} streak={streak} />
       <EnergyCard states={states} week={week} />
       <CoverageCard score={score} />
-      <NextFoodCard states={states} onSelect={onSelect} />
+      <NextFoodCard states={states} onSelect={onSelect} date={date} eatenNames={eatenNames} />
     </div>
   )
 }
@@ -197,24 +203,51 @@ function CoverageCard({ score }: { score: DayScore }) {
   )
 }
 
-function NextFoodCard({ states, onSelect }: { states: NutrientState[]; onSelect: (id: string) => void }) {
+function NextFoodCard({ states, onSelect, date, eatenNames }: { states: NutrientState[]; onSelect: (id: string) => void; date: string; eatenNames: string[] }) {
   const { profile } = useProfile()
-  const s = bestNextFood(states, MOCK_FOODS.filter((f) => DIET_ALLOWS[profile.diet].includes(f.kind)))
+  const [usda, setUsda] = useState<UsdaDb | null>(null)
+  const [logged, setLogged] = useState<number | null>(null)
+  useEffect(() => {
+    loadUsda().then(setUsda, () => {})
+  }, [])
+  const picks = useMemo(() => (usda ? suggestFoods(states, usda, profile.diet, eatenNames) : null), [usda, states, profile.diet, eatenNames])
+
+  const log = async (s: FoodSuggestion) => {
+    const meal = date === localDate() ? mealForTime() : 'snack'
+    await logNewFood({ name: s.food.name, serving: s.portion, grams: s.grams, nutrients: nutrientsForGrams(s.food, s.grams), source: 'usda' }, meal, 1, date)
+    setLogged(s.food.fdcId)
+    setTimeout(() => setLogged(null), 2000)
+  }
+
+  const [best, ...alts] = picks ?? []
   return (
     <Card label="Best next food" className="sm:col-span-2 lg:col-span-1">
-      {s ? (
+      {!picks ? (
+        <p className="mt-2 text-sm text-(--muted)">Searching 8,000 foods…</p>
+      ) : !best ? (
+        <p className="mt-2 text-sm text-(--dim)">No gaps a single food can close. Nice.</p>
+      ) : (
         <>
-          <div className="mt-2 flex items-baseline justify-between gap-2">
-            <span className="truncate text-xl font-semibold">{s.food.name}</span>
-            <span className="shrink-0 font-mono text-xs text-(--muted)">{s.food.serving}</span>
+          <div className="mt-2 flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="truncate text-lg leading-tight font-semibold" title={best.food.name}>
+                {shortName(best.food.name)}
+              </div>
+              <div className="truncate font-mono text-[11px] text-(--muted)">
+                {best.portion}
+                {best.kcal != null && ` · ${Math.round(best.kcal)} kcal`}
+              </div>
+            </div>
+            <button
+              onClick={() => log(best)}
+              className="shrink-0 rounded-full bg-(--c-good) px-3 py-1 text-xs font-semibold text-black hover:brightness-110"
+            >
+              {logged === best.food.fdcId ? 'Logged ✓' : '+ Log'}
+            </button>
           </div>
-          <p className="mt-0.5 text-xs text-(--dim)">
-            Closes {s.closes.length} gap{s.closes.length === 1 ? '' : 's'}
-            {s.helps.length > 0 && `, lifts ${s.helps.length} more`}
-          </p>
-          <div className="mt-auto flex flex-wrap gap-1 pt-3">
-            {[...s.closes, ...s.helps].map((st) => {
-              const closes = s.closes.includes(st)
+          <div className="mt-2 flex flex-wrap gap-1">
+            {[...best.closes, ...best.helps].slice(0, 7).map((st) => {
+              const closes = best.closes.includes(st)
               return (
                 <button
                   key={st.nutrient.id}
@@ -231,10 +264,30 @@ function NextFoodCard({ states, onSelect }: { states: NutrientState[]; onSelect:
               )
             })}
           </div>
+          {alts.length > 0 && (
+            <ul className="mt-auto space-y-1 border-t border-(--line) pt-2">
+              {alts.map((a) => (
+                <li key={a.food.fdcId} className="flex items-center gap-2 text-xs">
+                  <span className="min-w-0 flex-1 truncate text-(--dim)" title={a.food.name}>
+                    {shortName(a.food.name)}
+                    <span className="text-(--muted)"> · closes {a.closes.map((c) => c.nutrient.symbol).join(' ') || '—'}</span>
+                  </span>
+                  <button onClick={() => log(a)} className="shrink-0 text-(--c-above) hover:underline">
+                    {logged === a.food.fdcId ? '✓' : '+ Log'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </>
-      ) : (
-        <p className="mt-2 text-sm text-(--dim)">All gaps closed. Nice.</p>
       )}
     </Card>
   )
+}
+
+/** "Spinach, cooked, boiled, drained" → "Spinach, cooked". */
+function shortName(name: string) {
+  const [prefix, head, rest] = nameParts(name)
+  const qualifier = rest.split(', ').filter(Boolean)[0]
+  return `${head}${qualifier ? `, ${qualifier}` : ''}`.replace(/^./, (c) => c.toUpperCase()) + (prefix && !head ? prefix : '')
 }

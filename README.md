@@ -78,3 +78,12 @@ Icons are generated from `public/icons/icon.svg` with `pwsh scripts/render-icons
 ## Supplements
 
 Log food → **Supplements** (or the pill in the phone tab bar). Add one from its Supplement Facts label (presets for common ones; IU converts automatically for vitamins D, A and E). Daily supplements are logged automatically each day. Untick a day you skipped, or pause a supplement. Upper limits that apply to supplements only (magnesium, niacin, folic acid, vitamin E) are checked against supplement intake alone.
+
+## Limits and faster logging
+
+- **Limits ("stay under"):** sodium, saturated fat, trans fat, added sugar, cholesterol, caffeine and alcohol, with personalised daily limits. They're shown as gauges below the Atlas and are never part of the nourishment score.
+- **Quick add** (above the search box): repeat a previous meal, log a saved meal, or re-log a recent food in one tap.
+- **Save as meal** (Log → Today, on any meal): turn it into a one-tap saved meal or a recipe that makes N portions.
+- **Best next food:** searches all USDA foods for the single portion that closes the most gaps, respecting diet style and limits. One tap to log it.
+
+Sanity scripts: `bun scripts/check-targets.ts`, `bun scripts/check-suggestions.ts`, `bun scripts/check-sample-foods.ts`.

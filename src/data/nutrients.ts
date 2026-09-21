@@ -362,6 +362,64 @@ export const NUTRIENTS: Nutrient[] = [
   },
 ]
 
+/**
+ * "Stay under" nutrients. `target` holds the daily limit (personalised in
+ * lib/targets.ts); `lowSigns` holds the effect of too much; `sources` the
+ * biggest usual sources. Never part of the nourishment score.
+ */
+export const LIMITS: Nutrient[] = [
+  {
+    id: 'sodium', name: 'Sodium', symbol: 'Na', unit: 'mg', category: 'limit',
+    target: 2300, targetKind: 'Limit',
+    why: 'Needed in small amounts, but most diets get far more, mostly from processed and restaurant food. Limit is the level where cutting back lowers chronic disease risk.',
+    lowSigns: 'Higher blood pressure and cardiovascular risk',
+    sources: ['Bread and rolls', 'Cured meats', 'Pizza', 'Soups', 'Sauces and condiments'],
+  },
+  {
+    id: 'satfat', name: 'Saturated Fat', shortName: 'Sat. fat', symbol: 'SFA', unit: 'g', category: 'limit',
+    target: 22, targetKind: 'Limit',
+    why: 'Limit to under 10% of calories; swapping it for unsaturated fats lowers LDL cholesterol.',
+    lowSigns: 'Raised LDL cholesterol',
+    sources: ['Butter', 'Cheese', 'Fatty meats', 'Coconut oil', 'Pastries'],
+  },
+  {
+    id: 'transfat', name: 'Trans Fat', shortName: 'Trans fat', symbol: 'TFA', unit: 'g', category: 'limit',
+    target: 2.2, targetKind: 'Limit',
+    why: 'No safe level; keep under 1% of calories. Mostly gone from US foods since 2018, but still in some fried and baked goods and naturally in small amounts in dairy and beef.',
+    lowSigns: 'Raised LDL, lowered HDL cholesterol',
+    sources: ['Some fried foods', 'Some pastries', 'Beef and dairy fat (small amounts)'],
+  },
+  {
+    id: 'addedSugar', name: 'Added Sugar', shortName: 'Added sugar', symbol: 'Sug', unit: 'g', category: 'limit',
+    target: 50, targetKind: 'Limit',
+    why: 'Sugars added during processing or at the table (not those in whole fruit or plain milk). Limit to under 10% of calories.',
+    lowSigns: 'Excess calories, dental caries, higher cardiometabolic risk',
+    sources: ['Soft drinks', 'Sweets and desserts', 'Sweetened cereals and yogurt', 'Sauces'],
+  },
+  {
+    id: 'cholesterol', name: 'Cholesterol', symbol: 'Chol', unit: 'mg', category: 'limit',
+    target: 300, targetKind: 'Limit',
+    why: 'Former 300 mg guideline; current advice is "as low as practical" within a healthy pattern. Dietary cholesterol matters less than saturated fat for most people.',
+    lowSigns: 'Raised LDL cholesterol in some people',
+    sources: ['Egg yolks', 'Organ meats', 'Shellfish', 'Fatty meats'],
+  },
+  {
+    id: 'caffeine', name: 'Caffeine', symbol: 'Caf', unit: 'mg', category: 'limit',
+    target: 400, targetKind: 'Limit',
+    why: 'Up to 400 mg/day is generally safe for adults; 200 mg in pregnancy.',
+    lowSigns: 'Poor sleep, jitteriness, raised heart rate',
+    sources: ['Coffee', 'Energy drinks', 'Tea', 'Cola', 'Dark chocolate'],
+  },
+  {
+    id: 'alcohol', name: 'Alcohol', symbol: 'Alc', unit: 'g', category: 'limit',
+    target: 28, targetKind: 'Limit',
+    why: 'Less is better. US guidance: at most 2 drinks a day for men, 1 for women (a drink is 14 g), none in pregnancy or under 21.',
+    lowSigns: 'Raised cancer, liver and cardiovascular risk',
+    sources: ['Beer', 'Wine', 'Spirits'],
+  },
+]
+NUTRIENTS.push(...LIMITS)
+
 export const CATEGORY_LABEL: Record<Category, string> = {
   macro: 'Macros',
   vitamin: 'Vitamins',
@@ -371,6 +429,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   fatty: 'Fatty Acids',
   amino: 'Essential Amino Acids',
   advanced: 'Advanced',
+  limit: 'Limits',
 }
 
 export const CORE_CATEGORIES: Category[] = ['macro', 'vitamin', 'mineral']

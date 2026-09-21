@@ -57,6 +57,26 @@ export interface Supplement {
   createdAt: number
 }
 
+/** A saved meal or recipe: a set of items that can be logged in one tap. */
+export interface MealItem {
+  name: string
+  serving: string
+  multiplier: number
+  nutrients: Record<string, number>
+  foodId?: number
+}
+
+export interface SavedMeal {
+  id: number
+  name: string
+  items: MealItem[]
+  /** How many portions the items make (a recipe). Logging one portion scales every item by 1/servings. */
+  servings: number
+  useCount: number
+  createdAt: number
+  lastUsedAt: number
+}
+
 export interface Setting {
   key: string
   value: unknown
@@ -67,6 +87,7 @@ export const db = new Dexie('nutrition-app') as Dexie & {
   foods: EntityTable<Food, 'id'>
   logs: EntityTable<LogEntry, 'id'>
   supplements: EntityTable<Supplement, 'id'>
+  meals: EntityTable<SavedMeal, 'id'>
 }
 
 db.version(1).stores({
@@ -78,6 +99,7 @@ db.version(3).stores({
   logs: '++id, date, loggedAt, meal, foodId, supplementId',
   supplements: '++id, active',
 })
+db.version(4).stores({ meals: '++id, lastUsedAt' })
 
 export const MEALS: Meal[] = ['breakfast', 'lunch', 'dinner', 'snack']
 export const LOG_GROUPS: LogGroup[] = ['supplement', ...MEALS]

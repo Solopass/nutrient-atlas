@@ -1,4 +1,4 @@
-# Nutrient Atlas: Product Specification v1.5
+# Nutrient Atlas: Product Specification v1.6
 
 What the app is and how it behaves today. For what's next, see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -28,16 +28,23 @@ Main question: **"Did I nourish myself today?"**, not "Did I hit my calorie goal
 - **Header:** data source (demo / items logged / 7-day average with days logged), profile summary (links to Settings), **date navigation** (‹ ›, date picker, Today), **Day / 7 days** switch, **+ Log food**, Advanced toggle, History and Settings icons. A setup banner shows until a profile is saved.
 - **Day vs 7 days:** the 7-day view averages the *logged* days (unlogged days are skipped, not zeros). When viewing today, it uses the 7 complete days before today, because today is still in progress. Default is automatic: 7 days once 3+ of the last 7 days are logged; choosing Day or 7 days is remembered.
 - **Empty and demo states:** with no logs at all the dashboard shows demo data and offers **Load sample history** (3 weeks of meals from real USDA foods, flagged and removable). A day with nothing logged shows every nutrient as "no data" plus a log prompt.
-- **Stat cards:** nourishment score with real 14-day sparkline and change vs last day / prior week, streak with 14-day squares, energy vs personal calorie target (daily average in 7-day view), nutrient coverage distribution, best next food* (diet-filtered).
+- **Stat cards:** nourishment score with real 14-day sparkline and change vs last day / prior week, streak with 14-day squares, energy vs personal calorie target (daily average in 7-day view), nutrient coverage distribution, **best next food** (see below).
 - **Nutrient Atlas** (hero), a radial chart:
   - 14 core wedges: macros, vitamins A/C/D/E/K, minerals Ca/Mg/K/Fe/Zn. Radius = % of target; solid to 100%, striped overflow to 150%; dashed UL marker; pulse on deficient wedges.
   - Outer ring: every secondary nutrient as a mini radial gauge, grouped by category.
   - Hub shows the score, or the hovered nutrient's numbers. Hover dims the other nutrients; click opens detail.
 - **Coverage by category** (heatmap cells) and **Biggest gaps** (remaining amount + best foods) side panels, plus **Flags** (over UL, incomplete data).
+- **Limits** strip ("stay under"): sodium, saturated fat, trans fat, added sugar, cholesterol, caffeine, alcohol as gauges with green → yellow (≥ 80%) → orange (over) zones and amount left / over. Over-limit ones also appear in Flags.
 - **Periodic table** of secondary nutrients: rows per category, liquid-fill tiles.
 - **Detail panel:** amount / target / UL, status scale, data-coverage note, **30-day bar trend** of % of target (unlogged days shown as gaps), **top contributing foods** for the day or week, why it matters, signs of low intake, best sources.
 
-\* Best next food still picks from 9 sample foods until Milestone 5.
+**Best next food** searches every USDA whole food (~8,000) for one normal portion (first USDA portion 15–350 g, else 100 g) and ranks by how much of the current gaps it closes, weighted toward the biggest gaps. It:
+- respects diet style (meat, fish, dairy/egg groups)
+- skips niche, fortified, dried, raw-meat, organ-meat, flour, oil-fried and mixed-dish entries
+- rejects foods that would push a limit or upper limit over (or charges them if already over)
+- lightly penalises calories and obscure long-named variants, and skips foods already eaten that day
+
+It shows the best pick plus two alternatives (one per food family), each with **+ Log**. Runs in < 20 ms.
 
 ### History (`#/history`)
 - 30-day stats: days logged, average score, days ≥ 80%, current streak, best streak (90 days). Today is counted as logged but kept out of averages while it's in progress.
@@ -50,11 +57,11 @@ Main question: **"Did I nourish myself today?"**, not "Did I hit my calorie goal
 - Below 640 px: bottom tab bar (Atlas, History, **+** log, Supplements, Settings), with safe-area padding. The header drops the buttons the tab bar replaces.
 
 ### Log food (sheet)
-1. **Search:** USDA foods ranked for everyday use (head-word match, whole/raw preference, nutrient completeness). Pick amount × USDA portion or custom grams, with a live nutrient preview.
+1. **Search:** above the search box, **Quick add**: *Same [meal] as [last time]* copies that meal's items (looks back 14 days); **Saved meals** chips log one portion; **Recent** foods log one serving. Below, USDA foods ranked for everyday use (head-word match, whole/raw preference, nutrient completeness). Pick amount × USDA portion or custom grams, with a live nutrient preview.
 2. **AI estimate:** describe a meal → copy prompt → paste any chatbot's JSON reply → review (untick items, servings) → log.
-3. **My foods:** every logged food is saved for one-tap re-logging; favorites.
+3. **My foods:** saved meals (log / delete) and every logged food for one-tap re-logging; favorites.
 4. **Supplements:** see below.
-5. **Today** (or the viewed day): entries by meal; edit servings; delete.
+5. **Today** (or the viewed day): entries by meal with kcal; edit servings; delete; **Save as meal** per meal (name + "makes N portions" for recipes; logging adds one portion).
 
 The sheet logs to the day being viewed, so past days can be back-filled. A badge shows when that is not today.
 
@@ -99,6 +106,21 @@ Protein, Carbohydrates, Fat, Fiber · Vitamins A, C, D, E, K · Calcium, Magnesi
 - No official target (EPA, DHA, boron, sulfur, lutein, zeaxanthin, CoQ10, creatine): amount only.
 - ULs that apply to supplements only (magnesium, niacin, folic acid, vitamin E) carry a note.
 
+### Limits ("stay under"; never part of the score)
+| Nutrient | Daily limit | Source |
+|---|---|---|
+| Sodium | 2,300 mg | DRI chronic-disease risk reduction |
+| Saturated fat | 10% of calories | Dietary Guidelines |
+| Added sugar | 10% of calories | Dietary Guidelines |
+| Trans fat | 1% of calories | WHO |
+| Cholesterol | 300 mg | former guideline (now "as low as practical") |
+| Caffeine | 400 mg (200 pregnant/breastfeeding, 100 under 18) | FDA / ACOG |
+| Alcohol | 28 g men, 14 g women, 0 pregnant or under 21 | Dietary Guidelines |
+
+Status: green ≤ 80% of the limit, yellow 80–100%, orange over; limit 0 means any amount is over.
+
+USDA data: sodium, saturated fat and cholesterol are near-complete. Added sugar is almost never reported, so the build records 0 for unprocessed whole foods (fruit, vegetables, meat, fish, plain dairy, grains, nuts, legumes) and leaves processed or sweetened foods as "no data". Caffeine and alcohol are treated the same way outside beverages and sweets.
+
 ### Status colours
 | Colour | Range | Meaning |
 |---|---|---|
@@ -129,6 +151,7 @@ settings  key → value                    ('profile' → Profile)
 foods     ++id, name, lastUsedAt, favorite
           { name, serving, grams?, nutrients (per serving), source: usda|ai|custom, favorite, useCount, createdAt, lastUsedAt }
 logs      ++id, date, loggedAt, meal, foodId, supplementId
+meals     ++id, lastUsedAt   { name, items[{ name, serving, multiplier, nutrients, foodId? }], servings, useCount, createdAt, lastUsedAt }
           { date YYYY-MM-DD, loggedAt, meal, foodId?, name, serving, multiplier, nutrients (snapshot per serving), sample? }
 ```
 Log entries snapshot nutrients so editing a food never rewrites history. Intake for a day = Σ nutrients × multiplier; coverage = share of entries that report each nutrient.

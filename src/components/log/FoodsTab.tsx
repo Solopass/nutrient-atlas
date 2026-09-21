@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { db, type Meal } from '../../db/db'
 import { logSavedFood } from '../../db/logging'
 import { NutrientChips } from './NutrientChips'
+import { SavedMealsList } from './SavedMealsList'
 
 export function FoodsTab({ meal, date, onLogged }: { meal: Meal; date: string; onLogged: (msg: string) => void }) {
   const [query, setQuery] = useState('')
@@ -16,14 +17,17 @@ export function FoodsTab({ meal, date, onLogged }: { meal: Meal; date: string; o
 
   if (foods.length === 0) {
     return (
-      <div className="py-12 text-center text-sm text-(--muted)">
-        No saved foods yet. Foods you log with the AI estimate are saved here for one-tap re-logging.
+      <div>
+        <SavedMealsList meal={meal} date={date} onLogged={onLogged} />
+        <div className="py-12 text-center text-sm text-(--muted)">No saved foods yet. Every food you log is saved here for one-tap re-logging.</div>
       </div>
     )
   }
 
   return (
     <div>
+      <SavedMealsList meal={meal} date={date} onLogged={onLogged} />
+      <h3 className="mb-1.5 text-[10.5px] font-medium tracking-[0.16em] text-(--muted) uppercase">Foods</h3>
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}

@@ -6,6 +6,7 @@ import { HistoryPage } from './components/history/HistoryPage'
 import { CalendarIcon, GearIcon } from './components/icons'
 import { Legend } from './components/Legend'
 import { Logo } from './components/Logo'
+import { LimitsPanel } from './components/LimitsPanel'
 import { PeriodicTable } from './components/PeriodicTable'
 import { CategoryPanel, GapsPanel } from './components/SidePanels'
 import { StatCards } from './components/StatCards'
@@ -107,6 +108,7 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
   const dayLogs = useMemo(() => byDate.get(date) ?? [], [byDate, date])
   const foodCount = dayLogs.filter((l) => l.supplementId == null).length
   const suppCount = dayLogs.length - foodCount
+  const eatenNames = useMemo(() => dayLogs.filter((l) => l.supplementId == null).map((l) => l.name), [dayLogs])
 
   const { intake, loggedDays } = useMemo(() => {
     if (demo) return { intake: MOCK_INTAKE, loggedDays: 1 }
@@ -265,7 +267,7 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
           </div>
         )}
 
-        <StatCards states={states} score={score} onSelect={setSelectedId} history={history14} streak={streak} week={week} />
+        <StatCards states={states} score={score} onSelect={setSelectedId} history={history14} streak={streak} week={week} date={date} eatenNames={eatenNames} />
 
         <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)_300px] xl:items-center">
           <div className="order-2 xl:order-none">
@@ -278,6 +280,8 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
             <GapsPanel states={states} {...sel} />
           </div>
         </div>
+
+        <LimitsPanel states={states} {...sel} />
 
         <PeriodicTable states={states} categories={outerCats} {...sel} />
 

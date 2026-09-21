@@ -17,11 +17,22 @@ export function amountAgainstUL(n: Nutrient, intake: Intake) {
   return n.ulAppliesTo === 'supplements' ? (intake.supplement ?? 0) * (n.ulSupplementScale ?? 1) : intake.amount
 }
 
+/** "Stay under" nutrients: green well below the limit, yellow near it, orange over. A limit of 0 means any amount is over. */
+export const LIMIT_NEAR = 80
+
+function limitState(base: Omit<NutrientState, 'status' | 'pct'>, n: Nutrient, intake: Intake): NutrientState {
+  const limit = n.target ?? 0
+  if (limit === 0) return { ...base, status: intake.amount > 0 ? 'overLimit' : 'good', pct: intake.amount > 0 ? null : 0 }
+  const pct = (intake.amount / limit) * 100
+  return { ...base, status: pct <= LIMIT_NEAR ? 'good' : pct <= 100 ? 'attention' : 'overLimit', pct }
+}
+
 export function nutrientState(nutrient: Nutrient, intake: Intake | undefined): NutrientState {
   const partial = !!intake && intake.coverage > 0 && intake.coverage < PARTIAL_COVERAGE
   const base = { nutrient, intake, partial }
 
   if (!intake || intake.coverage === 0) return { ...base, status: 'noData', pct: null }
+  if (nutrient.category === 'limit') return limitState(base, nutrient, intake)
   if (nutrient.upperLimit != null && amountAgainstUL(nutrient, intake) > nutrient.upperLimit) {
     const pct = nutrient.target != null ? (intake.amount / nutrient.target) * 100 : null
     return { ...base, status: 'overLimit', pct }

@@ -78,6 +78,17 @@ export function driOverrides(p: Profile): Record<string, Override> {
     choline: { target: teen ? s(550, 400, 450, 550) : s(550, 425, 450, 550), kind: 'AI', ul: teen ? 3000 : 3500 },
   }
   for (const [id, perKg] of Object.entries(AMINO_PER_KG)) o[id] = { target: Math.round(perKg * p.weightKg), kind: 'RDA' }
+
+  // Limits: Dietary Guidelines for Americans (sodium CDRR, <10% kcal sat fat / added sugar),
+  // WHO (<1% kcal trans fat), FDA (caffeine), DGA (alcohol).
+  const Limit = 'Limit' as const
+  o.sodium = { target: 2300, kind: Limit }
+  o.satfat = { target: Math.round((energy * 0.1) / 9), kind: Limit }
+  o.transfat = { target: Math.round(((energy * 0.01) / 9) * 10) / 10, kind: Limit }
+  o.addedSugar = { target: Math.round((energy * 0.1) / 4), kind: Limit }
+  o.cholesterol = { target: 300, kind: Limit }
+  o.caffeine = { target: preg || lact ? 200 : age < 18 ? 100 : 400, kind: Limit }
+  o.alcohol = { target: preg || age < 21 ? 0 : m ? 28 : 14, kind: Limit }
   return o
 }
 
