@@ -8,6 +8,7 @@ import { LIMIT_NEAR, STATUS_META, scoreColor } from '../../lib/status'
 import { useProfile } from '../../state/profile'
 import type { Category, Nutrient } from '../../types'
 import { Logo } from '../Logo'
+import { foodStreak } from '../../lib/streak'
 import { WeeklyReportCard, useWeeklyReport } from '../insights/Insights'
 
 const HEAT_DAYS = 28
@@ -33,6 +34,7 @@ export function HistoryPage() {
   }, [byDate, nutrients])
 
   const report = useWeeklyReport(logs, addDays(today, -1))
+  const streak = useLiveQuery(() => foodStreak(today), [today]) // not capped by the 90 days loaded here
 
   const last30 = dateRange(today, 30)
   const logged30 = last30.filter((d) => scores.has(d))
@@ -70,7 +72,7 @@ export function HistoryPage() {
           <Stat label="Days logged · 30d" value={`${logged30.length}`} sub="/ 30" />
           <Stat label="Average score · 30d" value={avg30 != null ? `${Math.round(avg30)}%` : '–'} color={avg30 != null ? scoreColor(avg30) : undefined} />
           <Stat label="Days ≥ 80% · 30d" value={`${strong30}`} />
-          <Stat label="Current streak" value={`${streakEndingAt(byDate, today)}`} sub="days" />
+          <Stat label="Current streak" value={`${streak ?? streakEndingAt(byDate, today)}`} sub="days" />
           <Stat label="Best streak · 90d" value={`${bestStreak}`} sub="days" />
         </div>
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { loadUsda, nameParts, nutrientsForGrams, type UsdaDb } from '../data/usda'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, localDate, mealForTime } from '../db/db'
@@ -143,6 +143,8 @@ function EnergyCard({ states, week }: { states: NutrientState[]; week: boolean }
     { key: 'Protein', grams: g('protein'), kcal: g('protein') * 4, color: 'var(--k-macro)' },
     { key: 'Carbs', grams: g('carbs'), kcal: g('carbs') * 4, color: 'var(--k-vitamin)' },
     { key: 'Fat', grams: g('fat'), kcal: g('fat') * 9, color: 'var(--k-fatty)' },
+    // Alcohol is 7 kcal/g; only shown when there is some.
+    ...(g('alcohol') > 0 ? [{ key: 'Alcohol', grams: g('alcohol'), kcal: g('alcohol') * 7, color: 'var(--k-limit)' }] : []),
   ]
   const total = macros.reduce((a, m) => a + m.kcal, 0)
 
@@ -157,7 +159,7 @@ function EnergyCard({ states, week }: { states: NutrientState[]; week: boolean }
           <div key={m.key} style={{ width: `${(m.kcal / Math.max(total, ENERGY_TARGET_KCAL)) * 100}%`, background: m.color }} />
         ))}
       </div>
-      <div className="mt-2 grid grid-cols-3 gap-1 font-mono text-[10px]">
+      <div className={`mt-2 grid gap-1 font-mono text-[10px] ${macros.length > 3 ? 'grid-cols-4' : 'grid-cols-3'}`}>
         {macros.map((m) => (
           <div key={m.key}>
             <div className="flex items-center gap-1 text-(--muted)">
@@ -209,6 +211,7 @@ function NextFoodCard({ states, onSelect, date, eatenNames }: { states: Nutrient
   const { profile } = useProfile()
   const [usda, setUsda] = useState<UsdaDb | null>(null)
   const [logged, setLogged] = useState<string | null>(null)
+  const logging = useRef(new Set<string>())
   useEffect(() => {
     loadUsda().then(setUsda, () => {})
   }, [])
@@ -231,6 +234,10 @@ function NextFoodCard({ states, onSelect, date, eatenNames }: { states: Nutrient
   const picks = useMemo(() => (usda ? suggestFoods(states, usda, profile.diet, eatenNames, 3, own) : null), [usda, states, profile.diet, eatenNames, own])
 
   const log = async (s: FoodSuggestion) => {
+    // Ref, not state: two taps before the next render would both see stale state.
+    if (logging.current.has(s.key)) return
+    logging.current.add(s.key)
+    setTimeout(() => logging.current.delete(s.key), 2000)
     const meal = date === localDate() ? mealForTime() : 'snack'
     if (s.kind === 'usda' && s.food && s.grams) {
       await logNewFood({ name: s.food.name, serving: s.portion, grams: s.grams, nutrients: nutrientsForGrams(s.food, s.grams), source: 'usda' }, meal, 1, date)

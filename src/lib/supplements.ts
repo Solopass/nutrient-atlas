@@ -54,7 +54,10 @@ export async function createSupplement(data: NewSupplement) {
 export async function updateSupplement(id: number, data: NewSupplement) {
   const today = localDate()
   await db.transaction('rw', db.supplements, db.logs, async () => {
-    await db.supplements.update(id, data)
+    const before = await db.supplements.get(id)
+    // Becoming daily starts from today: never back-fill days from when it was "as needed".
+    const becameDaily = data.schedule === 'daily' && before?.schedule !== 'daily'
+    await db.supplements.update(id, becameDaily ? { ...data, lastApplied: addDays(today, -1) } : data)
     await db.logs
       .where('supplementId')
       .equals(id)

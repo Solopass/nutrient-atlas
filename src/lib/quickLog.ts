@@ -55,7 +55,9 @@ export async function logSavedMeal(id: number, date: string, meal: Meal, portion
   await db.meals.update(id, { useCount: m.useCount + 1, lastUsedAt: Date.now() })
 }
 
-/** Rough energy of a set of items, from macros. */
+/** Energy of a set of items from macros and alcohol (Atwater: 4 / 4 / 9 / 7 kcal per g). */
 export function itemsKcal(items: { multiplier: number; nutrients: Record<string, number> }[]) {
-  return items.reduce((a, i) => a + ((i.nutrients.protein ?? 0) * 4 + (i.nutrients.carbs ?? 0) * 4 + (i.nutrients.fat ?? 0) * 9) * i.multiplier, 0)
+  return items.reduce((a, i) => a + kcalOf(i.nutrients) * i.multiplier, 0)
 }
+
+export const kcalOf = (n: Record<string, number>) => (n.protein ?? 0) * 4 + (n.carbs ?? 0) * 4 + (n.fat ?? 0) * 9 + (n.alcohol ?? 0) * 7

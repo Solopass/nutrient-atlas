@@ -18,6 +18,18 @@ interface ProfileState {
 
 const Ctx = createContext<ProfileState | null>(null)
 
+/**
+ * Merge a change into the saved profile. Reads the current row inside the
+ * transaction, so quick successive changes (tap goal, then diet) can't
+ * overwrite each other with a stale copy.
+ */
+export function saveProfile(patch: Partial<Profile>) {
+  return db.transaction('rw', db.settings, async () => {
+    const current = (await db.settings.get('profile'))?.value as Partial<Profile> | undefined
+    await db.settings.put({ key: 'profile', value: { ...DEFAULT_PROFILE, ...current, ...patch } })
+  })
+}
+
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const row = useLiveQuery(() => db.settings.get('profile'), [], 'loading' as const)
   const loaded = row !== 'loading'
@@ -25,12 +37,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   // Merge over defaults so profiles saved by older versions pick up new fields.
   const profile = useMemo(() => ({ ...DEFAULT_PROFILE, ...stored }), [stored])
 
-  const update = useCallback(
-    async (patch: Partial<Profile>) => {
-      await db.settings.put({ key: 'profile', value: { ...profile, ...patch } })
-    },
-    [profile],
-  )
+  const update = useCallback((patch: Partial<Profile>) => saveProfile(patch), [])
 
   const value = useMemo<ProfileState>(() => {
     const nutrients = personalize(profile)

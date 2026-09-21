@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type ReactNode, type SVGProps } from 'react'
+import { useState, type FocusEvent, type KeyboardEvent, type PointerEvent, type ReactNode, type SVGProps } from 'react'
 import { CATEGORY_LABEL } from '../data/nutrients'
 import { STATUS_META, fmt, scoreColor, type DayScore } from '../lib/status'
 import type { Category, NutrientState, Status } from '../types'
@@ -121,10 +121,12 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact }
   const scaleAngle = coreSegs[0].a0 - 2 // the gap before the first wedge holds the % scale labels
 
   const interact = (id: string) => ({
-    onMouseEnter: () => setHoverId(id),
-    onMouseLeave: () => setHoverId((h) => (h === id ? null : h)),
-    onFocus: () => setHoverId(id),
-    onBlur: () => setHoverId(null),
+    // Hover highlight is for real mice and keyboard focus only. On touch screens a tap fires a
+    // synthetic mouseenter and focus with no matching leave, which would leave the chart dimmed.
+    onPointerEnter: (e: PointerEvent) => e.pointerType === 'mouse' && setHoverId(id),
+    onPointerLeave: () => setHoverId((h) => (h === id ? null : h)),
+    onFocus: (e: FocusEvent<SVGGElement>) => e.currentTarget.matches(':focus-visible') && setHoverId(id),
+    onBlur: () => setHoverId((h) => (h === id ? null : h)),
     onClick: () => onSelect(id),
     onKeyDown: (e: KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {

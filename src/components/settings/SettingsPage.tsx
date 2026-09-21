@@ -32,8 +32,10 @@ export function SettingsPage() {
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,#101a2b_0%,var(--bg)_70%)]">
       <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 pt-6 pb-4 sm:px-6">
-        <a href="#/" className="flex items-center gap-3">
-          <Logo />
+        <div className="flex items-center gap-3">
+          <a href="#/" aria-label="Back to Atlas">
+            <Logo />
+          </a>
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
             <p className="text-[13px] text-(--muted)">
@@ -43,7 +45,7 @@ export function SettingsPage() {
               </a>
             </p>
           </div>
-        </a>
+        </div>
         <a href="#/" className="rounded-full bg-(--c-above) px-4 py-1.5 text-[13px] font-semibold text-white hover:brightness-110">
           ← Back to Atlas
         </a>

@@ -24,7 +24,8 @@ export function SearchTab({ meal, date, onLogged }: { meal: Meal; date: string; 
     <div>
       <div className="relative">
         <input
-          autoFocus
+          // Desktop only: on phones the keyboard would cover Quick add every time the sheet opens.
+          autoFocus={matchMedia('(pointer: fine)').matches}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value)

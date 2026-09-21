@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { db, localDate, type LogEntry } from '../db/db'
+import { saveProfile } from '../state/profile'
 import { addDays } from './history'
+import type { Profile } from './profile'
 import { copyEntries, logSavedMeal, previousMeal, saveMeal } from './quickLog'
-import { applyDailySupplements, createSupplement, pauseSupplement, resumeSupplement, setTaken } from './supplements'
+import { foodStreak } from './streak'
+import { loadSampleData, removeSampleData } from './sampleData'
+import { usdaDb } from '../test/usdaFixture'
+import { applyDailySupplements, createSupplement, pauseSupplement, resumeSupplement, setTaken, updateSupplement } from './supplements'
 
 const today = localDate()
 const D3 = { name: 'Vitamin D3', dose: '1 softgel', nutrients: { vitD: 50 }, dosesPerDay: 1, schedule: 'daily' as const }
@@ -12,6 +17,15 @@ beforeEach(async () => {
 })
 
 const suppLogs = () => db.logs.filter((l) => l.supplementId != null).toArray()
+
+describe('profile saves', () => {
+  test('quick successive changes are all kept', async () => {
+    await db.settings.clear()
+    await Promise.all([saveProfile({ goal: 'muscle' }), saveProfile({ diet: 'vegan' }), saveProfile({ age: 41 })])
+    const p = (await db.settings.get('profile'))!.value as Profile
+    expect([p.goal, p.diet, p.age]).toEqual(['muscle', 'vegan', 41])
+  })
+})
 
 describe('daily supplements', () => {
   test('creating a daily supplement logs today once', async () => {
@@ -59,10 +73,57 @@ describe('daily supplements', () => {
     expect((await suppLogs()).map((l) => l.date)).toEqual([today])
   })
 
+  test('switching an old as-needed supplement to daily starts today, without back-filling', async () => {
+    const id = await createSupplement({ ...D3, schedule: 'asNeeded' })
+    await db.supplements.update(id, { startDate: addDays(today, -30) }) // created a month ago
+    await updateSupplement(id, { ...D3, schedule: 'daily' })
+    expect((await suppLogs()).map((l) => l.date)).toEqual([today])
+  })
+
   test('as-needed supplements are never auto-logged', async () => {
     await createSupplement({ ...D3, schedule: 'asNeeded' })
     await applyDailySupplements()
     expect(await suppLogs()).toEqual([])
+  })
+})
+
+describe('sample data', () => {
+  test('loading twice does not duplicate', async () => {
+    const usda = await usdaDb()
+    const first = await loadSampleData(usda)
+    const second = await loadSampleData(usda)
+    expect(first).toBeGreaterThan(100)
+    expect(second).toBe(0)
+    expect(await db.logs.count()).toBe(first)
+    expect(await removeSampleData()).toBe(first)
+  })
+
+  test('two loads at the same moment (double tap, React StrictMode) load once', async () => {
+    const usda = await usdaDb()
+    const [a, b] = await Promise.all([loadSampleData(usda), loadSampleData(usda)])
+    expect(Math.min(a, b)).toBe(0)
+    expect(await db.logs.count()).toBe(Math.max(a, b))
+  })
+})
+
+describe('foodStreak', () => {
+  const eatOn = (date: string) => db.logs.add({ date, loggedAt: 0, meal: 'lunch', name: 'x', serving: '1', multiplier: 1, nutrients: {} } as Omit<LogEntry, 'id'> as LogEntry)
+  test('long streaks are not capped by a loading window', async () => {
+    for (let i = 1; i <= 130; i++) await eatOn(addDays(today, -i))
+    expect(await foodStreak(today)).toBe(130) // today not logged yet: doesn't break it
+  })
+  test('stops at the first gap', async () => {
+    for (const i of [0, 1, 2, 4, 5]) await eatOn(addDays(today, -i))
+    expect(await foodStreak(today)).toBe(3)
+  })
+  test('supplement-only days do not count', async () => {
+    await eatOn(addDays(today, -1))
+    await db.logs.add({ date: addDays(today, -2), loggedAt: 0, meal: 'supplement', supplementId: 1, name: 'pill', serving: '1', multiplier: 1, nutrients: {} } as Omit<LogEntry, 'id'> as LogEntry)
+    await eatOn(addDays(today, -3))
+    expect(await foodStreak(today)).toBe(1)
+  })
+  test('no logs → 0', async () => {
+    expect(await foodStreak(today)).toBe(0)
   })
 })
 

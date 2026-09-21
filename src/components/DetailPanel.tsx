@@ -32,11 +32,13 @@ export function DetailPanel({ state, onClose, history }: Props) {
     <>
       <div
         onClick={onClose}
-        className={`fixed inset-0 z-20 bg-black/50 transition-opacity ${open ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+        className={`fixed inset-0 z-40 bg-black/50 transition-opacity ${open ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
       />
+      {/* z-40: above the phone tab bar (z-30), below the log sheet (z-50). Safe-area padding for notched phones. */}
       <aside
         aria-hidden={!open}
-        className={`fixed inset-y-0 right-0 z-30 w-full overflow-y-auto border-l border-(--line) bg-(--panel) shadow-2xl transition-transform duration-300 sm:w-[420px] ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+        className={`fixed inset-y-0 right-0 z-40 w-full overflow-y-auto border-l border-(--line) bg-(--panel) shadow-2xl transition-transform duration-300 sm:w-[420px] ${open ? 'translate-x-0' : 'translate-x-full'}`}
       >
         {state && <PanelBody state={state} onClose={onClose} history={history} />}
       </aside>

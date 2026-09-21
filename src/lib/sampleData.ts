@@ -66,10 +66,15 @@ function build(usda: UsdaDb, days = 21): Omit<LogEntry, 'id'>[] {
   return out
 }
 
-export async function loadSampleData() {
-  const entries = build(await loadUsda())
-  await db.logs.bulkAdd(entries as LogEntry[])
-  return entries.length
+/** Adds the sample weeks; a no-op (returns 0) if they're already loaded, whichever button was pressed. */
+export async function loadSampleData(usda?: UsdaDb) {
+  const entries = build(usda ?? (await loadUsda()))
+  // Check and write in one transaction, so two loads at once (double tap, React StrictMode) can't both add.
+  return db.transaction('rw', db.logs, async () => {
+    if (await db.logs.filter((l) => l.sample === true).count()) return 0
+    await db.logs.bulkAdd(entries as LogEntry[])
+    return entries.length
+  })
 }
 
 export async function removeSampleData() {

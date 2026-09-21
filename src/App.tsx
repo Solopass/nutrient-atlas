@@ -24,6 +24,7 @@ import { addDays, averageIntake, contributors, dateRange, dayHref, formatDay, gr
 import { describeProfile } from './lib/profile'
 import { loadSampleData } from './lib/sampleData'
 import { applyDailySupplements } from './lib/supplements'
+import { foodStreak } from './lib/streak'
 import { dayScore, nutrientState } from './lib/status'
 import { useProfile } from './state/profile'
 import type { Category } from './types'
@@ -58,10 +59,11 @@ export default function App() {
   const [log, setLog] = useState<{ open: boolean; tab: LogTab }>({ open: false, tab: 'search' })
   const openLog = useCallback((tab: LogTab = 'search') => setLog({ open: true, tab }), [])
   const closeLog = useCallback(() => setLog((l) => ({ ...l, open: false })), [])
-  useSupplementSync()
+  const today = useToday()
+  useSupplementSync(today)
 
   const m = route.match(/^day\/(\d{4}-\d{2}-\d{2})$/)
-  const date = m && isValidDate(m[1]) && m[1] <= localDate() ? m[1] : localDate()
+  const date = m && isValidDate(m[1]) && m[1] <= today ? m[1] : today
   const dayCount = useLiveQuery(() => db.logs.where('date').equals(date).count(), [date]) ?? 0
 
   // First run: show setup until it's finished or skipped, unless a profile was already saved some other way.
@@ -101,14 +103,32 @@ export default function App() {
   )
 }
 
-/** Log today's daily supplements on launch and whenever the app returns to the foreground (e.g. the next morning). */
-function useSupplementSync() {
+/**
+ * Log today's daily supplements on launch, whenever the app returns to the
+ * foreground, and when the date rolls over while the app stays open.
+ */
+function useSupplementSync(today: string) {
   useEffect(() => {
     const run = () => document.visibilityState === 'visible' && applyDailySupplements()
     run()
     document.addEventListener('visibilitychange', run)
     return () => document.removeEventListener('visibilitychange', run)
+  }, [today])
+}
+
+/** The local date, re-rendering when it changes (the app may be left open past midnight). */
+function useToday() {
+  const [today, setToday] = useState(localDate())
+  useEffect(() => {
+    const tick = () => setToday(localDate())
+    const t = setInterval(tick, 60_000)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      clearInterval(t)
+      document.removeEventListener('visibilitychange', tick)
+    }
   }, [])
+  return today
 }
 
 function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) => void }) {
@@ -129,7 +149,8 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
   const weekEnd = date === today ? addDays(date, -1) : date
   const week7 = useMemo(() => dateRange(weekEnd, 7), [weekEnd])
   const loggedIn7 = week7.filter((d) => hasFood(byDate.get(d))).length
-  const week = profile.atlasRange ? profile.atlasRange === 'week' : loggedIn7 >= 3
+  // With no complete logged day in the window yet (e.g. your first day), a 7-day view would be empty; show the day instead.
+  const week = loggedIn7 > 0 && (profile.atlasRange ? profile.atlasRange === 'week' : loggedIn7 >= 3)
   const dayLogs = useMemo(() => byDate.get(date) ?? [], [byDate, date])
   const foodCount = dayLogs.filter((l) => l.supplementId == null).length
   const suppCount = dayLogs.length - foodCount
@@ -152,7 +173,9 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
     () => (demo ? [...SCORE_HISTORY.slice(0, -1), score.score] : dateRange(date, 14).map((d) => scoreForLogs(nutrients, byDate.get(d)))),
     [demo, date, nutrients, byDate, score.score],
   )
-  const streak = demo ? 10 : streakEndingAt(byDate, date)
+  // Own query: the 44 days loaded above would cap long streaks.
+  const realStreak = useLiveQuery(() => foodStreak(date), [date]) ?? streakEndingAt(byDate, date)
+  const streak = demo ? 10 : realStreak
 
   const selected = states.find((s) => s.nutrient.id === selectedId) ?? null
   const nutrientHistory = useMemo<NutrientHistory | null>(() => {

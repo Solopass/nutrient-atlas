@@ -40,6 +40,8 @@
 
 body {
   margin: 0;
+  /* Installed iPhone app uses a translucent status bar; keep content below the notch. */
+  padding-top: env(safe-area-inset-top);
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-sans);

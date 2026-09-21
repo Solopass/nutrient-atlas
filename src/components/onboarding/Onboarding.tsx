@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { SUPPLEMENT_PRESETS } from '../../data/supplementPresets'
 import { db } from '../../db/db'
 import {
@@ -51,9 +51,19 @@ export function Onboarding({ onFinish }: { onFinish: (exit: OnboardingExit) => v
     }
   }
 
+  const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false) // ref: two taps before a re-render would both see stale state
   const next = async () => {
-    if (STEPS[step] === 'Supplements') await saveSupplements()
-    setStep((s) => Math.min(s + 1, STEPS.length - 1))
+    if (busyRef.current) return // a double tap must not create each supplement twice
+    busyRef.current = true
+    setBusy(true)
+    try {
+      if (STEPS[step] === 'Supplements') await saveSupplements()
+      setStep((s) => Math.min(s + 1, STEPS.length - 1))
+    } finally {
+      busyRef.current = false
+      setBusy(false)
+    }
   }
 
   return (
@@ -102,7 +112,7 @@ export function Onboarding({ onFinish }: { onFinish: (exit: OnboardingExit) => v
                 Just explore with sample data
               </button>
             )}
-            <button onClick={next} className="rounded-full bg-(--c-above) px-5 py-2 text-sm font-semibold text-white shadow-[0_0_24px_-6px_var(--c-above)] hover:brightness-110">
+            <button onClick={next} disabled={busy} className="rounded-full disabled:opacity-60 bg-(--c-above) px-5 py-2 text-sm font-semibold text-white shadow-[0_0_24px_-6px_var(--c-above)] hover:brightness-110">
               {step === 0 ? 'Get started' : STEPS[step] === 'Supplements' ? (picked.size ? `Add ${picked.size} & continue` : 'None, continue') : 'Continue'}
             </button>
           </div>

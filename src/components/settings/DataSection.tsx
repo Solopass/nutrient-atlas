@@ -19,7 +19,13 @@ interface ExportFile {
 
 export function DataSection() {
   const stats = useLiveQuery(async () => {
-    const [foods, logs, days] = await Promise.all([db.foods.count(), db.logs.count(), db.logs.orderBy('date').uniqueKeys()])
+    const [foods, logs, foodDays] = await Promise.all([
+      db.foods.count(),
+      db.logs.count(),
+      // A day counts as logged only if it has food (auto-logged supplements alone don't count), as in History.
+      db.logs.filter((l) => l.supplementId == null).toArray().then((ls) => new Set(ls.map((l) => l.date))),
+    ])
+    const days = [...foodDays]
     const samples = await db.logs.filter((l) => l.sample === true).count()
     return { foods, logs, days: days.length, samples }
   }, [])
@@ -68,6 +74,11 @@ export function DataSection() {
   const deleteAll = async () => {
     if (!confirm('Delete your profile, saved foods and meals, supplements and every log entry from this browser? This cannot be undone. Export a backup first if you might want it.')) return
     await Promise.all([db.settings.clear(), db.foods.clear(), db.logs.clear(), db.supplements.clear(), db.meals.clear()])
+    try {
+      localStorage.removeItem('ai-log-draft') // unsent meal description / AI reply
+    } catch {
+      /* storage unavailable */
+    }
     setMessage({ text: 'All data deleted.', tone: 'good' })
   }
 

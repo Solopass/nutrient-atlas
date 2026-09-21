@@ -92,3 +92,10 @@ describe('contributors', () => {
     expect(c[0].share).toBe(0.75)
   })
 })
+
+describe('itemsKcal', () => {
+  test('Atwater factors, including alcohol at 7 kcal/g', async () => {
+    const { itemsKcal } = await import('./quickLog')
+    expect(itemsKcal([{ multiplier: 2, nutrients: { protein: 10, carbs: 10, fat: 10, alcohol: 14 } }])).toBe(2 * (40 + 40 + 90 + 98))
+  })
+})
