@@ -57,7 +57,6 @@ Learned:
 **Limits ✅ shipped:** sodium, saturated fat, trans fat, added sugar, cholesterol, caffeine and alcohol with personalised limits, a "stay under" gauge strip, flags, reversed detail-panel scale, and USDA coverage (safe zeros for whole foods). Not in the score.
 
 Still open:
-- Limits rows in the History heatmap (reverse colours).
 - Vitamin D from sunlight: optional "sun exposure" note so vitamin D isn't always red for people who get sun.
 
 ## Milestone 5: Daily driver
@@ -68,7 +67,7 @@ Still open:
 - **Custom foods from labels ✅:** paste or type Nutrition Facts; the text reader handles %DV-only and one-line labels. Covers packaged foods until barcode scanning.
 - **First-run setup ✅:** profile → goals → supplements → personal targets.
 - **Barcode scanning (on hold until hosting):** camera → OpenFoodFacts lookup → normalize to our nutrient ids (labels usually list few micronutrients, so coverage flags matter).
-- **Best next food ✅** from the full USDA database, diet-filtered, limit-aware, one tap to log. Still to do: include the user's own foods and saved meals as candidates.
+- **Best next food ✅** from the full USDA database plus your own saved foods and meals, diet-filtered, limit-aware, one tap to log.
 - Quick edit of portion by dragging on the Atlas wedge (stretch goal).
 
 ## Milestone 6: AI automation
@@ -96,7 +95,7 @@ Still to do:
 
 ## Engineering backlog
 
-- **Tests:** unit tests (Vitest) for `targets.ts`, `parse.ts`, `intakeFromLogs`, `searchUsda`, `dayScore`. `scripts/check-targets.ts` is a stopgap.
+- **Tests ✅:** `bun test` (~100 tests). Next: component tests for the Atlas and log sheet, and a Playwright smoke test of the first-run → log → dashboard flow.
 - Mock data now only powers the demo dashboard (`mockIntake`, `mockHistory`).
 - Accessibility pass: keyboard navigation of the Atlas, screen-reader summary of the day, colour-blind safe status palette (add shape/pattern cues).
 - Light theme.

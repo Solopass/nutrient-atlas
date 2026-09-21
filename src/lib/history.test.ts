@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import type { LogEntry } from '../db/db'
 import { hasFood, intakeFromLogs } from '../db/logging'
-import { addDays, averageIntake, contributors, dateRange, groupByDate, streakEndingAt } from './history'
+import type { Nutrient } from '../types'
+import { addDays, averageIntake, contributors, dateRange, groupByDate, nutrientSeries, streakEndingAt } from './history'
 
 let id = 0
 const entry = (date: string, nutrients: Record<string, number>, extra: Partial<LogEntry> = {}): LogEntry => ({
@@ -69,6 +70,19 @@ describe('streakEndingAt', () => {
   test('counts back from a logged day', () => expect(streakEndingAt(byDate, '2026-09-20')).toBe(3))
   test('an unlogged "today" does not break the streak', () => expect(streakEndingAt(byDate, '2026-09-21')).toBe(3))
   test('a gap does', () => expect(streakEndingAt(byDate, '2026-09-22')).toBe(0))
+})
+
+describe('nutrientSeries', () => {
+  const byDate = groupByDate([entry('2026-09-01', { vitC: 45 }), entry('2026-09-02', { alcohol: 14 }), entry('2026-09-03', {})])
+  const vitC = { id: 'vitC', target: 90 } as Nutrient
+  test('% of target per day; null when not logged or not reported', () => {
+    expect(nutrientSeries(vitC, byDate, ['2026-08-31', '2026-09-01', '2026-09-03'])).toEqual([null, 50, null])
+  })
+  test('a limit of 0: none is 0%, any amount is over', () => {
+    const alcohol = { id: 'alcohol', target: 0 } as Nutrient
+    const s = nutrientSeries(alcohol, groupByDate([entry('a', { alcohol: 0 }), entry('b', { alcohol: 14 })]), ['a', 'b'])
+    expect(s).toEqual([0, Infinity])
+  })
 })
 
 describe('contributors', () => {

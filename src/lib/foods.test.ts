@@ -45,13 +45,13 @@ describe('best next food', () => {
   test('returns up to 3 distinct foods that close gaps', () => {
     const picks = suggestFoods(day({}), db, 'omnivore', [])
     expect(picks.length).toBe(3)
-    expect(new Set(picks.map((p) => p.food.name.split(',')[0])).size).toBe(3)
+    expect(new Set(picks.map((p) => p.name.split(',')[0])).size).toBe(3)
     expect(picks.every((p) => p.closes.length + p.helps.length > 0)).toBe(true)
   })
 
   test('vegan suggestions contain no meat, fish, dairy or egg', () => {
     const picks = suggestFoods(day({}, 'vegan'), db, 'vegan', [])
-    for (const p of picks) expect(['Beef Products', 'Pork Products', 'Poultry Products', 'Finfish and Shellfish Products', 'Dairy and Egg Products']).not.toContain(p.food.category)
+    for (const p of picks) expect(['Beef Products', 'Pork Products', 'Poultry Products', 'Finfish and Shellfish Products', 'Dairy and Egg Products']).not.toContain(p.food!.category)
   })
 
   test('never pushes a limit from under to over', () => {
@@ -61,13 +61,39 @@ describe('best next food', () => {
 
   test('skips foods already eaten', () => {
     const first = suggestFoods(day({}), db, 'omnivore', [])[0]
-    const again = suggestFoods(day({}), db, 'omnivore', [first.food.name])
-    expect(again.map((p) => p.food.fdcId)).not.toContain(first.food.fdcId)
+    const again = suggestFoods(day({}), db, 'omnivore', [first.name])
+    expect(again.map((p) => p.key)).not.toContain(first.key)
+  })
+
+  test('no exotic game or brand-name entries', () => {
+    for (const diet of ['omnivore', 'pescatarian'] as const)
+      for (const p of suggestFoods(day({ protein: 5, iron: 1 }), db, diet, [], 3)) expect(p.name).not.toMatch(/ostrich|emu|moose|bear|\b[A-Z]{3,}\b/)
   })
 
   test('nothing to suggest when every gap is closed', () => {
     const full = personalize(DEFAULT_PROFILE).map((n) => nutrientState(n, { amount: n.category === 'limit' ? 0 : (n.target ?? 1) * 1.1, coverage: 1 }))
     expect(suggestFoods(full, db, 'omnivore', [])).toEqual([])
+  })
+})
+
+describe('your own foods and meals', () => {
+  const smoothie = {
+    kind: 'meal' as const, key: 'meal-1', name: 'Green power smoothie', portion: 'saved meal', kcal: 150, mealId: 1,
+    // Closes a lot at once: every vitamin and mineral gap
+    nutrients: Object.fromEntries(personalize(DEFAULT_PROFILE).filter((n) => ['vitamin', 'mineral', 'bvitamin'].includes(n.category)).map((n) => [n.id, n.target!])),
+  }
+  test('a saved meal that closes more gaps than any single USDA food wins', () => {
+    const [best] = suggestFoods(day({}), db, 'omnivore', [], 3, [smoothie])
+    expect(best.kind).toBe('meal')
+    expect(best.mealId).toBe(1)
+  })
+  test('already eaten today → not suggested again', () => {
+    const picks = suggestFoods(day({}), db, 'omnivore', ['Green power smoothie'], 3, [smoothie])
+    expect(picks.map((p) => p.key)).not.toContain('meal-1')
+  })
+  test('own foods still respect limits', () => {
+    const salty = { ...smoothie, key: 'food-9', kind: 'mine' as const, name: 'Instant ramen', nutrients: { ...smoothie.nutrients, sodium: 3000 } }
+    expect(suggestFoods(day({ sodium: 500 }), db, 'omnivore', [], 3, [salty]).map((p) => p.key)).not.toContain('food-9')
   })
 })
 

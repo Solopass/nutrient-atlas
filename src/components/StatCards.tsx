@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { loadUsda, nameParts, nutrientsForGrams, type UsdaDb } from '../data/usda'
-import { localDate, mealForTime } from '../db/db'
-import { logNewFood } from '../db/logging'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db, localDate, mealForTime } from '../db/db'
+import { logNewFood, logSavedFood } from '../db/logging'
 import { useProfile } from '../state/profile'
 import { STATUS_META, fmt, scoreColor, type DayScore } from '../lib/status'
-import { suggestFoods, type FoodSuggestion } from '../lib/suggestUsda'
+import { suggestFoods, type FoodSuggestion, type OwnCandidate } from '../lib/suggestUsda'
+import { itemsKcal, logSavedMeal } from '../lib/quickLog'
 import type { NutrientState, Status } from '../types'
 
 interface Props {
@@ -206,16 +208,39 @@ function CoverageCard({ score }: { score: DayScore }) {
 function NextFoodCard({ states, onSelect, date, eatenNames }: { states: NutrientState[]; onSelect: (id: string) => void; date: string; eatenNames: string[] }) {
   const { profile } = useProfile()
   const [usda, setUsda] = useState<UsdaDb | null>(null)
-  const [logged, setLogged] = useState<number | null>(null)
+  const [logged, setLogged] = useState<string | null>(null)
   useEffect(() => {
     loadUsda().then(setUsda, () => {})
   }, [])
-  const picks = useMemo(() => (usda ? suggestFoods(states, usda, profile.diet, eatenNames) : null), [usda, states, profile.diet, eatenNames])
+  // Your saved foods and meals compete with USDA foods (with a small nudge, since you already eat them).
+  const myFoods = useLiveQuery(() => db.foods.toArray(), [])
+  const myMeals = useLiveQuery(() => db.meals.toArray(), [])
+  const own = useMemo<OwnCandidate[]>(
+    () => [
+      ...(myFoods ?? [])
+        .filter((f) => f.source !== 'usda') // USDA foods are already candidates
+        .map((f) => ({ kind: 'mine' as const, key: `food-${f.id}`, name: f.name, portion: f.serving, nutrients: f.nutrients, kcal: itemsKcal([{ multiplier: 1, nutrients: f.nutrients }]), foodId: f.id })),
+      ...(myMeals ?? []).map((m) => {
+        const nutrients: Record<string, number> = {}
+        for (const i of m.items) for (const [k, v] of Object.entries(i.nutrients)) nutrients[k] = (nutrients[k] ?? 0) + (v * i.multiplier) / m.servings
+        return { kind: 'meal' as const, key: `meal-${m.id}`, name: m.name, portion: m.servings > 1 ? `1 of ${m.servings} portions` : 'saved meal', nutrients, kcal: itemsKcal(m.items) / m.servings, mealId: m.id }
+      }),
+    ],
+    [myFoods, myMeals],
+  )
+  const picks = useMemo(() => (usda ? suggestFoods(states, usda, profile.diet, eatenNames, 3, own) : null), [usda, states, profile.diet, eatenNames, own])
 
   const log = async (s: FoodSuggestion) => {
     const meal = date === localDate() ? mealForTime() : 'snack'
-    await logNewFood({ name: s.food.name, serving: s.portion, grams: s.grams, nutrients: nutrientsForGrams(s.food, s.grams), source: 'usda' }, meal, 1, date)
-    setLogged(s.food.fdcId)
+    if (s.kind === 'usda' && s.food && s.grams) {
+      await logNewFood({ name: s.food.name, serving: s.portion, grams: s.grams, nutrients: nutrientsForGrams(s.food, s.grams), source: 'usda' }, meal, 1, date)
+    } else if (s.kind === 'mine' && s.foodId != null) {
+      const food = await db.foods.get(s.foodId)
+      if (food) await logSavedFood(food, meal, 1, date)
+    } else if (s.kind === 'meal' && s.mealId != null) {
+      await logSavedMeal(s.mealId, date, meal)
+    }
+    setLogged(s.key)
     setTimeout(() => setLogged(null), 2000)
   }
 
@@ -230,8 +255,9 @@ function NextFoodCard({ states, onSelect, date, eatenNames }: { states: Nutrient
         <>
           <div className="mt-2 flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="truncate text-lg leading-tight font-semibold" title={best.food.name}>
-                {shortName(best.food.name)}
+              <div className="truncate text-lg leading-tight font-semibold" title={best.name}>
+                {shortName(best.name)}
+                {best.kind !== 'usda' && <OwnBadge kind={best.kind} />}
               </div>
               <div className="truncate font-mono text-[11px] text-(--muted)">
                 {best.portion}
@@ -242,7 +268,7 @@ function NextFoodCard({ states, onSelect, date, eatenNames }: { states: Nutrient
               onClick={() => log(best)}
               className="shrink-0 rounded-full bg-(--c-good) px-3 py-1 text-xs font-semibold text-black hover:brightness-110"
             >
-              {logged === best.food.fdcId ? 'Logged ✓' : '+ Log'}
+              {logged === best.key ? 'Logged ✓' : '+ Log'}
             </button>
           </div>
           <div className="mt-2 flex flex-wrap gap-1">
@@ -267,13 +293,14 @@ function NextFoodCard({ states, onSelect, date, eatenNames }: { states: Nutrient
           {alts.length > 0 && (
             <ul className="mt-auto space-y-1 border-t border-(--line) pt-2">
               {alts.map((a) => (
-                <li key={a.food.fdcId} className="flex items-center gap-2 text-xs">
-                  <span className="min-w-0 flex-1 truncate text-(--dim)" title={a.food.name}>
-                    {shortName(a.food.name)}
+                <li key={a.key} className="flex items-center gap-2 text-xs">
+                  <span className="min-w-0 flex-1 truncate text-(--dim)" title={a.name}>
+                    {shortName(a.name)}
+                    {a.kind !== 'usda' && <OwnBadge kind={a.kind} />}
                     <span className="text-(--muted)"> · closes {a.closes.map((c) => c.nutrient.symbol).join(' ') || '—'}</span>
                   </span>
                   <button onClick={() => log(a)} className="shrink-0 text-(--c-above) hover:underline">
-                    {logged === a.food.fdcId ? '✓' : '+ Log'}
+                    {logged === a.key ? '✓' : '+ Log'}
                   </button>
                 </li>
               ))}
@@ -282,6 +309,14 @@ function NextFoodCard({ states, onSelect, date, eatenNames }: { states: Nutrient
         </>
       )}
     </Card>
+  )
+}
+
+function OwnBadge({ kind }: { kind: 'mine' | 'meal' }) {
+  return (
+    <span className="ml-1.5 rounded bg-(--c-above)/15 px-1 align-middle font-mono text-[9.5px] font-normal text-(--c-above) uppercase">
+      {kind === 'meal' ? 'your meal' : 'your food'}
+    </span>
   )
 }
 

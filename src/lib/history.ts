@@ -69,7 +69,10 @@ export function nutrientSeries(n: Nutrient, byDate: Map<string, LogEntry[]>, dat
     const logs = byDate.get(d)
     if (!hasFood(logs) || n.target == null) return null
     const v = intakeFromLogs(logs!)[n.id]
-    return v && v.coverage > 0 ? (v.amount / n.target) * 100 : null
+    if (!v || v.coverage === 0) return null
+    // A limit of 0 (e.g. alcohol in pregnancy): none is 0%, any amount is over.
+    if (n.target === 0) return v.amount > 0 ? Infinity : 0
+    return (v.amount / n.target) * 100
   })
 }
 

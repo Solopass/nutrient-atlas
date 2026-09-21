@@ -4,7 +4,7 @@ import { CATEGORY_LABEL } from '../../data/nutrients'
 import { db, localDate, type LogEntry } from '../../db/db'
 import { hasFood } from '../../db/logging'
 import { addDays, averageIntake, dateRange, dayHref, formatDay, groupByDate, nutrientSeries, parseDate, scoreForLogs, streakEndingAt } from '../../lib/history'
-import { STATUS_META, scoreColor } from '../../lib/status'
+import { LIMIT_NEAR, STATUS_META, scoreColor } from '../../lib/status'
 import { useProfile } from '../../state/profile'
 import type { Category, Nutrient } from '../../types'
 import { Logo } from '../Logo'
@@ -241,19 +241,30 @@ function PersistentGaps({ nutrients, byDate, today }: { nutrients: Nutrient[]; b
   )
 }
 
-const cellColor = (v: number) => STATUS_META[v < 50 ? 'deficient' : v < 80 ? 'attention' : v <= 120 ? 'good' : 'above'].color
+const targetColor = (v: number) => STATUS_META[v < 50 ? 'deficient' : v < 80 ? 'attention' : v <= 120 ? 'good' : 'above'].color
+// Limits read the other way round: green well under, yellow near, orange over.
+const limitColor = (v: number) => STATUS_META[v <= LIMIT_NEAR ? 'good' : v <= 100 ? 'attention' : 'overLimit'].color
+const cellStyle = (n: Nutrient, v: number) =>
+  n.category === 'limit' ? { background: limitColor(v), opacity: 0.85 } : { background: targetColor(v), opacity: 0.35 + (Math.min(v, 120) / 120) * 0.6 }
+const pctLabel = (v: number) => (v === Infinity ? 'over' : `${Math.round(v)}%`)
 
-/** Rows = nutrients, columns = the last 28 days, colour = % of target. GitHub-heatmap style. */
+/** Rows = nutrients, columns = the last 28 days, colour = % of target (or of the limit, reversed). GitHub-heatmap style. */
 function NutrientHeatmap({ nutrients, byDate, today }: { nutrients: Nutrient[]; byDate: Map<string, LogEntry[]>; today: string }) {
   const dates = dateRange(today, HEAT_DAYS)
   const { intake } = averageIntake(byDate, dates.filter((d) => d !== today)) // avg column excludes today (in progress)
-  const rows = ROW_CATS.flatMap((c) => nutrients.filter((n) => n.category === c && n.target != null))
+  const rows = [...ROW_CATS, 'limit' as const].flatMap((c) => nutrients.filter((n) => n.category === c && n.target != null))
+  const avgOf = (n: Nutrient) => {
+    const i = intake[n.id]
+    if (!i || i.coverage === 0) return null
+    if (n.target === 0) return i.amount > 0 ? Infinity : 0
+    return (i.amount / n.target!) * 100
+  }
 
   return (
     <section className="card overflow-x-auto p-4">
       <h2 className="mb-3 flex items-baseline justify-between text-[10.5px] font-medium tracking-[0.16em] text-(--muted) uppercase">
         <span>Nutrient heatmap · last 28 days</span>
-        <span className="font-mono tracking-normal normal-case">% of daily target</span>
+        <span className="font-mono tracking-normal normal-case">% of daily target · limits: % of limit</span>
       </h2>
       <table className="w-full border-separate border-spacing-[2px] text-[10.5px]">
         <thead>
@@ -270,7 +281,7 @@ function NutrientHeatmap({ nutrients, byDate, today }: { nutrients: Nutrient[]; 
         <tbody>
           {rows.map((n, ri) => {
             const series = nutrientSeries(n, byDate, dates)
-            const avg = intake[n.id] && n.target ? (intake[n.id].amount / n.target) * 100 : null
+            const avg = avgOf(n)
             const newCat = ri === 0 || rows[ri - 1].category !== n.category
             return (
               <tr key={n.id}>
@@ -286,18 +297,20 @@ function NutrientHeatmap({ nutrients, byDate, today }: { nutrients: Nutrient[]; 
                   <td key={i} className={`p-0 ${newCat ? 'pt-2' : ''} ${i % 7 === 0 ? 'pl-1' : ''}`}>
                     <a
                       href={dayHref(dates[i])}
-                      title={`${n.name}, ${formatDay(dates[i], 'short')}: ${v != null ? Math.round(v) + '%' : byDate.get(dates[i])?.length ? 'no data' : 'not logged'}`}
+                      title={`${n.name}, ${formatDay(dates[i], 'short')}: ${v != null ? pctLabel(v) + (n.category === 'limit' ? ' of limit' : '') : byDate.get(dates[i])?.length ? 'no data' : 'not logged'}`}
                       className="block h-3.5 min-w-3 rounded-[3px] transition hover:scale-125"
                       style={{
-                        background: v != null ? cellColor(v) : 'var(--panel-2)',
-                        opacity: v != null ? 0.35 + Math.min(v, 120) / 120 * 0.6 : 1,
+                        ...(v != null ? cellStyle(n, v) : { background: 'var(--panel-2)' }),
                         boxShadow: v == null && byDate.get(dates[i])?.length ? 'inset 0 0 0 1px var(--c-nodata)' : undefined,
                       }}
                     />
                   </td>
                 ))}
-                <td className={`pl-2 text-right font-mono whitespace-nowrap ${newCat ? 'pt-2' : ''}`} style={{ color: avg != null ? cellColor(avg) : 'var(--muted)' }}>
-                  {avg != null ? `${Math.round(avg)}%` : '–'}
+                <td
+                  className={`pl-2 text-right font-mono whitespace-nowrap ${newCat ? 'pt-2' : ''}`}
+                  style={{ color: avg == null ? 'var(--muted)' : n.category === 'limit' ? limitColor(avg) : targetColor(avg) }}
+                >
+                  {avg != null ? pctLabel(avg) : '–'}
                 </td>
               </tr>
             )

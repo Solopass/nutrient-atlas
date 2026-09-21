@@ -9,6 +9,15 @@ bun install
 bun run dev
 ```
 
+## Tests
+
+```bash
+bun test          # ~100 tests, < 1 s
+bun run typecheck # app + tests
+```
+
+Tests live next to the code (`src/lib/*.test.ts`). They cover targets and limits, statuses and scoring, intake and history math, the AI-reply and label-text readers, USDA search and suggestions (against the real food table), weekly insights, and the database flows for daily supplements and quick logging (in-memory IndexedDB via `fake-indexeddb`).
+
 ## Food data
 
 Food search uses **USDA FoodData Central** (public domain), preprocessed into `public/usda/foods.json` (~8,000 whole foods, 2.6 MB).

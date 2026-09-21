@@ -4,8 +4,15 @@ import type { NutrientState } from '../types'
 import { amountAgainstUL } from './status'
 
 export interface FoodSuggestion {
-  food: UsdaFood
-  grams: number
+  /** Where the pick comes from: the USDA table, your saved foods, or your saved meals. */
+  kind: 'usda' | 'mine' | 'meal'
+  key: string
+  name: string
+  /** USDA picks only. */
+  food?: UsdaFood
+  grams?: number
+  foodId?: number
+  mealId?: number
   portion: string
   nutrients: Record<string, number>
   kcal: number | null
@@ -78,32 +85,49 @@ function portionOf(f: UsdaFood) {
 }
 
 /** Brand-name entries (USDA writes brands in capitals, e.g. "SILK") and unusual eggs make poor suggestions. */
-const isOdd = (f: UsdaFood) => /\b[A-Z]{3,}\b/.test(f.name) || /egg, (duck|goose|quail|turkey)/i.test(f.name)
+const isOdd = (f: UsdaFood) =>
+  /\b[A-Z]{3,}\b/.test(f.name) ||
+  /egg, (duck|goose|quail|turkey)/i.test(f.name) ||
+  /\b(ostrich|emu|caribou|moose|elk|beaver|bear|squirrel|muskrat|raccoon|opossum|seal|whale|walrus|beefalo|buffalo|boar|antelope|horse|frog|turtle|snail|octopus|squid)\b/i.test(f.name)
+
+/** Your own foods and saved meals get a small nudge: you already have and like them. */
+const OWN_BONUS = 1.15
+
+/** A saved food or saved meal, pre-scaled to one serving / portion. */
+export interface OwnCandidate {
+  kind: 'mine' | 'meal'
+  key: string
+  name: string
+  portion: string
+  nutrients: Record<string, number>
+  kcal: number | null
+  foodId?: number
+  mealId?: number
+}
 
 /**
- * Rank every USDA whole food by how much of today's remaining gap one normal
- * portion closes. Weighted toward the biggest gaps, lightly penalised for
- * calories, and rejected if it would push a limit (sodium, sat fat...) or an
- * upper limit over. Returns the top `count`, one per food family.
+ * Rank every USDA whole food (plus your own saved foods and meals) by how much
+ * of the remaining gap one portion closes. Weighted toward the biggest gaps,
+ * lightly penalised for calories, and rejected if it would push a limit
+ * (sodium, sat fat...) or an upper limit over. Returns the top `count`, one
+ * per food family.
  */
-export function suggestFoods(states: NutrientState[], usda: UsdaDb, diet: Diet, eatenNames: string[], count = 3): FoodSuggestion[] {
+export function suggestFoods(
+  states: NutrientState[],
+  usda: UsdaDb,
+  diet: Diet,
+  eatenNames: string[],
+  count = 3,
+  own: OwnCandidate[] = [],
+): FoodSuggestion[] {
   const gaps = states.filter((s) => s.pct != null && s.pct < 80 && s.nutrient.target && s.nutrient.category !== 'limit' && s.nutrient.category !== 'advanced')
   if (gaps.length === 0) return []
   const limits = states.filter((s) => s.nutrient.category === 'limit' && s.nutrient.target)
   const capped = states.filter((s) => s.nutrient.upperLimit != null && s.nutrient.ulAppliesTo !== 'supplements' && s.intake)
   const eaten = new Set(eatenNames.map((n) => nameParts(n)[1].toLowerCase()))
 
-  const scored: FoodSuggestion[] = []
-  for (const f of usda.foods) {
-    if (SKIP_GROUPS.has(f.category) || SKIP_NAME.test(f.name) || isOdd(f) || !allowedForDiet(f, diet)) continue
-    // Suggest cooked meat and fish, not raw.
-    if ((MEAT.has(f.category) || f.category === 'Finfish and Shellfish Products' || ANIMAL.test(f.name)) && /\braw\b/i.test(f.name) && !/egg/i.test(f.name)) continue
-    const head = nameParts(f.name)[1].toLowerCase()
-    if (eaten.has(head)) continue
-
-    const { grams, label } = portionOf(f)
-    const add = nutrientsForGrams(f, grams)
-
+  /** Gap closed, limit cost and rejection for one portion's nutrients. */
+  const evaluate = (add: Record<string, number>) => {
     let gain = 0
     const closes: NutrientState[] = []
     const helps: NutrientState[] = []
@@ -115,40 +139,61 @@ export function suggestFoods(states: NutrientState[], usda: UsdaDb, diet: Diet, 
       if (s.pct! + addPct >= 80) closes.push(s)
       else if (addPct >= 10) helps.push(s)
     }
-    if (gain < 20) continue
+    if (gain < 20) return null
 
     // Reject foods that would push a limit or upper limit over. If it's already over,
     // don't reject everything; charge each food for how much more it adds.
-    let reject = false
     let limitCost = 0
     for (const s of limits) {
       const v = add[s.nutrient.id] ?? 0
       const before = s.intake?.amount ?? 0
       const limit = s.nutrient.target!
-      if (before <= limit && before + v > limit) reject = true
+      if (before <= limit && before + v > limit) return null
       limitCost += (v / limit) * 100 * (before > limit ? 3 : 1)
     }
     for (const s of capped) {
       const v = add[s.nutrient.id] ?? 0
       const before = amountAgainstUL(s.nutrient, s.intake!)
       const ul = s.nutrient.upperLimit!
-      if (before <= ul && before + v > ul) reject = true
+      if (before <= ul && before + v > ul) return null
       if (before > ul) limitCost += (v / ul) * 300
     }
-    if (reject) continue
+    return { gain, closes, helps, limitCost }
+  }
+  const kcalFactor = (kcal: number | null) => 1 - Math.min(kcal ?? 200, 700) / 1400
 
+  const scored: FoodSuggestion[] = []
+  for (const f of usda.foods) {
+    if (SKIP_GROUPS.has(f.category) || SKIP_NAME.test(f.name) || isOdd(f) || !allowedForDiet(f, diet)) continue
+    // Suggest cooked meat and fish, not raw.
+    if ((MEAT.has(f.category) || f.category === 'Finfish and Shellfish Products' || ANIMAL.test(f.name)) && /\braw\b/i.test(f.name) && !/egg/i.test(f.name)) continue
+    if (eaten.has(nameParts(f.name)[1].toLowerCase())) continue
+
+    const { grams, label } = portionOf(f)
+    const add = nutrientsForGrams(f, grams)
+    const e = evaluate(add)
+    if (!e) continue
     const kcal = f.kcal != null ? (f.kcal * grams) / 100 : null
     // Long USDA names are usually obscure variants ("..., boiled, drained, with salt"); prefer everyday entries.
     const obscurity = 1 - 0.07 * Math.max(0, f.segments - 3)
-    const score = gain * (1 - Math.min(kcal ?? 200, 700) / 1400) * obscurity - limitCost * 0.5
-    scored.push({ food: f, grams, portion: label, nutrients: add, kcal, closes, helps, score })
+    scored.push({
+      kind: 'usda', key: `usda-${f.fdcId}`, name: f.name, food: f, grams, portion: label, nutrients: add, kcal,
+      closes: e.closes, helps: e.helps, score: e.gain * kcalFactor(kcal) * obscurity - e.limitCost * 0.5,
+    })
+  }
+
+  for (const c of own) {
+    if (eaten.has(nameParts(c.name)[1].toLowerCase())) continue
+    const e = evaluate(c.nutrients)
+    if (!e) continue
+    scored.push({ ...c, closes: e.closes, helps: e.helps, score: e.gain * kcalFactor(c.kcal) * OWN_BONUS - e.limitCost * 0.5 })
   }
 
   scored.sort((a, b) => b.score - a.score)
   const out: FoodSuggestion[] = []
   const heads = new Set<string>()
   for (const s of scored) {
-    const head = nameParts(s.food.name)[1].toLowerCase()
+    const head = nameParts(s.name)[1].toLowerCase()
     if (heads.has(head)) continue
     heads.add(head)
     out.push(s)

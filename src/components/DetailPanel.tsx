@@ -235,7 +235,7 @@ function Trend({ series, dates, title, limit = false }: { series: (number | null
   const W = 360
   const H = 120
   const PAD = 14
-  const logged = series.filter((v): v is number => v != null)
+  const logged = series.filter((v): v is number => v != null && Number.isFinite(v)) // Infinity = over a limit of 0
   const max = Math.max(130, ...logged) * 1.05
   const bw = (W - PAD * 2) / series.length
   const y = (v: number) => H - 18 - (v / max) * (H - 30)
@@ -267,7 +267,7 @@ function Trend({ series, dates, title, limit = false }: { series: (number | null
               fill={colorOf(v)}
               opacity={last ? 1 : 0.7}
             >
-              <title>{`${dates[i]}: ${Math.round(v)}%`}</title>
+              <title>{`${dates[i]}: ${Number.isFinite(v) ? `${Math.round(v)}%` : 'over'}`}</title>
             </rect>
           )
         })}

@@ -1,4 +1,4 @@
-# Nutrient Atlas: Product Specification v1.7
+# Nutrient Atlas: Product Specification v1.8
 
 What the app is and how it behaves today. For what's next, see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -55,13 +55,15 @@ Answers save as you go. Setup stays open until finished or skipped.
 - rejects foods that would push a limit or upper limit over (or charges them if already over)
 - lightly penalises calories and obscure long-named variants, and skips foods already eaten that day
 
+Your own saved foods (label and AI) and saved meals compete too, with a 15% nudge because you already eat them; they still respect limits and "already eaten today". They carry a *your food* / *your meal* badge.
+
 It shows the best pick plus two alternatives (one per food family), each with **+ Log**. Runs in < 20 ms.
 
 ### History (`#/history`)
 - 30-day stats: days logged, average score, days ≥ 80%, current streak, best streak (90 days). Today is counted as logged but kept out of averages while it's in progress.
 - **Month calendar** coloured by daily score, with item counts; click a day to open it on the dashboard.
 - **Persistent gaps:** nutrients averaging under 80% over the last 28 complete days, with how many days they were low and foods to try.
-- **Nutrient heatmap:** every nutrient × the last 28 days, coloured by % of target; outlined cells = logged day with no data; click a cell to open that day.
+- **Nutrient heatmap:** every nutrient × the last 28 days, coloured by % of target; outlined cells = logged day with no data; click a cell to open that day. **Limits** rows at the bottom use reversed colours (green under, yellow near, orange over; a 0 limit shows any amount as over).
 
 ### Phone
 - Installable PWA (standalone, dark theme colour, maskable icons). Works offline after first load.
