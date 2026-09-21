@@ -86,4 +86,10 @@ Log food → **Supplements** (or the pill in the phone tab bar). Add one from it
 - **Save as meal** (Log → Today, on any meal): turn it into a one-tap saved meal or a recipe that makes N portions.
 - **Best next food:** searches all USDA foods for the single portion that closes the most gaps, respecting diet style and limits. One tap to log it.
 
-Sanity scripts: `bun scripts/check-targets.ts`, `bun scripts/check-suggestions.ts`, `bun scripts/check-sample-foods.ts`.
+## Labels, setup and insights
+
+- **Create a food from its label** (Log → My foods): paste the Nutrition Facts text (from a product page, or from a photo via Live Text / Google Lens) and it's read automatically, or type it line by line. The supplement editor has the same paste box.
+- **First-run setup** (`#/welcome`) walks through profile, goals and supplements, then shows your targets. Re-run it from Settings.
+- **Weekly insights:** "This week" on the dashboard and a full weekly report in History, with gaps plus food ideas, limits, diet risks and food-pairing tips.
+
+Sanity scripts: `bun scripts/check-targets.ts`, `bun scripts/check-suggestions.ts`, `bun scripts/check-sample-foods.ts`, `bun scripts/check-label-parse.ts`.

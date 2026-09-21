@@ -1,4 +1,4 @@
-# Nutrient Atlas: Product Specification v1.6
+# Nutrient Atlas: Product Specification v1.7
 
 What the app is and how it behaves today. For what's next, see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -24,11 +24,22 @@ Main question: **"Did I nourish myself today?"**, not "Did I hit my calorie goal
 
 ## Screens
 
+### First-run setup (`#/welcome`)
+Shown automatically the first time the app opens (no profile saved and setup not yet finished or skipped); re-run from Settings or the dashboard banner.
+1. **Welcome:** what the app does; *Get started* or *Just explore with sample data*.
+2. **About you:** sex, age, units, weight, height, pregnant / breastfeeding.
+3. **Activity, goal and diet.**
+4. **Supplements:** tap presets you take daily (with diet-aware "common" hints); they're created and auto-logged.
+5. **Ready:** calorie target, protein g/kg, supplement count and key personal targets; then *Log my first meal*, *Explore with sample data* or *Go to the Atlas*.
+
+Answers save as you go. Setup stays open until finished or skipped.
+
 ### Dashboard (`#/`, `#/day/YYYY-MM-DD`)
 - **Header:** data source (demo / items logged / 7-day average with days logged), profile summary (links to Settings), **date navigation** (‹ ›, date picker, Today), **Day / 7 days** switch, **+ Log food**, Advanced toggle, History and Settings icons. A setup banner shows until a profile is saved.
 - **Day vs 7 days:** the 7-day view averages the *logged* days (unlogged days are skipped, not zeros). When viewing today, it uses the 7 complete days before today, because today is still in progress. Default is automatic: 7 days once 3+ of the last 7 days are logged; choosing Day or 7 days is remembered.
 - **Empty and demo states:** with no logs at all the dashboard shows demo data and offers **Load sample history** (3 weeks of meals from real USDA foods, flagged and removable). A day with nothing logged shows every nutrient as "no data" plus a log prompt.
 - **Stat cards:** nourishment score with real 14-day sparkline and change vs last day / prior week, streak with 14-day squares, energy vs personal calorie target (daily average in 7-day view), nutrient coverage distribution, **best next food** (see below).
+- **This week · insights:** the top 3 insights for the last 7 complete days (see Weekly insights), linking to the full report.
 - **Nutrient Atlas** (hero), a radial chart:
   - 14 core wedges: macros, vitamins A/C/D/E/K, minerals Ca/Mg/K/Fe/Zn. Radius = % of target; solid to 100%, striped overflow to 150%; dashed UL marker; pulse on deficient wedges.
   - Outer ring: every secondary nutrient as a mini radial gauge, grouped by category.
@@ -56,16 +67,39 @@ It shows the best pick plus two alternatives (one per food family), each with **
 - Installable PWA (standalone, dark theme colour, maskable icons). Works offline after first load.
 - Below 640 px: bottom tab bar (Atlas, History, **+** log, Supplements, Settings), with safe-area padding. The header drops the buttons the tab bar replaces.
 
+### Weekly insights ([src/lib/insights.ts](src/lib/insights.ts))
+Computed on-device for the 7 complete days before the viewed day, vs the 7 before that:
+- **Score change** (±5 points or more) and **wins** (nutrients that crossed into 80%+).
+- **Persistent gaps:** up to 3 nutrients averaging under 70% and under 80% on at least 60% of logged days (excluding partial-data ones), each with 3 food ideas for your diet at realistic portions.
+- **Limits over** on average, naming the biggest sources.
+- **Diet / life-stage risks:** vegan, vegetarian, pregnancy and breastfeeding lists (e.g. B12, iodine, EPA+DHA, iron, zinc, choline, folate), skipped when a supplement already covers them.
+- **Interaction tips:** plant iron without vitamin C (with a concrete meal example), calcium and iron in the same meals, coffee/tea with iron-rich meals, vitamin A/K-rich meals with almost no fat.
+- **Data tips:** fewer than 4 logged days; several nutrients with incomplete data.
+
+Worded as food guidance, not medical advice. The History page shows the full **weekly report**: score vs last week, category coverage this week vs last, and every insight.
+
 ### Log food (sheet)
 1. **Search:** above the search box, **Quick add**: *Same [meal] as [last time]* copies that meal's items (looks back 14 days); **Saved meals** chips log one portion; **Recent** foods log one serving. Below, USDA foods ranked for everyday use (head-word match, whole/raw preference, nutrient completeness). Pick amount × USDA portion or custom grams, with a live nutrient preview.
 2. **AI estimate:** describe a meal → copy prompt → paste any chatbot's JSON reply → review (untick items, servings) → log.
-3. **My foods:** saved meals (log / delete) and every logged food for one-tap re-logging; favorites.
+3. **My foods:** **Create a food from its label**, saved meals (log / delete), and every logged food for one-tap re-logging (source badge USDA / AI / Label; label and AI foods are editable); favorites.
 4. **Supplements:** see below.
 5. **Today** (or the viewed day): entries by meal with kcal; edit servings; delete; **Save as meal** per meal (name + "makes N portions" for recipes; logging adds one portion).
 
 The sheet logs to the day being viewed, so past days can be back-filled. A badge shows when that is not today.
 
 The meal defaults from time of day.
+
+### Custom foods and label text
+- **Paste the label text** (typed, copied from a product page, or copied from a photo with Live Text / Google Lens). [src/lib/labelParse.ts](src/lib/labelParse.ts) reads it as you type and shows what it found:
+  - US Nutrition Facts and Supplement Facts, including text that lost its line breaks
+  - "Includes 10g Added Sugars", "Sat. Fat", "Total Carb.", vitamin/mineral synonyms
+  - mcg/µg/mg/g/IU (IU converted for D, A, E), thousands separators, "less than" values
+  - %DV-only lines (older labels, e.g. "Iron 6%"), converted with the FDA Daily Values
+  - serving size (with grams), servings per container, calories
+- *Use these values* fills the form, which can also be typed line by line (shared nutrient-row editor with unit conversion).
+- Shows kcal from macros, and warns if it disagrees with the label's calories by more than 20%.
+- *Save and log* or *Save to My foods*. Nutrients the label doesn't list stay "no data" for that food.
+- The same paste box is in the supplement editor.
 
 ### Supplements
 - Defined once from the Supplement Facts label: name, what one dose is, doses per day, schedule (**daily** or **as needed**), nutrients per dose.
@@ -82,6 +116,7 @@ The meal defaults from time of day.
 - **Goal:** general health / build muscle / lose fat / endurance → protein g/kg and calorie adjustment. Custom calorie and protein overrides.
 - **Diet style:** omnivore / pescatarian / vegetarian / vegan (filters suggestions).
 - **AI estimation:** manual (active) / automatic (planned).
+- **Run setup again** link.
 - **Your data:** counts, export JSON backup, import (replace), load / remove sample history, delete all.
 - **Live targets preview:** BMR, burn, target kcal, and every nutrient's target, kind and UL.
 

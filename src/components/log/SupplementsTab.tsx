@@ -1,13 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { db, localDate, type Supplement } from '../../db/db'
-import { SUPPLEMENT_PRESETS, labelUnits } from '../../data/supplementPresets'
-import { CATEGORY_LABEL, NUTRIENTS } from '../../data/nutrients'
+import { SUPPLEMENT_PRESETS } from '../../data/supplementPresets'
 import { formatDay } from '../../lib/history'
-import { fmt } from '../../lib/status'
 import { createSupplement, deleteSupplement, pauseSupplement, resumeSupplement, setTaken, updateSupplement, type NewSupplement } from '../../lib/supplements'
 import type { Category } from '../../types'
+import { LabelPaste } from './LabelPaste'
 import { NutrientChips } from './NutrientChips'
+import { NutrientRowsEditor, rowsFrom, rowsToNutrients, type Row } from './NutrientRows'
 
 /** Supplements: tick off today's doses, and add/edit supplements from their label. */
 export function SupplementsTab({ date }: { date: string }) {
@@ -109,18 +109,7 @@ export function SupplementsTab({ date }: { date: string }) {
 
 // ── Editor ────────────────────────────────────────────────────────
 
-interface Row {
-  id: string
-  amount: string
-  unit: string
-}
-
 const CATS: Category[] = ['vitamin', 'mineral', 'bvitamin', 'trace', 'fatty', 'amino', 'macro', 'advanced']
-const BY_ID = new Map(NUTRIENTS.map((n) => [n.id, n]))
-
-function rowsFrom(nutrients: Record<string, number>): Row[] {
-  return Object.entries(nutrients).map(([id, v]) => ({ id, amount: String(+v.toFixed(3)), unit: BY_ID.get(id)?.unit ?? 'mg' }))
-}
 
 function SupplementEditor({ initial, onDone }: { initial: Supplement | null; onDone: () => void }) {
   const [name, setName] = useState(initial?.name ?? '')
@@ -141,15 +130,7 @@ function SupplementEditor({ initial, onDone }: { initial: Supplement | null; onD
     setNote(p.note)
   }
 
-  const used = new Set(rows.map((r) => r.id))
-  const nutrients: Record<string, number> = {}
-  for (const r of rows) {
-    const n = BY_ID.get(r.id)
-    const amt = Number(r.amount)
-    if (!n || !(amt > 0)) continue
-    const factor = labelUnits(r.id, n.unit).find((u) => u.label === r.unit)?.toAppUnit ?? 1
-    nutrients[r.id] = (nutrients[r.id] ?? 0) + amt * factor
-  }
+  const nutrients = rowsToNutrients(rows)
   const valid = name.trim() && dose.trim() && Object.keys(nutrients).length > 0 && dosesPerDay > 0
 
   const save = async () => {
@@ -232,64 +213,15 @@ function SupplementEditor({ initial, onDone }: { initial: Supplement | null; onD
           <span>Per dose, from the Supplement Facts label</span>
           <span className="text-(--muted)">IU converts automatically for D, A and E</span>
         </div>
-        <ul className="space-y-1.5">
-          {rows.map((r, i) => {
-            const n = BY_ID.get(r.id)!
-            const units = labelUnits(r.id, n.unit)
-            const set = (patch: Partial<Row>) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, ...patch } : x)))
-            const converted = nutrients[r.id]
-            return (
-              <li key={i} className="flex flex-wrap items-center gap-2">
-                <select
-                  value={r.id}
-                  onChange={(e) => set({ id: e.target.value, unit: BY_ID.get(e.target.value)!.unit })}
-                  className={`min-w-0 flex-1 ${input} py-1.5`}
-                >
-                  {CATS.map((c) => (
-                    <optgroup key={c} label={CATEGORY_LABEL[c]}>
-                      {NUTRIENTS.filter((x) => x.category === c && (x.id === r.id || !used.has(x.id))).map((x) => (
-                        <option key={x.id} value={x.id}>
-                          {x.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  value={r.amount}
-                  onChange={(e) => set({ amount: e.target.value })}
-                  className={`w-24 font-mono ${input} py-1.5`}
-                  aria-label={`${n.name} amount`}
-                />
-                <select value={r.unit} onChange={(e) => set({ unit: e.target.value })} className={`w-20 ${input} py-1.5`} aria-label="Unit">
-                  {units.map((u) => (
-                    <option key={u.label}>{u.label}</option>
-                  ))}
-                </select>
-                {r.unit !== n.unit && converted != null && (
-                  <span className="font-mono text-[11px] text-(--muted)">
-                    = {fmt(converted)} {n.unit}
-                  </span>
-                )}
-                <button onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))} className="px-1.5 text-(--muted) hover:text-(--c-deficient)" aria-label={`Remove ${n.name}`}>
-                  ×
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-        <button
-          onClick={() => {
-            const next = NUTRIENTS.find((n) => !used.has(n.id) && n.category !== 'macro')
-            if (next) setRows((rs) => [...rs, { id: next.id, amount: '', unit: next.unit }])
-          }}
-          className="mt-2 text-sm text-(--c-above) hover:underline"
-        >
-          + Add nutrient
-        </button>
+        <div className="mb-2">
+          <LabelPaste
+            onUse={(label) => {
+              setRows(() => rowsFrom(label.nutrients))
+              if (label.servingLabel) setDose(label.servingLabel)
+            }}
+          />
+        </div>
+        <NutrientRowsEditor rows={rows} setRows={setRows} categories={CATS} />
       </div>
 
       {Object.keys(nutrients).length > 0 && (

@@ -37,7 +37,10 @@ export function SettingsPage() {
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
             <p className="text-[13px] text-(--muted)">
-              {isDefault ? 'Using the default profile. Changes save automatically.' : 'Changes save automatically.'}
+              {isDefault ? 'Using the default profile. Changes save automatically.' : 'Changes save automatically.'}{' '}
+              <a href="#/welcome" className="text-(--c-above) hover:underline">
+                Run setup again
+              </a>
             </p>
           </div>
         </a>

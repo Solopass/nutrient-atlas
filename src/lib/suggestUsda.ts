@@ -25,7 +25,7 @@ const SKIP_GROUPS = new Set([
 const MEAT = new Set(['Beef Products', 'Pork Products', 'Poultry Products', 'Lamb, Veal, and Game Products'])
 const ANIMAL = /\b(beef|pork|chicken|turkey|lamb|veal|fish|salmon|tuna|cod|shrimp|egg|duck|goose)\b/i
 const SKIP_NAME =
-  /fortified|dried|dehydrated|powder|\bdry\b|frozen|canned|with salt added|imitation|formula|infant|by-products|variety meats|liver|kidney|brain|\bheart\b|spleen|lung|tongue|pancreas|thymus|flour|\bmeal\b|\bbran\b|\bgerm\b|isolate|concentrate|meatless|vegetarian|analog|sauteed|fried|in oil|\boil\b|leaves, raw|mature seeds, raw|sprouted/i
+  /fortified|dried|dehydrated|powder|\bdry\b|frozen|canned|with salt added|imitation|formula|infant|by-products|variety meats|liver|kidney|brain|\bheart\b|spleen|lung|tongue|pancreas|thymus|flour|\bmeal\b|\bbran\b|\bgerm\b|isolate|concentrate|meatless|vegetarian|analog|sauteed|fried|in oil|\boil\b|leaves, raw|mature seeds, raw|sprouted|butter(?!nut)|\blard\b|shortening|cottonseed|smoothie|juice|beverage|drink/i
 
 function allowedForDiet(f: UsdaFood, diet: Diet) {
   const meat = MEAT.has(f.category)
@@ -37,11 +37,48 @@ function allowedForDiet(f: UsdaFood, diet: Diet) {
   return !meat && !fish && !dairyEgg // vegan
 }
 
-/** A sensible single portion: the first USDA portion between 15 g and 350 g, else 100 g. */
+/**
+ * The richest everyday sources of one nutrient for this diet: one normal
+ * portion each, as % of the target. Used by weekly insights ("Try: …").
+ */
+export function topFoodsFor(nutrientId: string, target: number, usda: UsdaDb, diet: Diet, count = 3) {
+  const out: { name: string; portion: string; pct: number }[] = []
+  const heads = new Set<string>()
+  const ranked = usda.foods
+    .filter((f) => f.per100g[nutrientId] && !SKIP_GROUPS.has(f.category) && !SKIP_NAME.test(f.name) && !isOdd(f) && allowedForDiet(f, diet))
+    .filter((f) => !((MEAT.has(f.category) || f.category === 'Finfish and Shellfish Products') && /\braw\b/i.test(f.name)))
+    .map((f) => {
+      const { grams, label } = portionOf(f)
+      const pct = ((f.per100g[nutrientId] * grams) / 100 / target) * 100
+      return { f, label, pct, score: pct * (1 - 0.07 * Math.max(0, f.segments - 3)) }
+    })
+    .sort((a, b) => b.score - a.score)
+  for (const r of ranked) {
+    const head = nameParts(r.f.name)[1].toLowerCase()
+    if (heads.has(head)) continue
+    heads.add(head)
+    out.push({ name: nameParts(r.f.name)[1].replace(/^./, (c) => c.toUpperCase()), portion: r.label, pct: r.pct })
+    if (out.length === count) break
+  }
+  return out
+}
+
+const PACKAGING = /package|container|\bpkg\b|\bhead\b|\bcan\b|bottle|\bjar\b|\bloaf\b|\bbox\b|\bbag\b|recipe|batch|yield/i
+
+/**
+ * A realistic single portion: the smallest USDA portion from 25 g to 350 g that
+ * isn't a package ("1 oz" of almonds, "1 cup" of spinach, "1 large" egg); else 100 g.
+ * Avoids "1 cup of almonds", "1 almond" and "1 package of spinach".
+ */
 function portionOf(f: UsdaFood) {
-  const p = f.portions.find((x) => x.grams >= 15 && x.grams <= 350)
+  // Energy-dense foods (seeds, nuts, oils) are eaten by the tablespoon, so allow smaller portions for them.
+  const min = (f.kcal ?? 0) > 350 ? 10 : 25
+  const p = f.portions.filter((x) => x.grams >= min && x.grams <= 350 && !PACKAGING.test(x.label)).sort((a, b) => a.grams - b.grams)[0]
   return p ? { grams: p.grams, label: `${p.label} (${Math.round(p.grams)} g)` } : { grams: 100, label: '100 g' }
 }
+
+/** Brand-name entries (USDA writes brands in capitals, e.g. "SILK") and unusual eggs make poor suggestions. */
+const isOdd = (f: UsdaFood) => /\b[A-Z]{3,}\b/.test(f.name) || /egg, (duck|goose|quail|turkey)/i.test(f.name)
 
 /**
  * Rank every USDA whole food by how much of today's remaining gap one normal
@@ -58,7 +95,7 @@ export function suggestFoods(states: NutrientState[], usda: UsdaDb, diet: Diet, 
 
   const scored: FoodSuggestion[] = []
   for (const f of usda.foods) {
-    if (SKIP_GROUPS.has(f.category) || SKIP_NAME.test(f.name) || !allowedForDiet(f, diet)) continue
+    if (SKIP_GROUPS.has(f.category) || SKIP_NAME.test(f.name) || isOdd(f) || !allowedForDiet(f, diet)) continue
     // Suggest cooked meat and fish, not raw.
     if ((MEAT.has(f.category) || f.category === 'Finfish and Shellfish Products' || ANIMAL.test(f.name)) && /\braw\b/i.test(f.name) && !/egg/i.test(f.name)) continue
     const head = nameParts(f.name)[1].toLowerCase()

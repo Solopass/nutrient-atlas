@@ -13,10 +13,12 @@ import { StatCards } from './components/StatCards'
 import { LogSheet, type LogTab } from './components/log/LogSheet'
 import { BottomNav } from './components/BottomNav'
 import { SettingsPage } from './components/settings/SettingsPage'
+import { Onboarding, type OnboardingExit } from './components/onboarding/Onboarding'
+import { InsightsCard, useWeeklyReport } from './components/insights/Insights'
 import { MOCK_INTAKE } from './data/mockIntake'
 import { SCORE_HISTORY } from './data/mockHistory'
 import { CORE_CATEGORIES } from './data/nutrients'
-import { db, localDate } from './db/db'
+import { db, localDate, type LogEntry } from './db/db'
 import { hasFood, intakeFromLogs } from './db/logging'
 import { addDays, averageIntake, contributors, dateRange, dayHref, formatDay, groupByDate, isValidDate, nutrientSeries, scoreForLogs, streakEndingAt } from './lib/history'
 import { describeProfile } from './lib/profile'
@@ -27,6 +29,7 @@ import { useProfile } from './state/profile'
 import type { Category } from './types'
 
 const OUTER: Category[] = ['bvitamin', 'trace', 'fatty', 'amino']
+const NO_LOGS: LogEntry[] = []
 
 function useMedia(query: string) {
   return useSyncExternalStore(
@@ -49,7 +52,7 @@ function useHashRoute() {
   )
 }
 
-/** Routes: #/  ·  #/day/YYYY-MM-DD  ·  #/history  ·  #/settings */
+/** Routes: #/  ·  #/day/YYYY-MM-DD  ·  #/history  ·  #/settings  ·  #/welcome (setup) */
 export default function App() {
   const route = useHashRoute()
   const [log, setLog] = useState<{ open: boolean; tab: LogTab }>({ open: false, tab: 'search' })
@@ -61,16 +64,37 @@ export default function App() {
   const date = m && isValidDate(m[1]) && m[1] <= localDate() ? m[1] : localDate()
   const dayCount = useLiveQuery(() => db.logs.where('date').equals(date).count(), [date]) ?? 0
 
+  // First run: show setup until it's finished or skipped, unless a profile was already saved some other way.
+  const { isDefault, loaded } = useProfile()
+  const onboarded = useLiveQuery(() => db.settings.get('onboarded').then((r) => !!r), [], null)
+  const firstRun = loaded && onboarded === false && isDefault && (route === '' || route.startsWith('day/'))
+  // Latch: answering the first question saves a profile (isDefault → false), which must not end setup.
+  const [inSetup, setInSetup] = useState(false)
+  useEffect(() => {
+    if (firstRun) setInSetup(true)
+  }, [firstRun])
+  const needsSetup = inSetup || firstRun
+
+  const finishSetup = (exit: OnboardingExit) => {
+    setInSetup(false)
+    if (location.hash !== '#/') location.hash = '#/'
+    if (exit === 'log') openLog('search')
+    if (exit === 'sample') loadSampleData()
+  }
+
   let page
-  if (route === 'settings') page = <SettingsPage />
+  if (route === 'welcome' || needsSetup) page = <Onboarding onFinish={finishSetup} />
+  else if (route === 'settings') page = <SettingsPage />
   else if (route === 'history') page = <HistoryPage />
   else if (import.meta.env.DEV && route === 'dev/sample') page = <DevLoadSample />
   else page = <Dashboard date={date} openLog={openLog} />
 
+  if (onboarded === null) return null // settings still loading; avoid flashing the dashboard before setup
+
   return (
     <>
       {page}
-      <BottomNav route={route} openLog={openLog} />
+      {route !== 'welcome' && !needsSetup && <BottomNav route={route} openLog={openLog} />}
       <LogSheet open={log.open} initialTab={log.tab} onClose={closeLog} todayCount={dayCount} date={date} />
     </>
   )
@@ -108,6 +132,7 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
   const dayLogs = useMemo(() => byDate.get(date) ?? [], [byDate, date])
   const foodCount = dayLogs.filter((l) => l.supplementId == null).length
   const suppCount = dayLogs.length - foodCount
+  const report = useWeeklyReport(demo ? NO_LOGS : logs, weekEnd)
   const eatenNames = useMemo(() => dayLogs.filter((l) => l.supplementId == null).map((l) => l.name), [dayLogs])
 
   const { intake, loggedDays } = useMemo(() => {
@@ -222,7 +247,7 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
       <main className="mx-auto max-w-[1600px] space-y-5 px-4 pb-28 sm:px-6 sm:pb-12">
         {isDefault && (
           <a
-            href="#/settings"
+            href="#/welcome"
             className="card flex items-center gap-3 p-3.5 text-sm transition hover:brightness-110"
             style={{ boxShadow: 'inset 0 0 0 1px color-mix(in oklab, var(--c-above) 45%, transparent)' }}
           >
@@ -268,6 +293,8 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
         )}
 
         <StatCards states={states} score={score} onSelect={setSelectedId} history={history14} streak={streak} week={week} date={date} eatenNames={eatenNames} />
+
+        {!demo && <InsightsCard report={report} onSelect={setSelectedId} />}
 
         <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)_300px] xl:items-center">
           <div className="order-2 xl:order-none">

@@ -8,6 +8,7 @@ import { STATUS_META, scoreColor } from '../../lib/status'
 import { useProfile } from '../../state/profile'
 import type { Category, Nutrient } from '../../types'
 import { Logo } from '../Logo'
+import { WeeklyReportCard, useWeeklyReport } from '../insights/Insights'
 
 const HEAT_DAYS = 28
 const ROW_CATS: Category[] = ['macro', 'vitamin', 'mineral', 'bvitamin', 'trace', 'fatty', 'amino']
@@ -30,6 +31,8 @@ export function HistoryPage() {
     }
     return m
   }, [byDate, nutrients])
+
+  const report = useWeeklyReport(logs, addDays(today, -1))
 
   const last30 = dateRange(today, 30)
   const logged30 = last30.filter((d) => scores.has(d))
@@ -70,6 +73,8 @@ export function HistoryPage() {
           <Stat label="Current streak" value={`${streakEndingAt(byDate, today)}`} sub="days" />
           <Stat label="Best streak · 90d" value={`${bestStreak}`} sub="days" />
         </div>
+
+        <WeeklyReportCard report={report} />
 
         <div className="grid gap-5 lg:grid-cols-[400px_minmax(0,1fr)] lg:items-start">
           <div className="space-y-5">

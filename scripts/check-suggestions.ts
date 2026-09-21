@@ -24,3 +24,9 @@ for (const diet of ['omnivore', 'vegan'] as Diet[]) {
   console.log(`${diet} (${(performance.now() - t).toFixed(0)} ms)`)
   for (const x of s) console.log(`  ${x.food.name} · ${x.portion} · ${Math.round(x.kcal ?? 0)} kcal · closes ${x.closes.map((c) => c.nutrient.symbol).join(' ')} · lifts ${x.helps.map((c) => c.nutrient.symbol).join(' ')}`)
 }
+
+// Food ideas per nutrient, as used by weekly insights
+import { topFoodsFor } from '../src/lib/suggestUsda'
+for (const [id, target] of [['vitE', 15], ['la', 12], ['fat', 78], ['iron', 18], ['iodine', 150], ['b12', 2.4]] as [string, number][]) {
+  console.log(`${id}: ` + topFoodsFor(id, target, usda as any, 'vegetarian').map((f) => `${f.name} · ${f.portion} · ${Math.round(f.pct)}%`).join(' | '))
+}

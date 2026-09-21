@@ -30,10 +30,10 @@ Nutrient Atlas wins by being:
 | 2.5 | Settings: profile, DRI personal targets (14+, pregnancy/lactation), goals, energy, diet, backup | ✅ Done |
 | 3 | Real history and weekly view | ✅ Done |
 | 4 | Supplements and "limit" nutrients | ✅ Done |
-| 5 | Daily driver: PWA ✅ · quick add, copy meals, saved meals/recipes, USDA suggestions ✅ · barcode | **Next** (barcode) |
+| 5 | Daily driver: PWA, quick add, copy meals, saved meals/recipes, USDA suggestions, label foods, first-run setup ✅ · barcode (waiting on hosting) | Mostly done |
 | 6 | AI automation: API proxy, photo logging, USDA grounding | Planned |
 | 7 | Sync across devices, native wrappers, health-app export | Planned |
-| 8 | Insights and coaching | Planned |
+| 8 | Insights and coaching: weekly report, diet risks, interaction tips ✅ · AI coach, lab values | Started |
 
 ## Milestone 3: Real history and weekly view ✅
 
@@ -65,7 +65,9 @@ Still open:
 - **PWA ✅ shipped:** installable, offline (app shell + USDA table precached), auto-update; phone tab bar with a big log button. Needs HTTPS hosting to install on a phone. See [HOSTING.md](HOSTING.md).
 - **Recipes / meals ✅:** save any logged meal (optionally "makes N portions"); one tap to log a portion.
 - **Copy ✅:** "same breakfast as yesterday" and recent foods in Quick add.
-- **Barcode scanning:** camera → OpenFoodFacts lookup → normalize to our nutrient ids (labels usually list few micronutrients, so coverage flags matter).
+- **Custom foods from labels ✅:** paste or type Nutrition Facts; the text reader handles %DV-only and one-line labels. Covers packaged foods until barcode scanning.
+- **First-run setup ✅:** profile → goals → supplements → personal targets.
+- **Barcode scanning (on hold until hosting):** camera → OpenFoodFacts lookup → normalize to our nutrient ids (labels usually list few micronutrients, so coverage flags matter).
 - **Best next food ✅** from the full USDA database, diet-filtered, limit-aware, one tap to log. Still to do: include the user's own foods and saved meals as candidates.
 - Quick edit of portion by dragging on the Atlas wedge (stretch goal).
 
@@ -84,6 +86,10 @@ See [AI_INTEGRATION.md](AI_INTEGRATION.md).
 - Capacitor wrapper for app stores once the PWA is solid.
 
 ## Milestone 8: Insights and coaching
+
+**Shipped ✅:** weekly report (score and category change vs last week, wins, persistent gaps with diet-aware food ideas, limits with sources), diet/life-stage risk flags, and meal-level interaction tips (plant iron + vitamin C, calcium vs iron, caffeine vs iron, fat for vitamins A/K). Dashboard card plus full report in History.
+
+Still to do:
 
 - Weekly report: what improved, what's persistently low, 3 concrete food swaps.
 - Diet-aware risk flags: vegan → B12, iodine, EPA/DHA, zinc, iron; pregnancy → folate, iodine, choline, iron.

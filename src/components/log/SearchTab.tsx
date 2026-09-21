@@ -58,7 +58,7 @@ export function SearchTab({ meal, date, onLogged }: { meal: Meal; date: string; 
       )}
 
       {query.trim() && db && results.length === 0 && (
-        <p className="mt-6 text-center text-sm text-(--muted)">No matches. Try fewer or simpler words, or use the AI estimate tab.</p>
+        <p className="mt-6 text-center text-sm text-(--muted)">No matches. Try fewer or simpler words. For packaged foods, use My foods → Create a food from its label, or the AI estimate tab.</p>
       )}
 
       <ul className="mt-3 divide-y divide-(--line)">
