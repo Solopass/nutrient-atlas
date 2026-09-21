@@ -100,4 +100,4 @@ Still to do:
 - Accessibility pass: keyboard navigation of the Atlas, screen-reader summary of the day, colour-blind safe status palette (add shape/pattern cues).
 - Light theme.
 - Performance: move USDA parsing to a Web Worker if load time on low-end phones is noticeable.
-- Error boundary and a friendly recovery screen.
+- **Error boundary ✅:** crash screen with Reload, Back to Atlas and Download backup (reads the database directly). Test with `#/dev/crash` in dev.

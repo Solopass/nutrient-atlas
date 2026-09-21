@@ -87,6 +87,7 @@ export default function App() {
   else if (route === 'settings') page = <SettingsPage />
   else if (route === 'history') page = <HistoryPage />
   else if (import.meta.env.DEV && route === 'dev/sample') page = <DevLoadSample />
+  else if (import.meta.env.DEV && route === 'dev/crash') page = <DevCrash />
   else page = <Dashboard date={date} openLog={openLog} />
 
   if (onboarded === null) return null // settings still loading; avoid flashing the dashboard before setup
@@ -368,4 +369,9 @@ function DevLoadSample() {
       .then(() => (location.hash = '#/'))
   }, [])
   return null
+}
+
+/** Dev only: #/dev/crash throws during render, to check the ErrorBoundary recovery screen. */
+function DevCrash(): never {
+  throw new Error('Test crash from #/dev/crash')
 }
