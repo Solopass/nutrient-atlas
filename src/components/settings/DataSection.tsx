@@ -1,7 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useRef, useState } from 'react'
 import { db, localDate, type Food, type LogEntry, type SavedMeal, type Setting, type Supplement } from '../../db/db'
+import { dailyTotalsCsv, entriesCsv } from '../../lib/csv'
 import { loadSampleData, removeSampleData } from '../../lib/sampleData'
+import { useProfile } from '../../state/profile'
 import { Section } from './Controls'
 
 const EXPORT_VERSION = 3
@@ -17,7 +19,17 @@ interface ExportFile {
   meals?: SavedMeal[]
 }
 
+function download(name: string, body: string, type: string) {
+  const url = URL.createObjectURL(new Blob([body], { type }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export function DataSection() {
+  const { nutrients } = useProfile()
   const stats = useLiveQuery(async () => {
     const [foods, logs, foodDays] = await Promise.all([
       db.foods.count(),
@@ -43,13 +55,19 @@ export function DataSection() {
       supplements: await db.supplements.toArray(),
       meals: await db.meals.toArray(),
     }
-    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `nutrient-atlas-${localDate()}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    download(`nutrient-atlas-${localDate()}.json`, JSON.stringify(data, null, 1), 'application/json')
     setMessage({ text: `Exported ${data.logs.length} log entries and ${data.foods.length} foods.`, tone: 'good' })
+  }
+
+  const exportCsv = async (kind: 'daily' | 'entries') => {
+    const logs = await db.logs.toArray()
+    if (!logs.length) return setMessage({ text: 'Nothing logged yet, so there is nothing to export.', tone: 'bad' })
+    const csv = kind === 'daily' ? dailyTotalsCsv(logs, nutrients) : entriesCsv(logs, nutrients)
+    download(`nutrient-atlas-${kind === 'daily' ? 'daily-totals' : 'entries'}-${localDate()}.csv`, csv, 'text/csv;charset=utf-8')
+    setMessage({
+      text: kind === 'daily' ? `Exported daily totals for ${new Set(logs.map((l) => l.date)).size} days. Empty cells mean no data, not zero.` : `Exported ${logs.length} entries. Empty cells mean no data, not zero.`,
+      tone: 'good',
+    })
   }
 
   const importData = async (file: File) => {
@@ -132,6 +150,16 @@ export function DataSection() {
         <button onClick={deleteAll} className="ml-auto rounded-lg border border-(--c-deficient)/40 px-3.5 py-2 text-sm text-(--c-deficient) hover:bg-(--c-deficient)/10">
           Delete all data
         </button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 border-t border-(--line) pt-4">
+        <span className="mr-1 text-xs text-(--dim)">Spreadsheet (CSV)</span>
+        <button onClick={() => exportCsv('daily')} className="rounded-lg border border-(--line) bg-(--panel-2) px-3.5 py-2 text-sm hover:border-(--c-above)">
+          Daily totals
+        </button>
+        <button onClick={() => exportCsv('entries')} className="rounded-lg border border-(--line) bg-(--panel-2) px-3.5 py-2 text-sm hover:border-(--c-above)">
+          Every entry
+        </button>
+        <span className="text-[11px] text-(--muted)">For Excel, Sheets or a dietitian. One column per nutrient.</span>
       </div>
       {message && <p className={`text-sm ${message.tone === 'good' ? 'text-(--c-good)' : 'text-(--c-deficient)'}`}>{message.text}</p>}
     </Section>

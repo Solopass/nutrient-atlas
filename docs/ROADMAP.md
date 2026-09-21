@@ -32,8 +32,8 @@ Nutrient Atlas wins by being:
 | 4 | Supplements and "limit" nutrients | ✅ Done |
 | 5 | Daily driver: PWA, quick add, copy meals, saved meals/recipes, USDA suggestions, label foods, first-run setup ✅ · barcode (waiting on hosting) | Mostly done |
 | 6 | AI automation: API proxy, photo logging, USDA grounding | Planned |
-| 7 | Sync across devices, native wrappers, health-app export | Planned |
-| 8 | Insights and coaching: weekly report, diet risks, interaction tips ✅ · AI coach, lab values | Started |
+| 7 | Sync across devices, native wrappers, health-app export · CSV export ✅ | Started |
+| 8 | Insights and coaching: weekly report, diet risks, interaction tips, lab values ✅ · AI coach | Mostly done |
 
 ## Milestone 3: Real history and weekly view ✅
 
@@ -81,7 +81,7 @@ See [AI_INTEGRATION.md](AI_INTEGRATION.md).
 ## Milestone 7: Platform
 
 - Optional sync: account + end-to-end encrypted sync of the Dexie tables.
-- Export CSV; Apple Health / Google Fit export of nutrients.
+- **CSV export ✅:** daily totals or every entry. Next: Apple Health / Google Fit export of nutrients.
 - Capacitor wrapper for app stores once the PWA is solid.
 
 ## Milestone 8: Insights and coaching
@@ -90,7 +90,7 @@ See [AI_INTEGRATION.md](AI_INTEGRATION.md).
 
 Still to do:
 
-- Optional lab values (vitamin D, ferritin, B12) to contextualize intake targets.
+- **Lab values ✅:** vitamin D, ferritin and B12 with reference bands, read against intake in the detail panel and weekly report. Next: more tests (folate, magnesium, omega-3 index, HbA1c for context) and a history of results over time.
 - AI coach: ask "why am I always low on magnesium?" against your own logs.
 
 ## Engineering backlog

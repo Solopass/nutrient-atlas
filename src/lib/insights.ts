@@ -4,7 +4,8 @@ import { hasFood } from '../db/logging'
 import type { NutrientState, Nutrient } from '../types'
 import { addDays, averageIntake, contributors, dateRange, groupByDate, nutrientSeries, parseDate } from './history'
 import type { Profile } from './profile'
-import { dayScore, nutrientState } from './status'
+import { LABS, readLab } from './labs'
+import { dayScore, fmt, nutrientState } from './status'
 import { topFoodsFor } from './suggestUsda'
 
 /**
@@ -205,6 +206,28 @@ export function weeklyReport(opts: {
         priority: 85,
       })
     }
+  }
+
+  // Blood tests outside the usual range, read against this week's intake
+  for (const def of LABS) {
+    const result = profile.labs?.[def.id]
+    const s = byId.get(def.nutrientId)
+    if (!result || !s) continue
+    const r = readLab(def, result, s.status === 'noData' ? null : s, profile, end)
+    if (r.band === 'ok') continue
+    // This supersedes a plain intake-gap insight for the same nutrient.
+    const gap = out.findIndex((i) => i.id === `gap-${def.nutrientId}`)
+    if (gap >= 0) out.splice(gap, 1)
+    const intakeLow = s.pct != null && s.pct < 80
+    out.push({
+      id: `lab-${def.id}`,
+      kind: 'risk',
+      title: `${def.name} ${fmt(result.value)} ${result.unit}: ${def.bandLabel[r.band].toLowerCase()}${r.stale ? ` (${r.months} months ago)` : ''}`,
+      body: `${r.headline}. ${r.advice}`,
+      nutrientIds: [def.nutrientId],
+      foods: r.band !== 'high' && intakeLow ? foodIdeas(s.nutrient) : undefined,
+      priority: { deficient: 90, low: 82, high: 78, ok: 0 }[r.band] - (r.stale ? 10 : 0),
+    })
   }
 
   // Meal-level interaction tips

@@ -3,7 +3,10 @@ import { CATEGORY_LABEL } from '../data/nutrients'
 import { localDate } from '../db/db'
 import { addDays, formatDay } from '../lib/history'
 import { PARTIAL_COVERAGE, STATUS_META, amountAgainstUL, fmt } from '../lib/status'
+import { BAND_COLOR, LAB_FOR_NUTRIENT, readLab } from '../lib/labs'
+import { useProfile } from '../state/profile'
 import type { NutrientState } from '../types'
+import { LabGauge } from './LabGauge'
 
 export interface NutrientHistory {
   dates: string[]
@@ -142,6 +145,8 @@ function PanelBody({ state, onClose, history }: { state: NutrientState; onClose:
         </p>
       )}
 
+      <LabCard state={state} />
+
       {history ? (
         <>
           <Trend series={history.series} dates={history.dates} title="Last 30 days" limit={isLimit} />
@@ -163,6 +168,42 @@ function PanelBody({ state, onClose, history }: { state: NutrientState; onClose:
         </div>
       </Section>
     </div>
+  )
+}
+
+/** Blood-test context for vitamin D, iron (ferritin) and B12, or a prompt to add one. */
+function LabCard({ state }: { state: NutrientState }) {
+  const { profile } = useProfile()
+  const def = LAB_FOR_NUTRIENT.get(state.nutrient.id)
+  if (!def) return null
+  const result = profile.labs[def.id]
+  if (!result) {
+    return (
+      <a href="#/settings" className="mt-5 block rounded-md border border-dashed border-(--line) p-3 text-xs text-(--muted) hover:border-(--c-above) hover:text-(--dim)">
+        Had a {def.name.toLowerCase()} blood test ({def.test})? <span className="text-(--c-above)">Add the result in Settings</span> to see your level next to your intake.
+      </a>
+    )
+  }
+  const r = readLab(def, result, state.status === 'noData' ? null : state, profile, localDate())
+  const color = BAND_COLOR[r.band]
+  return (
+    <section className="mt-6 rounded-lg p-3.5" style={{ background: `color-mix(in oklab, ${color} 7%, var(--panel-2))`, boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${color} 35%, transparent)` }}>
+      <h3 className="flex items-baseline justify-between text-[11px] tracking-[0.18em] text-(--muted) uppercase">
+        <span>
+          Your blood test · {def.test}
+        </span>
+        <span className="font-mono tracking-normal normal-case">
+          {fmt(result.value)} {result.unit} · {formatDay(result.date, 'short')}
+        </span>
+      </h3>
+      <p className="mt-2 text-sm font-medium" style={{ color }}>
+        {r.headline}
+      </p>
+      <LabGauge def={def} canonical={r.canonical} profile={profile} />
+      <p className="mt-2 text-xs leading-relaxed text-(--dim)">{r.advice}</p>
+      {r.stale && <p className="mt-1.5 text-[11px] text-(--c-attention)">Tested {r.months} months ago. Levels change, so a newer test will be more useful.</p>}
+      <p className="mt-1.5 text-[10px] text-(--muted)">Bands: {def.source}. Not a diagnosis.</p>
+    </section>
   )
 }
 

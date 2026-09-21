@@ -101,4 +101,9 @@ Log food → **Supplements** (or the pill in the phone tab bar). Add one from it
 - **First-run setup** (`#/welcome`) walks through profile, goals and supplements, then shows your targets. Re-run it from Settings.
 - **Weekly insights:** "This week" on the dashboard and a full weekly report in History, with gaps plus food ideas, limits, diet risks and food-pairing tips.
 
+## Blood tests and spreadsheets
+
+- **Blood tests** (Settings → Blood tests): add a vitamin D, ferritin or B12 result and the Vitamin D, Iron and B12 detail panels show your level next to your intake, with what a mismatch usually means. Out-of-range results show up in the weekly report.
+- **CSV export** (Settings → Your data): daily totals or every entry, for Excel, Sheets or a dietitian.
+
 Sanity scripts: `bun scripts/check-targets.ts`, `bun scripts/check-suggestions.ts`, `bun scripts/check-sample-foods.ts`, `bun scripts/check-label-parse.ts`.

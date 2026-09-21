@@ -1,4 +1,6 @@
-export type Sex = 'male' | 'female'
+import type { LabId, LabResult } from './labs'
+
+export type Sex ='male' | 'female'
 export type LifeStage = 'none' | 'pregnant' | 'lactating'
 export type Activity = 'sedentary' | 'light' | 'moderate' | 'active' | 'athlete'
 export type Goal = 'health' | 'muscle' | 'fatloss' | 'endurance'
@@ -21,6 +23,8 @@ export interface Profile {
   /** Manual overrides; null = use the calculated value. */
   energyOverride: number | null
   proteinPerKgOverride: number | null
+  /** Optional blood-test results (see lib/labs.ts). */
+  labs: Partial<Record<LabId, LabResult>>
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -37,6 +41,7 @@ export const DEFAULT_PROFILE: Profile = {
   atlasRange: null,
   energyOverride: null,
   proteinPerKgOverride: null,
+  labs: {},
 }
 
 export const ACTIVITY: Record<Activity, { label: string; hint: string; factor: number }> = {

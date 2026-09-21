@@ -22,6 +22,7 @@ import type { Category } from '../../types'
 import { Logo } from '../Logo'
 import { ChoiceCards, Field, NumberField, Section, Segmented } from './Controls'
 import { DataSection } from './DataSection'
+import { LabsSection } from './LabsSection'
 
 export function SettingsPage() {
   const { profile: p, update, isDefault } = useProfile()
@@ -162,6 +163,8 @@ export function SettingsPage() {
               ]}
             />
           </Section>
+
+          <LabsSection />
 
           <DataSection />
 

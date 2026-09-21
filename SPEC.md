@@ -1,4 +1,4 @@
-# Nutrient Atlas: Product Specification v1.8
+# Nutrient Atlas: Product Specification v1.9
 
 What the app is and how it behaves today. For what's next, see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -76,6 +76,7 @@ Computed on-device for the 7 complete days before the viewed day, vs the 7 befor
 - **Limits over** on average, naming the biggest sources.
 - **Diet / life-stage risks:** vegan, vegetarian, pregnancy and breastfeeding lists (e.g. B12, iodine, EPA+DHA, iron, zinc, choline, folate), skipped when a supplement already covers them.
 - **Interaction tips:** plant iron without vitamin C (with a concrete meal example), calcium and iron in the same meals, coffee/tea with iron-rich meals, vitamin A/K-rich meals with almost no fat.
+- **Blood tests:** a vitamin D, ferritin or B12 result outside the usual range, read against this week's intake (it replaces the plain gap insight for that nutrient; food ideas only when intake is also low).
 - **Data tips:** fewer than 4 logged days; several nutrients with incomplete data.
 
 Worded as food guidance, not medical advice. The History page shows the full **weekly report**: score vs last week, category coverage this week vs last, and every insight.
@@ -118,8 +119,10 @@ The meal defaults from time of day.
 - **Goal:** general health / build muscle / lose fat / endurance → protein g/kg and calorie adjustment. Custom calorie and protein overrides.
 - **Diet style:** omnivore / pescatarian / vegetarian / vegan (filters suggestions).
 - **AI estimation:** manual (active) / automatic (planned).
+- **Blood tests (optional):** vitamin D 25(OH)D (ng/mL or nmol/L), ferritin (ng/mL = µg/L), B12 (pg/mL or pmol/L), each with test date. Banded deficient / low / normal / high (IOM 2011 for vitamin D: <12, 12–20, 20–50, >50 ng/mL; WHO 2020 for ferritin: <15, 15–30, up to 150 women / 200 men; NIH ODS for B12: <200, 200–300 pg/mL). Shown on a square-root gauge. The detail panel for vitamin D, iron and B12 reads the lab against intake (e.g. "low even though intake is on target" → absorption, sun or losses). Results over 12 months old are flagged. Stored in the profile, so they travel with backups. Never changes targets. See [src/lib/labs.ts](src/lib/labs.ts).
 - **Run setup again** link.
 - **Your data:** counts, export JSON backup, import (replace), load / remove sample history, delete all.
+- **Spreadsheet export (CSV):** daily totals (one row per day, a daily-target row, entry counts, kcal, score, one column per nutrient) or every entry (time, meal, food, servings, type, amounts eaten). Missing data is an empty cell, never 0; UTF-8 BOM for Excel; text that starts with = + - @ is defused. See [src/lib/csv.ts](src/lib/csv.ts).
 - **Live targets preview:** BMR, burn, target kcal, and every nutrient's target, kind and UL.
 
 ## Nutrient model

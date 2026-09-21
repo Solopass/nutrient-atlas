@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
 import { db } from '../db/db'
 import { DEFAULT_PROFILE, energyTarget, type Profile } from '../lib/profile'
+import type { LabId, LabResult } from '../lib/labs'
 import { personalize } from '../lib/targets'
 import type { Nutrient } from '../types'
 
@@ -27,6 +28,17 @@ export function saveProfile(patch: Partial<Profile>) {
   return db.transaction('rw', db.settings, async () => {
     const current = (await db.settings.get('profile'))?.value as Partial<Profile> | undefined
     await db.settings.put({ key: 'profile', value: { ...DEFAULT_PROFILE, ...current, ...patch } })
+  })
+}
+
+/** Set or clear one lab result without touching the others (read inside the transaction, like saveProfile). */
+export function saveLab(id: LabId, result: LabResult | null) {
+  return db.transaction('rw', db.settings, async () => {
+    const current = ((await db.settings.get('profile'))?.value ?? {}) as Partial<Profile>
+    const labs = { ...current.labs }
+    if (result) labs[id] = result
+    else delete labs[id]
+    await db.settings.put({ key: 'profile', value: { ...DEFAULT_PROFILE, ...current, labs } })
   })
 }
 
