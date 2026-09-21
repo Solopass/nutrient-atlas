@@ -4,8 +4,8 @@ import type { NutrientState } from '../types'
 import { amountAgainstUL, ulPart } from './status'
 
 export interface FoodSuggestion {
-  /** Where the pick comes from: the USDA table, your saved foods, or your saved meals. */
-  kind: 'usda' | 'mine' | 'meal'
+  /** Where the pick comes from: the USDA table, your saved foods or meals, or a food you rated in Products. */
+  kind: 'usda' | 'mine' | 'meal' | 'product'
   key: string
   name: string
   /** USDA picks only. */
@@ -13,6 +13,7 @@ export interface FoodSuggestion {
   grams?: number
   foodId?: number
   mealId?: number
+  productId?: number
   portion: string
   nutrients: Record<string, number>
   kcal: number | null
@@ -95,7 +96,7 @@ const OWN_BONUS = 1.15
 
 /** A saved food or saved meal, pre-scaled to one serving / portion. */
 export interface OwnCandidate {
-  kind: 'mine' | 'meal'
+  kind: 'mine' | 'meal' | 'product'
   key: string
   name: string
   portion: string
@@ -103,6 +104,8 @@ export interface OwnCandidate {
   kcal: number | null
   foodId?: number
   mealId?: number
+  productId?: number
+  grams?: number
 }
 
 /**

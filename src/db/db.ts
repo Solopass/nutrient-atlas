@@ -101,6 +101,10 @@ export interface Product {
   servingsPerDay?: number
   /** Price of one container. */
   price?: number
+  /** Independent testing seals, e.g. "USP Verified" (see lib/products/certifications.ts). */
+  certifications?: string[]
+  /** EAN/UPC barcode, when added by barcode lookup. */
+  barcode?: string
   /** Your rating, 1–5. */
   rating?: number
   notes?: string

@@ -1,4 +1,4 @@
-# Nutrient Atlas: Product Specification v1.14
+# Nutrient Atlas: Product Specification v1.15
 
 What the app is and how it behaves today. For what's next, see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -126,6 +126,8 @@ The meal defaults from time of day.
 ### Products (`#/products`)
 Rate the branded supplements and packaged foods you use or are considering. Stored in the `products` table (Dexie v5), separate from supplements you take and foods you log; included in backups.
 - **Adding:** paste a Supplement/Nutrition Facts label (nutrients, serving, servings per container, calories and ingredient forms such as “(as magnesium glycinate)” are read automatically), type it, import a JSON product pack or CSV (downloadable template; columns are nutrient names/ids with an optional unit, e.g. “Vitamin D (IU)”, plus “<Nutrient> form”), or copy an AI prompt, attach label photos in any AI chat and paste the JSON reply. Imports match existing products on kind + brand + name and update them, keeping your rating and notes. “Add to compare” pulls in supplements you already take.
+- **Barcode:** type the digits (works everywhere) or scan with the camera where the browser has BarcodeDetector (Chrome/Edge on Android; needs HTTPS or localhost). Looks up Open Food Facts (only the barcode is sent), maps its per-serving values (or per-100 g scaled by serving size) from grams into app units, detects supplements by category and testing seals in its labels, and opens the editor pre-filled with a check-against-your-label note.
+- **Third-party testing:** USP Verified, NSF (Contents / Certified for Sport), Informed Sport/Choice, BSCG, IFOS, ConsumerLab. Ticked in the editor, detected in pasted label text, imported from CSV/JSON/AI. Shown as badges; supplements get a *Tested* score part (weight 0.10) when sealed, and no penalty when not.
 - **Score (0–100, grade A–E)** from explainable parts, re-weighted when a part has no data:
   - *Your gaps:* how much it fills of what you are short on over the last 7 complete days. Supplements are judged against food alone. Relevance (share of what it offers that lands in a gap) and size (gap points closed).
   - *Dose (supplements):* meaningful amounts per day (≥ 50% of target counts fully; under 10% is a token amount).
@@ -135,7 +137,8 @@ Rate the branded supplements and packaged foods you use or are considering. Stor
   - Over an upper limit on its own caps the score at 40 and is flagged; close to it, or over it together with what you already get, is a warning. Poor forms, high sodium/sugar/saturated fat, token doses and nutrients your current supplements already cover are flagged.
 - **List:** supplements / foods, search, tags, sort (overall, fills my gaps, value, my rating, newest), currency, your 1–5 star rating and notes, “Take daily” (creates a daily supplement) or “Log a serving”.
 - **Compare** up to 4 side by side: score parts, cost per day, serving, and every nutrient as % of your target with form markers; best in each row highlighted (past 100% counts as a tie; over the upper limit never wins).
-- **Export** writes a JSON product pack others can import.
+- **Share list** writes a JSON product pack others can import (the share sheet on phones, a download elsewhere).
+- **Best next food** includes packaged foods from Products (except ones you rated 1–2 stars), badged “rated”; + Log logs one serving.
 
 ### Settings (`#/settings`)
 - **Body:** sex, age (14+), weight, height, units (metric/imperial), life stage (pregnant / breastfeeding).

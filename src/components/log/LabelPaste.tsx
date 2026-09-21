@@ -9,7 +9,7 @@ const BY_ID = new Map(NUTRIENTS.map((n) => [n.id, n]))
  * Text box for a pasted Nutrition / Supplement Facts label. Parses as you type
  * and shows what it read; "Use these values" hands the result to the form.
  */
-export function LabelPaste({ onUse, defaultOpen = false }: { onUse: (label: ParsedLabel) => void; defaultOpen?: boolean }) {
+export function LabelPaste({ onUse, defaultOpen = false }: { onUse: (label: ParsedLabel, text: string) => void; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen)
   const [text, setText] = useState('')
   const parsed = useMemo(() => parseLabel(text), [text])
@@ -60,7 +60,7 @@ export function LabelPaste({ onUse, defaultOpen = false }: { onUse: (label: Pars
                   </Chip>
                 ))}
               </div>
-              <button onClick={() => onUse(parsed)} className="mt-2 rounded-lg bg-(--c-above) px-3 py-1.5 text-sm font-medium text-white hover:brightness-110">
+              <button onClick={() => onUse(parsed, text)} className="mt-2 rounded-lg bg-(--c-above) px-3 py-1.5 text-sm font-medium text-white hover:brightness-110">
                 Use these {found.length} values
               </button>
             </>

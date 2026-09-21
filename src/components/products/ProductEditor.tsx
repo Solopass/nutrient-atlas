@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from 'react'
 import { NUTRIENTS } from '../../data/nutrients'
 import { db, type Product } from '../../db/db'
+import { CERTIFICATIONS, detectCertifications } from '../../lib/products/certifications'
 import { formsFromMatched, rateForm } from '../../lib/products/forms'
+import type { OffProduct } from '../../lib/products/openFoodFacts'
 import { scoreProduct, type ScoreContext } from '../../lib/products/score'
 import { useGuard } from '../../lib/useGuard'
 import type { Category } from '../../types'
@@ -16,22 +18,38 @@ const input = 'rounded-lg border border-(--line) bg-(--panel-2) px-3 py-2 text-s
 const numOrUndef = (s: string) => (s.trim() && Number(s) > 0 ? Number(s) : undefined)
 
 /** Add or edit a branded product: paste its label, fill the rest, see the score live. */
-export function ProductEditor({ initial, kind: initialKind, ctx, onDone }: { initial: Product | null; kind: Product['kind']; ctx: ScoreContext; onDone: () => void }) {
-  const [kind, setKind] = useState<Product['kind']>(initial?.kind ?? initialKind)
-  const [brand, setBrand] = useState(initial?.brand ?? '')
-  const [name, setName] = useState(initial?.name ?? '')
-  const [serving, setServing] = useState(initial?.serving ?? (initialKind === 'supplement' ? '1 capsule' : '1 serving'))
-  const [perDay, setPerDay] = useState(String(initial?.servingsPerDay ?? 1))
-  const [perContainer, setPerContainer] = useState(initial?.servingsPerContainer ? String(initial.servingsPerContainer) : '')
-  const [price, setPrice] = useState(initial?.price != null ? String(initial.price) : '')
-  const [grams, setGrams] = useState(initial?.grams ? String(initial.grams) : '')
-  const [kcal, setKcal] = useState(initial?.kcal != null ? String(initial.kcal) : '')
-  const [tags, setTags] = useState((initial?.tags ?? []).join(', '))
-  const [notes, setNotes] = useState(initial?.notes ?? '')
-  const [rating, setRating] = useState<number | undefined>(initial?.rating)
-  const [rows, setRows] = useState<Row[]>(initial ? rowsFrom(initial.nutrients) : [])
-  const [forms, setForms] = useState<Record<string, string>>(initial?.forms ?? {})
-  const [source, setSource] = useState<Product['source']>(initial?.source ?? 'manual')
+export function ProductEditor({
+  initial,
+  prefill,
+  kind: initialKind,
+  ctx,
+  onDone,
+}: {
+  initial: Product | null
+  /** A new product's starting values, e.g. from a barcode lookup. */
+  prefill?: OffProduct | null
+  kind: Product['kind']
+  ctx: ScoreContext
+  onDone: () => void
+}) {
+  const start = initial ?? prefill ?? null
+  const [kind, setKind] = useState<Product['kind']>(start?.kind ?? initialKind)
+  const [brand, setBrand] = useState(start?.brand ?? '')
+  const [name, setName] = useState(start?.name ?? '')
+  const [serving, setServing] = useState(start?.serving ?? (initialKind === 'supplement' ? '1 capsule' : '1 serving'))
+  const [perDay, setPerDay] = useState(String(start?.servingsPerDay ?? 1))
+  const [perContainer, setPerContainer] = useState(start?.servingsPerContainer ? String(start.servingsPerContainer) : '')
+  const [price, setPrice] = useState(start?.price != null ? String(start.price) : '')
+  const [grams, setGrams] = useState(start?.grams ? String(start.grams) : '')
+  const [kcal, setKcal] = useState(start?.kcal != null ? String(start.kcal) : '')
+  const [tags, setTags] = useState((start?.tags ?? []).join(', '))
+  const [notes, setNotes] = useState(start?.notes ?? '')
+  const [rating, setRating] = useState<number | undefined>(start?.rating)
+  const [rows, setRows] = useState<Row[]>(start ? rowsFrom(start.nutrients) : [])
+  const [forms, setForms] = useState<Record<string, string>>(start?.forms ?? {})
+  const [certs, setCerts] = useState<string[]>(start?.certifications ?? [])
+  const [source, setSource] = useState<Product['source']>(initial?.source ?? (prefill ? 'import' : 'manual'))
+  const toggleCert = (c: string) => setCerts((cs) => (cs.includes(c) ? cs.filter((x) => x !== c) : [...cs, c]))
   const guard = useGuard()
 
   const nutrients = rowsToNutrients(rows)
@@ -51,6 +69,8 @@ export function ProductEditor({ initial, kind: initialKind, ctx, onDone }: { ini
     rating,
     notes: notes.trim() || undefined,
     tags: tags.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean),
+    certifications: kind === 'supplement' && certs.length ? certs : undefined,
+    barcode: start?.barcode,
     source,
     createdAt: initial?.createdAt ?? Date.now(),
     updatedAt: Date.now(),
@@ -89,10 +109,17 @@ export function ProductEditor({ initial, kind: initialKind, ctx, onDone }: { ini
           />
         </div>
 
+        {prefill && (
+          <p className="rounded-lg bg-(--c-attention)/10 px-3 py-2 text-xs text-(--c-attention)">
+            From Open Food Facts (barcode {prefill.barcode}){prefill.per100g ? ', per 100 g because no serving size was listed' : ''}. Volunteers enter this data: check it against your label, and paste the label below to replace it if it differs.
+          </p>
+        )}
         <LabelPaste
-          defaultOpen={!initial}
-          onUse={(label) => {
+          defaultOpen={!initial && !prefill}
+          onUse={(label, text) => {
             setRows(() => rowsFrom(label.nutrients))
+            const seen = detectCertifications(text)
+            if (seen.length) setCerts((cs) => [...new Set([...cs, ...seen])])
             setForms(formsFromMatched(label.matched))
             if (label.servingLabel) setServing(label.servingLabel)
             if (label.servingsPerContainer) setPerContainer(String(label.servingsPerContainer))
@@ -141,6 +168,30 @@ export function ProductEditor({ initial, kind: initialKind, ctx, onDone }: { ini
                       </span>
                     )}
                   </label>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {kind === 'supplement' && (
+          <div>
+            <div className="mb-1.5 text-xs text-(--dim)">Third-party tested? Tick any seal on the package</div>
+            <div className="flex flex-wrap gap-1.5">
+              {CERTIFICATIONS.map((c) => {
+                const on = certs.includes(c.label)
+                return (
+                  <button
+                    key={c.label}
+                    type="button"
+                    onClick={() => toggleCert(c.label)}
+                    aria-pressed={on}
+                    title={c.what}
+                    className={`rounded-full px-2.5 py-1 text-xs transition ${on ? 'bg-(--c-good)/20 text-(--c-good) shadow-[inset_0_0_0_1px_var(--c-good)]' : 'bg-(--panel-2) text-(--dim) shadow-[inset_0_0_0_1px_var(--line)] hover:text-(--fg)'}`}
+                  >
+                    {on ? '✓ ' : ''}
+                    {c.label}
+                  </button>
                 )
               })}
             </div>

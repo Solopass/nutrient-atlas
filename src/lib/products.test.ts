@@ -5,6 +5,8 @@ import { DEFAULT_PROFILE } from './profile'
 import { formsFromMatched, rateForm } from './products/forms'
 import { csvTemplate, parseProducts, parseProductsCsv, parseProductsJson, productsToJson, resolveNutrientKey } from './products/io'
 import { gradeOf, scoreAll, scoreProduct, type ScoreContext } from './products/score'
+import { cleanBarcode, fromOpenFoodFacts } from './products/openFoodFacts'
+import { detectCertifications, normaliseCertifications } from './products/certifications'
 import { nutrientState } from './status'
 import { personalize } from './targets'
 
@@ -137,4 +139,49 @@ test('the grade matches the rounded score shown', () => {
   const s = scoreProduct(product({ nutrients: { vitD: 3.7 } }), { nutrients, foodStates: null, allStates: null })
   expect(s.overall).toBe(Math.round(s.overall!))
   expect(gradeOf(Math.round(34.6))).toBe('D')
+})
+
+describe('barcode lookup (Open Food Facts)', () => {
+  test('per-100 g product maps units (sodium g → mg) and ignores non-nutrient _serving fields', async () => {
+    const raw = await Bun.file(new URL('../test/fixtures/off-nutella.json', import.meta.url)).json()
+    const p = fromOpenFoodFacts(raw, '3017620422003')!
+    expect(p).toMatchObject({ kind: 'food', brand: 'Nutella', serving: '100 g', per100g: true, kcal: 539, barcode: '3017620422003' })
+    expect(p.nutrients).toMatchObject({ protein: 6.3, satfat: 10.6, addedSugar: 52.13, sodium: 42.8 })
+  })
+  test('per-serving values win; supplements, vitamins in g and seals are read', () => {
+    const p = fromOpenFoodFacts(
+      {
+        product: {
+          product_name: 'Vitamin D3', brands: 'Acme, Acme Labs', serving_size: '1 softgel', serving_quantity: 0.5,
+          categories_tags: ['en:dietary-supplements'], labels: 'USP Verified',
+          nutriments: { 'vitamin-d_serving': 0.00005, 'vitamin-d_100g': 0.01, 'nova-group_serving': 4 },
+        },
+      },
+      '0123456789012',
+    )!
+    expect(p).toMatchObject({ kind: 'supplement', brand: 'Acme', serving: '1 softgel', per100g: false, certifications: ['USP Verified'] })
+    expect(p.nutrients.vitD).toBeCloseTo(50)
+  })
+  test('not found / no nutrients → null; barcode cleaning', () => {
+    expect(fromOpenFoodFacts({ status: 0 }, '1')).toBeNull()
+    expect(fromOpenFoodFacts({ product: { product_name: 'x', nutriments: {} } }, '1')).toBeNull()
+    expect(cleanBarcode(' 0 16000 27528 7 ')).toBe('016000275287')
+    expect(cleanBarcode('12345')).toBeNull()
+  })
+})
+
+describe('certifications', () => {
+  test('detected from label text; sport beats plain NSF; free text normalised', () => {
+    expect(detectCertifications('Look for the NSF Certified for Sport mark')).toEqual(['NSF Certified for Sport'])
+    expect(detectCertifications('USP verified. IFOS 5-star.')).toEqual(['USP Verified', 'IFOS'])
+    expect(normaliseCertifications(['usp', 'informed sport', 'My Lab'])).toEqual(['USP Verified', 'Informed Sport', 'My Lab'])
+  })
+  test('a seal adds a Tested part; none is not a penalty', () => {
+    const base = { nutrients: { vitD: 25 }, servingsPerDay: 1 }
+    const tested = scoreProduct(product({ ...base, certifications: ['USP Verified'] }), ctx(50))
+    const plain = scoreProduct(product(base), ctx(50))
+    expect(part(tested, 'tested').score).toBe(100)
+    expect(part(plain, 'tested').score).toBeNull()
+    expect(tested.overall!).toBeGreaterThanOrEqual(plain.overall!)
+  })
 })

@@ -97,11 +97,11 @@ Still to do:
 
 **Shipped ✅:** Products page: add branded supplements and foods from labels, CSV, shared JSON packs or AI-read photos; personal A–E scores (gaps, dose/UL, forms, density, value); star ratings and notes; compare up to 4.
 
+**Also shipped ✅:** barcode lookup via Open Food Facts (typed digits everywhere; camera where supported), rated foods in Best next food, third-party testing badges with a Tested score, share sheet for product lists.
+
 Next:
-- Barcode lookup (OpenFoodFacts) straight into Products once hosted.
-- Rated products as candidates in Best next food.
-- Shared community lists (needs hosting + sync): publish a product pack, see others' ratings.
-- Third-party testing badges (USP, NSF, Informed Sport) as a field and score bonus.
+- Camera scanning on iPhone (needs a barcode library, since Safari lacks BarcodeDetector) and on phones generally once hosted over HTTPS.
+- Shared community lists and ratings (needs hosting + sync).
 
 ## Engineering backlog
 

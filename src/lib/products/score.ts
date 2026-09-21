@@ -19,7 +19,7 @@ import { QUALITY_SCORE, rateForm, type FormVerdict } from './forms'
  * out and the rest re-weighted, rather than counted as zero.
  */
 
-export type PartKey = 'gaps' | 'dose' | 'density' | 'form' | 'value'
+export type PartKey = 'gaps' | 'dose' | 'density' | 'form' | 'tested' | 'value'
 
 export interface ScorePart {
   key: PartKey
@@ -62,7 +62,7 @@ export interface ScoreContext {
 }
 
 const WEIGHTS: Record<Product['kind'], Partial<Record<PartKey, number>>> = {
-  supplement: { gaps: 0.35, dose: 0.25, form: 0.15, value: 0.25 },
+  supplement: { gaps: 0.35, dose: 0.25, form: 0.15, tested: 0.1, value: 0.25 },
   food: { gaps: 0.3, density: 0.45, value: 0.25 },
 }
 
@@ -202,6 +202,10 @@ export function scoreProduct(p: Product, ctx: ScoreContext): ProductScore {
       detail: forms.length ? forms.map((f) => `${name(f.nutrientId)}: ${f.form}`).join(' · ') : 'No forms on the label to rate',
     })
     for (const f of forms.filter((x) => x.quality === 'poor')) flags.push({ level: 'warn', text: `${name(f.nutrientId)} as ${f.form}: ${f.why}` })
+
+    // Third-party testing: a seal scores; no seal is unknown rather than bad.
+    const certs = p.certifications ?? []
+    parts.push({ key: 'tested', label: 'Tested', score: certs.length ? 100 : null, detail: certs.length ? certs.join(' · ') : 'No third-party testing seal listed' })
   }
 
   // ── Cost ──

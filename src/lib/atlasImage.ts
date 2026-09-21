@@ -86,7 +86,7 @@ export async function atlasPng(svg: SVGSVGElement, info: SnapshotInfo, size = 14
 
 /** Share sheet on phones (where saving to Photos is the natural place), download elsewhere. */
 export async function shareOrDownload(blob: Blob, filename: string) {
-  const file = new File([blob], filename, { type: 'image/png' })
+  const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' })
   if (matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: 'Nutrient Atlas' })

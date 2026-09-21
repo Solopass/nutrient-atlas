@@ -259,6 +259,8 @@ function NextFoodCard({
   // Your saved foods and meals compete with USDA foods (with a small nudge, since you already eat them).
   const myFoods = useLiveQuery(() => db.foods.toArray(), [])
   const myMeals = useLiveQuery(() => db.meals.toArray(), [])
+  // Packaged foods you rated in Products compete too (not the ones you rated 1–2 stars).
+  const myProducts = useLiveQuery(() => db.products.where('kind').equals('food').toArray(), [])
   const own = useMemo<OwnCandidate[]>(
     () => [
       ...(myFoods ?? [])
@@ -269,8 +271,11 @@ function NextFoodCard({
         for (const i of m.items) for (const [k, v] of Object.entries(i.nutrients)) nutrients[k] = (nutrients[k] ?? 0) + (v * i.multiplier) / m.servings
         return { kind: 'meal' as const, key: `meal-${m.id}`, name: m.name, portion: m.servings > 1 ? `1 of ${m.servings} portions` : 'saved meal', nutrients, kcal: itemsKcal(m.items) / m.servings, mealId: m.id }
       }),
+      ...(myProducts ?? [])
+        .filter((p) => (p.rating ?? 3) >= 3)
+        .map((p) => ({ kind: 'product' as const, key: `product-${p.id}`, name: p.brand ? `${p.brand} ${p.name}` : p.name, portion: p.serving, nutrients: p.nutrients, kcal: p.kcal ?? itemsKcal([{ multiplier: 1, nutrients: p.nutrients }]), productId: p.id, grams: p.grams })),
     ],
-    [myFoods, myMeals],
+    [myFoods, myMeals, myProducts],
   )
   const picks = useMemo(() => (usda ? suggestFoods(states, usda, profile.diet, eatenNames, 3, own) : null), [usda, states, profile.diet, eatenNames, own])
 
@@ -287,6 +292,8 @@ function NextFoodCard({
       if (food) await logSavedFood(food, meal, 1, date)
     } else if (s.kind === 'meal' && s.mealId != null) {
       await logSavedMeal(s.mealId, date, meal)
+    } else if (s.kind === 'product') {
+      await logNewFood({ name: s.name, serving: s.portion, grams: s.grams, nutrients: s.nutrients, source: 'custom' }, meal, 1, date)
     }
     setLogged(s.key)
     setTimeout(() => setLogged(null), 2000)
@@ -381,10 +388,10 @@ function NextFoodCard({
   )
 }
 
-function OwnBadge({ kind }: { kind: 'mine' | 'meal' }) {
+function OwnBadge({ kind }: { kind: 'mine' | 'meal' | 'product' }) {
   return (
     <span className="ml-1.5 rounded bg-(--c-above)/15 px-1 align-middle font-mono text-[9.5px] font-normal text-(--c-above) uppercase">
-      {kind === 'meal' ? 'your meal' : 'your food'}
+      {kind === 'meal' ? 'your meal' : kind === 'product' ? 'rated' : 'your food'}
     </span>
   )
 }

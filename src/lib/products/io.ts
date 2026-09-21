@@ -1,6 +1,7 @@
 import { NUTRIENTS } from '../../data/nutrients'
 import { labelUnits } from '../../data/supplementPresets'
 import type { Product } from '../../db/db'
+import { normaliseCertifications } from './certifications'
 
 /**
  * Getting products in and out: a JSON "product pack" (what Export writes and
@@ -100,6 +101,7 @@ function toProduct(raw: Record<string, unknown>, i: number, fallbackKind: Produc
       if (key && str(v)) forms[key.id] = str(v)!
     }
   }
+  const certs = normaliseCertifications(Array.isArray(raw.certifications) ? raw.certifications.map((c) => String(c)) : (str(raw.certifications)?.split(/[;,]/) ?? []))
   const tags = Array.isArray(raw.tags) ? raw.tags.map(str).filter((t): t is string => !!t) : str(raw.tags)?.split(/[;,]/).map((t) => t.trim()).filter(Boolean)
   const rating = num(raw.rating)
 
@@ -118,6 +120,8 @@ function toProduct(raw: Record<string, unknown>, i: number, fallbackKind: Produc
     rating: rating != null ? Math.max(1, Math.min(5, Math.round(rating))) : undefined,
     notes: str(raw.notes),
     tags: tags?.length ? tags : undefined,
+    certifications: certs.length ? certs : undefined,
+    barcode: str(raw.barcode),
   }
 }
 
@@ -176,7 +180,7 @@ export function parseCsv(text: string): string[][] {
 const FIELDS: Record<string, string> = {
   kind: 'kind', type: 'kind', brand: 'brand', name: 'name', product: 'name', serving: 'serving', 'serving size': 'serving',
   grams: 'grams', calories: 'kcal', kcal: 'kcal', 'servings per day': 'servingsPerDay', 'servings per container': 'servingsPerContainer',
-  price: 'price', rating: 'rating', tags: 'tags', notes: 'notes',
+  price: 'price', rating: 'rating', tags: 'tags', notes: 'notes', certifications: 'certifications', certification: 'certifications', barcode: 'barcode',
 }
 
 export function parseProductsCsv(text: string, fallbackKind: Product['kind'] = 'supplement'): ImportResult {
@@ -248,7 +252,8 @@ For EACH product, return its brand, name and label facts as JSON. Rules:
 2. Use exactly the nutrient ids in the table. Leave out anything not on the label; never guess, never put 0 for "not listed".
 3. "forms": the ingredient form shown on the label for each nutrient, e.g. "magnesium glycinate", "cholecalciferol", "methylcobalamin", "zinc picolinate", "triglyceride".
 4. Include servingsPerContainer, and price (number only) if it is visible. For supplements include servingsPerDay from the suggested use (default 1).
-5. Reply with ONLY JSON in this shape:
+5. "certifications": independent testing seals shown on the package, e.g. "USP Verified", "NSF Certified for Sport", "Informed Sport", "IFOS". Only seals you can actually see; otherwise omit.
+6. Reply with ONLY JSON in this shape:
 
 {
   "products": [
@@ -263,7 +268,8 @@ For EACH product, return its brand, name and label facts as JSON. Rules:
       "calories": 0,
       "nutrients": { "vitD": 50, "magnesium": 200 },
       "forms": { "vitD": "cholecalciferol", "magnesium": "magnesium glycinate" },
-      "tags": ["magnesium"]
+      "tags": ["magnesium"],
+      "certifications": ["USP Verified"]
     }
   ]
 }

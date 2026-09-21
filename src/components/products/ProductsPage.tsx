@@ -12,7 +12,11 @@ import { Segmented } from '../settings/Controls'
 import { Flags, PartBars, ScoreBadge, Stars, displayName } from './ProductBits'
 import { ProductCompare } from './ProductCompare'
 import { ProductEditor } from './ProductEditor'
+import { BarcodeLookup } from './BarcodeLookup'
 import { ProductImport, productKey } from './ProductImport'
+import { certificationInfo } from '../../lib/products/certifications'
+import type { OffProduct } from '../../lib/products/openFoodFacts'
+import { shareOrDownload } from '../../lib/atlasImage'
 import { useScoreContext } from './useScoreContext'
 
 type Sort = 'overall' | 'gaps' | 'value' | 'rating' | 'newest'
@@ -28,17 +32,6 @@ const MAX_COMPARE = 4
 
 const partScore = (s: ProductScore, k: string) => s.parts.find((p) => p.key === k)?.score ?? -1
 
-function download(name: string, body: string, type: string) {
-  const url = URL.createObjectURL(new Blob([body], { type }))
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  document.body.append(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 30_000)
-}
-
 /**
  * Products: branded supplements and foods you use or are considering, scored
  * against your own gaps and ranked. Add them from a label, a file, or an AI chat.
@@ -49,7 +42,7 @@ export function ProductsPage() {
   const products = useLiveQuery(() => db.products.toArray(), [])
   const supplements = useLiveQuery(() => db.supplements.toArray(), [])
   const [kind, setKind] = useState<Product['kind']>('supplement')
-  const [mode, setMode] = useState<{ edit: Product | 'new' } | 'import' | null>(null)
+  const [mode, setMode] = useState<{ edit: Product | 'new'; prefill?: OffProduct } | 'import' | 'barcode' | null>(null)
   const [sort, setSort] = useState<Sort>('overall')
   const [tag, setTag] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -132,7 +125,17 @@ export function ProductsPage() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-4 px-4 pb-32 sm:px-6 sm:pb-20">
-        {mode === 'import' ? (
+        {mode === 'barcode' ? (
+          <section className="card p-5">
+            <BarcodeLookup
+              onCancel={() => setMode(null)}
+              onFound={(p) => {
+                setKind(p.kind)
+                setMode({ edit: 'new', prefill: p })
+              }}
+            />
+          </section>
+        ) : mode === 'import' ? (
           <section className="card p-5">
             <ProductImport
               kind={kind}
@@ -144,7 +147,7 @@ export function ProductsPage() {
           </section>
         ) : mode ? (
           <section className="card p-5">
-            <ProductEditor initial={mode.edit === 'new' ? null : mode.edit} kind={kind} ctx={ctx} onDone={() => setMode(null)} />
+            <ProductEditor initial={mode.edit === 'new' ? null : mode.edit} prefill={mode.prefill} kind={kind} ctx={ctx} onDone={() => setMode(null)} />
           </section>
         ) : (
           <>
@@ -165,16 +168,19 @@ export function ProductsPage() {
                 <button onClick={() => setMode({ edit: 'new' })} className="rounded-full bg-(--c-above) px-4 py-1.5 text-[13px] font-semibold text-white hover:brightness-110">
                   + Add
                 </button>
+                <button onClick={() => setMode('barcode')} className="rounded-full border border-(--line) bg-(--panel) px-4 py-1.5 text-[13px] text-(--dim) hover:border-(--c-above) hover:text-(--fg)">
+                  ▣ Barcode
+                </button>
                 <button onClick={() => setMode('import')} className="rounded-full border border-(--line) bg-(--panel) px-4 py-1.5 text-[13px] text-(--dim) hover:border-(--c-above) hover:text-(--fg)">
                   Import · AI · CSV
                 </button>
                 {products.length > 0 && (
                   <button
-                    onClick={() => download(`nutrient-atlas-products-${localDate()}.json`, productsToJson(products), 'application/json')}
+                    onClick={() => shareOrDownload(new Blob([productsToJson(products)], { type: 'application/json' }), `nutrient-atlas-products-${localDate()}.json`)}
                     className="rounded-full border border-(--line) bg-(--panel) px-4 py-1.5 text-[13px] text-(--dim) hover:border-(--c-above) hover:text-(--fg)"
-                    title="Save all products to a file you can share or import elsewhere"
+                    title="Share or save all products as a file others can import"
                   >
-                    Export
+                    Share list
                   </button>
                 )}
               </div>
@@ -255,6 +261,11 @@ export function ProductsPage() {
                             {p.brand && <span className="text-xs text-(--muted)">{p.brand}</span>}
                             <h3 className="text-base leading-tight font-semibold">{p.name}</h3>
                             {p.kind === 'supplement' && isTaking(p) && <span className="rounded-full bg-(--c-good)/15 px-2 py-0.5 text-[10.5px] text-(--c-good)">taking</span>}
+                            {(p.certifications ?? []).map((c) => (
+                              <span key={c} title={certificationInfo(c)?.what ?? 'Third-party tested'} className="rounded-full px-2 py-0.5 text-[10.5px] text-(--c-above) shadow-[inset_0_0_0_1px_var(--c-above)]">
+                                ✓ {c}
+                              </span>
+                            ))}
                             <span className="ml-auto">
                               <Stars value={p.rating} onChange={(rating) => db.products.update(p.id, { rating, updatedAt: Date.now() })} />
                             </span>
