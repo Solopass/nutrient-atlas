@@ -23,11 +23,12 @@ import { hasFood, intakeFromLogs } from './db/logging'
 import { addDays, averageIntake, contributors, dateRange, dayHref, formatDay, groupByDate, isValidDate, nutrientSeries, scoreForLogs, streakEndingAt } from './lib/history'
 import { describeProfile } from './lib/profile'
 import { loadSampleData } from './lib/sampleData'
+import { ensurePersistentStorage } from './lib/storage'
 import { applyDailySupplements } from './lib/supplements'
 import { foodStreak } from './lib/streak'
 import { dayScore, nutrientState } from './lib/status'
 import { useProfile } from './state/profile'
-import type { Category } from './types'
+import type { Category, Intake } from './types'
 
 const OUTER: Category[] = ['bvitamin', 'trace', 'fatty', 'amino']
 const NO_LOGS: LogEntry[] = []
@@ -76,6 +77,10 @@ export default function App() {
     if (firstRun) setInSetup(true)
   }, [firstRun])
   const needsSetup = inSetup || firstRun
+  // Once there's something worth keeping, ask the browser not to clear it under storage pressure.
+  useEffect(() => {
+    if (onboarded) ensurePersistentStorage()
+  }, [onboarded])
 
   const finishSetup = (exit: OnboardingExit) => {
     setInSetup(false)
@@ -91,6 +96,11 @@ export default function App() {
   else if (import.meta.env.DEV && route === 'dev/sample') page = <DevLoadSample />
   else if (import.meta.env.DEV && route === 'dev/crash') page = <DevCrash />
   else page = <Dashboard date={date} openLog={openLog} />
+
+  const title = route === 'welcome' || needsSetup ? 'Setup' : route === 'settings' ? 'Settings' : route === 'history' ? 'History' : date === today ? '' : formatDay(date)
+  useEffect(() => {
+    document.title = title ? `${title} · Nutrient Atlas` : 'Nutrient Atlas'
+  }, [title])
 
   if (onboarded === null) return null // settings still loading; avoid flashing the dashboard before setup
 
@@ -164,6 +174,26 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
   }, [demo, week, byDate, week7, dayLogs])
 
   const states = useMemo(() => nutrients.map((n) => nutrientState(n, intake[n.id])), [nutrients, intake])
+
+  // Previous period for the Atlas tick marks: the 7 days before the week, or the day before.
+  const compare = useMemo(() => {
+    if (demo) return null
+    let prev: Record<string, Intake>
+    let label: string
+    if (week) {
+      const p = averageIntake(byDate, dateRange(addDays(weekEnd, -7), 7))
+      if (!p.loggedDays) return null
+      prev = p.intake
+      label = 'prior week'
+    } else {
+      const prevLogs = byDate.get(addDays(date, -1))
+      if (!hasFood(prevLogs)) return null
+      prev = intakeFromLogs(prevLogs!)
+      label = date === today ? 'yesterday' : 'day before'
+    }
+    const prevStates = nutrients.map((n) => nutrientState(n, prev[n.id]))
+    return { label, score: dayScore(prevStates).score, pct: new Map(prevStates.map((s) => [s.nutrient.id, s.pct])) }
+  }, [demo, week, byDate, weekEnd, date, today, nutrients])
   const score = useMemo(() => dayScore(states), [states])
   const outerCats = showAdvanced ? [...OUTER, 'advanced' as const] : OUTER
   const core = states.filter((s) => CORE_CATEGORIES.includes(s.nutrient.category))
@@ -316,7 +346,7 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
           </div>
         )}
 
-        <StatCards states={states} score={score} onSelect={setSelectedId} history={history14} streak={streak} week={week} date={date} eatenNames={eatenNames} />
+        <StatCards states={states} score={score} onSelect={setSelectedId} history={history14} streak={streak} week={week} date={date} eatenNames={eatenNames} prev={compare} inProgress={date === today} />
 
         {!demo && <InsightsCard report={report} onSelect={setSelectedId} />}
 
@@ -325,7 +355,7 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
             <CategoryPanel states={states} categories={[...CORE_CATEGORIES, ...outerCats]} {...sel} />
           </div>
           <div className="order-1 xl:order-none">
-            <AtlasChart core={core} outer={outer} score={score} compact={compact} {...sel} />
+            <AtlasChart core={core} outer={outer} score={score} compact={compact} compare={compare} {...sel} />
           </div>
           <div className="order-3 xl:order-none">
             <GapsPanel states={states} {...sel} />
@@ -389,6 +419,8 @@ function DevLoadSample() {
       .filter((l) => l.sample === true)
       .count()
       .then((n) => (n ? 0 : loadSampleData()))
+      // Also skip first-run setup, so headless screenshots land on the dashboard.
+      .then(async () => (await db.settings.get('onboarded')) || db.settings.put({ key: 'onboarded', value: new Date().toISOString() }))
       .then(() => (location.hash = '#/'))
   }, [])
   return null

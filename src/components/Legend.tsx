@@ -23,6 +23,16 @@ export function Legend() {
         <span className="text-(--c-attention)">◐</span>
         Partial data
       </span>
+      <span className="flex items-center gap-1.5">
+        <svg width="12" height="12" aria-hidden className="rounded-sm bg-(--c-good)/70">
+          {[3, 9].flatMap((x) => [3, 9].map((y) => <circle key={`${x}${y}`} cx={x} cy={y} r="1.3" fill="#fff" fillOpacity="0.75" />))}
+        </svg>
+        From supplements
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="h-0.5 w-3 rounded-full bg-(--fg)/80" />
+        Previous day / week
+      </span>
     </div>
   )
 }

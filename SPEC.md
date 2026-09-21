@@ -1,4 +1,4 @@
-# Nutrient Atlas: Product Specification v1.9
+# Nutrient Atlas: Product Specification v1.10
 
 What the app is and how it behaves today. For what's next, see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -38,12 +38,14 @@ Answers save as you go. Setup stays open until finished or skipped.
 - **Header:** data source (demo / items logged / 7-day average with days logged), profile summary (links to Settings), **date navigation** (‹ ›, date picker, Today), **Day / 7 days** switch, **+ Log food**, Advanced toggle, History and Settings icons. A setup banner shows until a profile is saved.
 - **Day vs 7 days:** the 7-day view averages the *logged* days (unlogged days are skipped, not zeros). When viewing today, it uses the 7 complete days before today, because today is still in progress. Default is automatic: 7 days once 3+ of the last 7 days are logged; choosing Day or 7 days is remembered.
 - **Empty and demo states:** with no logs at all the dashboard shows demo data and offers **Load sample history** (3 weeks of meals from real USDA foods, flagged and removable). A day with nothing logged shows every nutrient as "no data" plus a log prompt.
-- **Stat cards:** nourishment score with real 14-day sparkline and change vs last day / prior week, streak with 14-day squares, energy vs personal calorie target (daily average in 7-day view), nutrient coverage distribution, **best next food** (see below).
+- **Stat cards:** nourishment score with real 14-day sparkline and change vs yesterday / prior week (hidden for today until the day is over; today is drawn hollow and dashed as "so far"; the footer averages complete days only), streak with 14-day squares, energy vs personal calorie target (daily average in 7-day view), nutrient coverage distribution, **best next food** (see below).
 - **This week · insights:** the top 3 insights for the last 7 complete days (see Weekly insights), linking to the full report.
 - **Nutrient Atlas** (hero), a radial chart:
   - 14 core wedges: macros, vitamins A/C/D/E/K, minerals Ca/Mg/K/Fe/Zn. Radius = % of target; solid to 100%, striped overflow to 150%; dashed UL marker; pulse on deficient wedges.
+  - **Supplement share:** the part of a wedge (or outer-ring gauge) that came from supplements is dotted, above a divider at the food-only level.
+  - **Previous period tick:** a light arc on each core wedge at yesterday's level (day view) or the prior 7 days' average (7-day view).
   - Outer ring: every secondary nutrient as a mini radial gauge, grouped by category.
-  - Hub shows the score, or the hovered nutrient's numbers. Hover dims the other nutrients; click opens detail.
+  - Hub shows the score, or the hovered nutrient's numbers, including food vs supplement % and the previous period's value. Hover dims the other nutrients; click opens detail.
 - **Coverage by category** (heatmap cells) and **Biggest gaps** (remaining amount + best foods) side panels, plus **Flags** (over UL, incomplete data).
 - **Limits** strip ("stay under"): sodium, saturated fat, trans fat, added sugar, cholesterol, caffeine, alcohol as gauges with green → yellow (≥ 80%) → orange (over) zones and amount left / over. Over-limit ones also appear in Flags.
 - **Periodic table** of secondary nutrients: rows per category, liquid-fill tiles.
@@ -121,7 +123,7 @@ The meal defaults from time of day.
 - **AI estimation:** manual (active) / automatic (planned).
 - **Blood tests (optional):** vitamin D 25(OH)D (ng/mL or nmol/L), ferritin (ng/mL = µg/L), B12 (pg/mL or pmol/L), each with test date. Banded deficient / low / normal / high (IOM 2011 for vitamin D: <12, 12–20, 20–50, >50 ng/mL; WHO 2020 for ferritin: <15, 15–30, up to 150 women / 200 men; NIH ODS for B12: <200, 200–300 pg/mL). Shown on a square-root gauge. The detail panel for vitamin D, iron and B12 reads the lab against intake (e.g. "low even though intake is on target" → absorption, sun or losses). Results over 12 months old are flagged. Stored in the profile, so they travel with backups. Never changes targets. See [src/lib/labs.ts](src/lib/labs.ts).
 - **Run setup again** link.
-- **Your data:** counts, export JSON backup, import (replace), load / remove sample history, delete all.
+- **Your data:** counts, storage protection status (the app requests persistent storage once set up, with a Protect button if not granted), last backup date, MB used, export JSON backup, import (replace), load / remove sample history, delete all.
 - **Spreadsheet export (CSV):** daily totals (one row per day, a daily-target row, entry counts, kcal, score, one column per nutrient) or every entry (time, meal, food, servings, type, amounts eaten). Missing data is an empty cell, never 0; UTF-8 BOM for Excel; text that starts with = + - @ is defused. See [src/lib/csv.ts](src/lib/csv.ts).
 - **Live targets preview:** BMR, burn, target kcal, and every nutrient's target, kind and UL.
 

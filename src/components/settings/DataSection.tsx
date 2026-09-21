@@ -1,8 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { db, localDate, type Food, type LogEntry, type SavedMeal, type Setting, type Supplement } from '../../db/db'
 import { dailyTotalsCsv, entriesCsv } from '../../lib/csv'
+import { formatDay } from '../../lib/history'
 import { loadSampleData, removeSampleData } from '../../lib/sampleData'
+import { ensurePersistentStorage, storageStatus } from '../../lib/storage'
 import { useProfile } from '../../state/profile'
 import { Section } from './Controls'
 
@@ -24,8 +26,11 @@ function download(name: string, body: string, type: string) {
   const a = document.createElement('a')
   a.href = url
   a.download = name
+  document.body.append(a)
   a.click()
-  URL.revokeObjectURL(url)
+  a.remove()
+  // Revoking right away can cancel the download in Firefox and Safari.
+  setTimeout(() => URL.revokeObjectURL(url), 30_000)
 }
 
 export function DataSection() {
@@ -39,7 +44,12 @@ export function DataSection() {
     ])
     const days = [...foodDays]
     const samples = await db.logs.filter((l) => l.sample === true).count()
-    return { foods, logs, days: days.length, samples }
+    const lastBackup = (await db.settings.get('lastBackup'))?.value as string | undefined
+    return { foods, logs, days: days.length, samples, lastBackup }
+  }, [])
+  const [storage, setStorage] = useState<Awaited<ReturnType<typeof storageStatus>> | null>(null)
+  useEffect(() => {
+    storageStatus().then(setStorage)
   }, [])
   const [message, setMessage] = useState<{ text: string; tone: 'good' | 'bad' } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -56,6 +66,7 @@ export function DataSection() {
       meals: await db.meals.toArray(),
     }
     download(`nutrient-atlas-${localDate()}.json`, JSON.stringify(data, null, 1), 'application/json')
+    await db.settings.put({ key: 'lastBackup', value: localDate() })
     setMessage({ text: `Exported ${data.logs.length} log entries and ${data.foods.length} foods.`, tone: 'good' })
   }
 
@@ -113,6 +124,31 @@ export function DataSection() {
             <div className="text-[10px] tracking-wider text-(--muted) uppercase">{x.label}</div>
           </div>
         ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg bg-(--panel-2) px-3 py-2 text-xs">
+        {storage?.persisted ? (
+          <span className="text-(--c-good)">✓ Protected: the browser won't clear it to free space</span>
+        ) : (
+          <span className="flex items-center gap-2 text-(--c-attention)">
+            Not protected: the browser may clear it if the disk runs low
+            {storage?.persisted === false && (
+              <button
+                onClick={async () => {
+                  const ok = await ensurePersistentStorage()
+                  setStorage(await storageStatus())
+                  if (!ok) setMessage({ text: 'The browser declined. Installing the app (Add to Home Screen / Install) usually allows it. Keep backups meanwhile.', tone: 'bad' })
+                }}
+                className="rounded-md border border-(--c-attention)/40 px-2 py-0.5 hover:bg-(--c-attention)/10"
+              >
+                Protect
+              </button>
+            )}
+          </span>
+        )}
+        <span className={stats?.logs && !stats.lastBackup ? 'text-(--c-attention)' : 'text-(--muted)'}>
+          Last backup: {stats?.lastBackup ? formatDay(stats.lastBackup, 'short') : 'never'}
+        </span>
+        {storage?.usedMb != null && <span className="text-(--muted)">{storage.usedMb.toFixed(1)} MB used</span>}
       </div>
       <div className="flex flex-wrap gap-2">
         <button onClick={exportData} className="rounded-lg border border-(--line) bg-(--panel-2) px-3.5 py-2 text-sm hover:border-(--c-above)">

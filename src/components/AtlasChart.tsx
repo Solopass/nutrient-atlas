@@ -107,9 +107,19 @@ interface Props {
   selectedId: string | null
   onSelect: (id: string) => void
   compact: boolean
+  /** Previous period (yesterday, or the 7 days before) as % of target per nutrient, drawn as a tick on each wedge. */
+  compare?: { label: string; pct: Map<string, number | null> } | null
 }
 
-export function AtlasChart({ core, outer, score, selectedId, onSelect, compact }: Props) {
+/** Share of the % that came from supplements, and the food-only remainder. */
+function split(state: NutrientState) {
+  const { pct, intake, nutrient: n } = state
+  if (pct == null || !n.target || !intake?.supplement) return { suppPct: 0, foodPct: pct ?? 0 }
+  const suppPct = (intake.supplement / n.target) * 100
+  return { suppPct, foodPct: Math.max(0, pct - suppPct) }
+}
+
+export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, compare = null }: Props) {
   const [hoverId, setHoverId] = useState<string | null>(null)
   const coreSegs = layout(core, 4, 1.2)
   const outerSegs = layout(outer, 3.5, 0.8)
@@ -155,6 +165,10 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact }
             <line x1="0" y1="0" x2="0" y2="5" style={{ stroke: STATUS_META[s].color, strokeWidth: 1.8, strokeOpacity: 0.5 }} />
           </pattern>
         ))}
+        {/* Dots = the part that came from supplements (pills) */}
+        <pattern id="supp" width="5" height="5" patternUnits="userSpaceOnUse">
+          <circle cx="2.5" cy="2.5" r="1.15" style={{ fill: "#fff", fillOpacity: 0.6 }} />
+        </pattern>
         <radialGradient id="bg-glow" gradientUnits="userSpaceOnUse" cx={C} cy={C} r={OUT1 + 40}>
           <stop offset="0" style={{ stopColor: scoreColor(score.score), stopOpacity: 0.1 }} />
           <stop offset="0.6" style={{ stopColor: '#4c8dff', stopOpacity: 0.05 }} />
@@ -213,6 +227,8 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact }
           const dimmed = hoverId != null && !hot
           // A supplement-only UL is not comparable with total intake, so it gets no marker on the wedge.
           const ulPct = n.upperLimit && n.target && n.ulAppliesTo !== 'supplements' ? (n.upperLimit / n.target) * 100 : null
+          const { suppPct, foodPct } = split(state)
+          const prev = compare?.pct.get(n.id) ?? null
           return (
             <g
               key={n.id}
@@ -242,6 +258,18 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact }
                     className={status === 'deficient' ? 'pulse' : undefined}
                   />
                 </>
+              )}
+              {pct != null && suppPct > 0 && rOf(pct) - rOf(foodPct) > 1 && (
+                <g pointerEvents="none">
+                  <path d={sector(rOf(foodPct), rOf(pct), a0, a1)} fill="url(#supp)" />
+                  <path d={arc(rOf(foodPct), a0 + 0.4, a1 - 0.4)} fill="none" stroke="var(--bg)" strokeOpacity="0.8" strokeWidth="1.2" />
+                </g>
+              )}
+              {prev != null && (
+                <g pointerEvents="none">
+                  <path d={arc(rOf(prev), a0 + 1.5, a1 - 1.5)} fill="none" stroke="var(--bg)" strokeOpacity="0.7" strokeWidth="4" strokeLinecap="round" />
+                  <path d={arc(rOf(prev), a0 + 1.5, a1 - 1.5)} fill="none" stroke="var(--fg)" strokeOpacity={hot ? 1 : 0.75} strokeWidth="1.6" strokeLinecap="round" />
+                </g>
               )}
               {pct != null && pct > CAP && (
                 <path
@@ -314,6 +342,8 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact }
             const hot = hoverId === n.id
             const selected = selectedId === n.id
             const fillR = status === 'noTarget' ? OUT1 : pct != null ? OUT0 + ((OUT1 - OUT0) * Math.min(pct, 100)) / 100 : OUT0
+            const { suppPct, foodPct } = split(state)
+            const foodR = OUT0 + ((OUT1 - OUT0) * Math.min(foodPct, 100)) / 100
             return (
               <g key={n.id} {...interact(n.id)} opacity={hoverId != null && !hot ? 0.4 : 1} style={{ transition: 'opacity 200ms' }} aria-label={`${n.name} ${pct != null ? Math.round(pct) + '%' : STATUS_META[status].label}`}>
                 <path d={sector(OUT0, OUT1, a0, a1)} fill="var(--panel-2)" opacity={hot ? 1 : 0.8} />
@@ -321,6 +351,7 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact }
                 {fillR > OUT0 && (
                   <path d={sector(OUT0, fillR, a0, a1)} fill={color} opacity={status === 'noTarget' ? 0.22 : hot ? 0.95 : 0.75} />
                 )}
+                {suppPct > 0 && fillR - foodR > 0.5 && <path d={sector(foodR, fillR, a0, a1)} fill="url(#supp)" pointerEvents="none" />}
                 {(hot || selected) && (
                   <path d={sector(OUT0 - 1.5, OUT1 + 1.5, a0 - 0.2, a1 + 0.2)} fill="none" stroke="var(--fg)" strokeOpacity={selected ? 0.9 : 0.5} strokeWidth="1.3" />
                 )}
@@ -356,12 +387,12 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact }
           </textPath>
         </text>
       ))}
-      <Hub state={hovered} score={score} k={k} />
+      <Hub state={hovered} score={score} k={k} compare={compare} />
     </svg>
   )
 }
 
-function Hub({ state, score, k }: { state: NutrientState | null; score: DayScore; k: number }) {
+function Hub({ state, score, k, compare }: { state: NutrientState | null; score: DayScore; k: number; compare: Props['compare'] }) {
   if (!state) {
     const color = scoreColor(score.score)
     const r = HUB - 26
@@ -396,6 +427,8 @@ function Hub({ state, score, k }: { state: NutrientState | null; score: DayScore
   }
   const { nutrient: n, status, pct, intake } = state
   const meta = STATUS_META[status]
+  const { suppPct, foodPct } = split(state)
+  const prev = compare?.pct.get(n.id) ?? null
   return (
     <g pointerEvents="none">
       <text x={C} y={C - 30} textAnchor="middle" fontSize="10" fill="var(--dim)">
@@ -411,6 +444,16 @@ function Hub({ state, score, k }: { state: NutrientState | null; score: DayScore
       <text x={C} y={C + 34} textAnchor="middle" fontSize="8" letterSpacing="1.2" fill={meta.color}>
         {meta.label.toUpperCase()}
       </text>
+      {suppPct > 0 && (
+        <text x={C} y={C + 49} textAnchor="middle" fontSize="8" fill="var(--dim)" fontFamily="var(--font-mono)">
+          food {Math.round(foodPct)}% · supp {Math.round(suppPct)}%
+        </text>
+      )}
+      {prev != null && (
+        <text x={C} y={C - 46} textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="var(--font-mono)">
+          {compare!.label}: <tspan fill="var(--dim)">{Math.round(prev)}%</tspan>
+        </text>
+      )}
     </g>
   )
 }

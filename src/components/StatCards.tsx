@@ -21,6 +21,10 @@ interface Props {
   date: string
   /** Foods already eaten in the viewed range, so suggestions add variety. */
   eatenNames: string[]
+  /** Score for the previous period (yesterday, or the 7 days before the week); null if it wasn't logged. */
+  prev: { score: number; label: string } | null
+  /** The last day in `history` is today and still being logged. */
+  inProgress: boolean
 }
 
 function Card({ label, children, className = '' }: { label: string; children: ReactNode; className?: string }) {
@@ -32,11 +36,11 @@ function Card({ label, children, className = '' }: { label: string; children: Re
   )
 }
 
-export function StatCards({ states, score, onSelect, history, streak, week, date, eatenNames }: Props) {
+export function StatCards({ states, score, onSelect, history, streak, week, date, eatenNames, prev, inProgress }: Props) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
-      <ScoreCard history={history} current={score.score} week={week} />
-      <StreakCard history={history} streak={streak} />
+      <ScoreCard history={history} current={score.score} week={week} prev={prev} inProgress={inProgress} />
+      <StreakCard history={history} streak={streak} inProgress={inProgress} />
       <EnergyCard states={states} week={week} />
       <CoverageCard score={score} />
       <NextFoodCard states={states} onSelect={onSelect} date={date} eatenNames={eatenNames} />
@@ -44,19 +48,16 @@ export function StatCards({ states, score, onSelect, history, streak, week, date
   )
 }
 
-function ScoreCard({ history, current, week }: { history: (number | null)[]; current: number; week: boolean }) {
+function ScoreCard({ history, current, week, prev, inProgress }: { history: (number | null)[]; current: number; week: boolean; prev: Props['prev']; inProgress: boolean }) {
   const today = current
-  const prevDays = history.slice(0, -1).filter((v): v is number => v != null)
-  const prev = week
-    ? prevDays.length > 7
-      ? prevDays.slice(-14, -7).reduce((a, b) => a + b, 0) / Math.min(7, prevDays.slice(-14, -7).length)
-      : null
-    : prevDays.length
-      ? prevDays[prevDays.length - 1]
-      : null
-  const delta = prev != null ? today - prev : null
+  // A half-logged today vs a whole yesterday would always look like a drop; compare once the day is done.
+  const delta = prev != null && !(inProgress && !week) ? today - prev.score : null
   const logged = history.map((v, i) => [i, v] as const).filter(([, v]) => v != null) as [number, number][]
-  const avg = logged.length ? logged.slice(-7).reduce((a, [, v]) => a + v, 0) / Math.min(7, logged.length) : 0
+  // Average of complete days only: a half-logged today would drag it down.
+  const last = history.length - 1
+  const complete = logged.filter(([i]) => !(inProgress && i === last)).slice(-7)
+  const avg = complete.length ? complete.reduce((a, [, v]) => a + v, 0) / complete.length : null
+  const partial = inProgress && history[last] != null
 
   const W = 220
   const H = 44
@@ -74,7 +75,7 @@ function ScoreCard({ history, current, week }: { history: (number | null)[]; cur
         </span>
         {delta != null && (
           <span className={`font-mono text-xs ${delta >= 0 ? 'text-(--c-good)' : 'text-(--c-deficient)'}`}>
-            {delta >= 0 ? '▲' : '▼'} {Math.abs(Math.round(delta))} vs {week ? 'prior week' : 'last day'}
+            {delta >= 0 ? '▲' : '▼'} {Math.abs(Math.round(delta))} vs {prev!.label}
           </span>
         )}
       </div>
@@ -89,20 +90,30 @@ function ScoreCard({ history, current, week }: { history: (number | null)[]; cur
         {logged.length > 1 && (
           <polygon points={`${x(logged[0][0])},${H} ${line} ${x(logged[logged.length - 1][0])},${H}`} fill="url(#spark)" />
         )}
-        {logged.length > 1 && <polyline points={line} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
-        {logged.map(([i, v]) => (
-          <circle key={i} cx={x(i)} cy={y(v)} r={i === history.length - 1 ? 2.6 : 1.6} fill={scoreColor(v)} vectorEffect="non-scaling-stroke" />
-        ))}
+        {logged.length > 1 && <polyline points={partial ? logged.slice(0, -1).map(([i, v]) => `${x(i)},${y(v)}`).join(' ') : line} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
+        {/* Today so far: dashed and hollow, since the day isn't over */}
+        {partial && logged.length > 1 && (
+          <polyline points={logged.slice(-2).map(([i, v]) => `${x(i)},${y(v)}`).join(' ')} fill="none" stroke={color} strokeOpacity="0.6" strokeWidth="1.5" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
+        )}
+        {logged.map(([i, v]) =>
+          partial && i === last ? (
+            <circle key={i} cx={x(i)} cy={y(v)} r={2.6} fill="var(--panel)" stroke={scoreColor(v)} strokeWidth="1.5">
+              <title>Today so far: {Math.round(v)}%</title>
+            </circle>
+          ) : (
+            <circle key={i} cx={x(i)} cy={y(v)} r={i === last ? 2.6 : 1.6} fill={scoreColor(v)} vectorEffect="non-scaling-stroke" />
+          ),
+        )}
       </svg>
       <div className="mt-1 flex justify-between font-mono text-[10px] text-(--muted)">
         <span>14 days</span>
-        <span>{logged.length ? `7-day avg ${Math.round(avg)}%` : 'no days logged yet'}</span>
+        <span>{partial ? 'today so far ◌ · ' : ''}{avg != null ? `daily avg ${Math.round(avg)}%` : 'no full days yet'}</span>
       </div>
     </Card>
   )
 }
 
-function StreakCard({ history, streak }: { history: (number | null)[]; streak: number }) {
+function StreakCard({ history, streak, inProgress }: { history: (number | null)[]; streak: number; inProgress: boolean }) {
   const strong = history.filter((v) => v != null && v >= 80).length
   const logged = history.filter((v) => v != null).length
 
@@ -113,18 +124,25 @@ function StreakCard({ history, streak }: { history: (number | null)[]; streak: n
         <span className="text-sm text-(--dim)">day streak</span>
       </div>
       <div className="mt-auto grid grid-cols-14 gap-1 pt-3">
-        {history.map((v, i) => (
-          <div
-            key={i}
-            title={v == null ? 'Not logged' : `${Math.round(v)}%`}
-            className="aspect-square rounded-[3px]"
-            style={{
-              background: v == null ? 'transparent' : scoreColor(v),
-              opacity: v == null ? 1 : 0.35 + (v / 100) * 0.65,
-              boxShadow: v == null ? 'inset 0 0 0 1px var(--line)' : i === history.length - 1 ? '0 0 0 1.5px var(--fg)' : undefined,
-            }}
-          />
-        ))}
+        {history.map((v, i) => {
+          const today = inProgress && i === history.length - 1
+          return (
+            <div
+              key={i}
+              title={v == null ? (today ? 'Today: nothing logged yet' : 'Not logged') : today ? `Today so far: ${Math.round(v)}%` : `${Math.round(v)}%`}
+              className="aspect-square rounded-[3px]"
+              style={
+                today
+                  ? { boxShadow: `inset 0 0 0 1.5px ${v == null ? 'var(--dim)' : scoreColor(v)}`, background: v == null ? 'transparent' : `color-mix(in oklab, ${scoreColor(v)} 25%, transparent)` }
+                  : {
+                      background: v == null ? 'transparent' : scoreColor(v),
+                      opacity: v == null ? 1 : 0.35 + (v / 100) * 0.65,
+                      boxShadow: v == null ? 'inset 0 0 0 1px var(--line)' : i === history.length - 1 ? '0 0 0 1.5px var(--fg)' : undefined,
+                    }
+              }
+            />
+          )
+        })}
       </div>
       <div className="mt-2 flex justify-between font-mono text-[10px] text-(--muted)">
         <span>
@@ -253,7 +271,7 @@ function NextFoodCard({ states, onSelect, date, eatenNames }: { states: Nutrient
 
   const [best, ...alts] = picks ?? []
   return (
-    <Card label="Best next food" className="sm:col-span-2 lg:col-span-1">
+    <Card label="Best next food" className="sm:col-span-2 2xl:col-span-1">
       {!picks ? (
         <p className="mt-2 text-sm text-(--muted)">Searching 8,000 foods…</p>
       ) : !best ? (

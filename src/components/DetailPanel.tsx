@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { CATEGORY_LABEL } from '../data/nutrients'
 import { localDate } from '../db/db'
 import { addDays, formatDay } from '../lib/history'
@@ -30,6 +30,14 @@ export function DetailPanel({ state, onClose, history }: Props) {
   }, [onClose])
 
   const open = state != null
+  const asideRef = useRef<HTMLElement>(null)
+  // Move keyboard focus into the panel when it opens, and back to where it was when it closes.
+  useEffect(() => {
+    if (!open) return
+    const before = document.activeElement as HTMLElement | null
+    asideRef.current?.focus({ preventScroll: true })
+    return () => before?.focus?.({ preventScroll: true })
+  }, [open])
 
   return (
     <>
@@ -39,9 +47,15 @@ export function DetailPanel({ state, onClose, history }: Props) {
       />
       {/* z-40: above the phone tab bar (z-30), below the log sheet (z-50). Safe-area padding for notched phones. */}
       <aside
+        ref={asideRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal={open}
+        aria-label={state ? `${state.nutrient.name} details` : undefined}
         aria-hidden={!open}
+        inert={!open}
         style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
-        className={`fixed inset-y-0 right-0 z-40 w-full overflow-y-auto border-l border-(--line) bg-(--panel) shadow-2xl transition-transform duration-300 sm:w-[420px] ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed inset-y-0 right-0 z-40 w-full overflow-y-auto border-l outline-none border-(--line) bg-(--panel) shadow-2xl transition-transform duration-300 sm:w-[420px] ${open ? 'translate-x-0' : 'translate-x-full'}`}
       >
         {state && <PanelBody state={state} onClose={onClose} history={history} />}
       </aside>

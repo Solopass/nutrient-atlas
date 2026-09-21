@@ -64,6 +64,7 @@ export function LogSheet({ open, onClose, todayCount, date, initialTab }: Props)
         aria-modal="true"
         aria-label="Log food"
         aria-hidden={!open}
+        inert={!open}
         className={`card fixed inset-x-0 bottom-0 z-50 mx-auto flex h-[92vh] max-w-3xl flex-col overflow-hidden rounded-b-none transition-transform duration-300 sm:inset-y-6 sm:bottom-auto sm:h-auto sm:rounded-b-[14px] ${open ? 'translate-y-0' : 'pointer-events-none translate-y-[110%] sm:translate-y-[120vh]'}`}
       >
         <div className="flex items-center justify-between gap-3 border-b border-(--line) px-5 py-3.5">
