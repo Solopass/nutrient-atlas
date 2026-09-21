@@ -120,6 +120,11 @@ function PanelBody({ state, onClose, history }: { state: NutrientState; onClose:
                 </span>
               )}
               {n.ulNote && <div className="text-xs text-(--muted)">{n.ulNote}</div>}
+              {intake?.ulAmount != null && n.upperLimit != null && (
+                <div className="text-xs" style={{ color: intake.ulAmount > n.upperLimit ? 'var(--c-over)' : 'var(--dim)' }}>
+                  {fmt(intake.ulAmount)} of {fmt(n.upperLimit)} {n.unit} counts toward it (retinol from foods, plus supplements)
+                </div>
+              )}
             </dd>
           </>
         )}

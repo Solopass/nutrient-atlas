@@ -42,6 +42,8 @@ export interface Intake {
   coverage: number
   /** Portion of `amount` that came from supplements. */
   supplement?: number
+  /** Amount that counts toward the upper limit, when the UL covers only one form (vitamin A: retinol). */
+  ulAmount?: number
 }
 
 export type Status =

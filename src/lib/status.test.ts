@@ -2,6 +2,9 @@ import { describe, expect, test } from 'bun:test'
 import { NUTRIENTS } from '../data/nutrients'
 import type { Intake, Nutrient } from '../types'
 import { dayScore, nutrientState } from './status'
+import type { LogEntry } from '../db/db'
+import { intakeFromLogs } from '../db/logging'
+import { averageIntake, groupByDate } from './history'
 
 const n = (id: string, patch: Partial<Nutrient> = {}) => ({ ...NUTRIENTS.find((x) => x.id === id)!, ...patch })
 const has = (amount: number, coverage = 1, supplement?: number): Intake => ({ amount, coverage, supplement })
@@ -87,5 +90,32 @@ describe('dayScore', () => {
     const s = dayScore(states)
     expect(s.score).toBe(100)
     expect(s.tracked.total).toBe(1)
+  })
+})
+
+describe('vitamin A upper limit counts preformed vitamin A only', () => {
+  const vitA = n('vitA')
+  let id = 0
+  const item = (nutrients: Record<string, number>, extra: Partial<LogEntry> = {}): LogEntry => ({
+    id: ++id, date: '2026-09-20', loggedAt: 0, meal: 'lunch', name: `f${id}`, serving: '1', multiplier: 1, nutrients, ...extra,
+  })
+  const state = (logs: LogEntry[]) => nutrientState(vitA, intakeFromLogs(logs).vitA)
+
+  test('a big day of carrots and sweet potato is above target, not over the limit', () => {
+    expect(state([item({ vitA: 2500, retinol: 0 }), item({ vitA: 1500, retinol: 0 })]).status).toBe('above')
+  })
+  test('liver is over the limit', () => {
+    expect(state([item({ vitA: 5000, retinol: 4950 })]).status).toBe('overLimit')
+  })
+  test('supplement vitamin A counts in full; food without retinol data counts as plant form', () => {
+    const s = state([item({ vitA: 1000 }), item({ vitA: 2500 }, { meal: 'supplement', supplementId: 1 }), item({ vitA: 600, retinol: 600 }, { multiplier: 2 })])
+    expect(s.intake!.ulAmount).toBe(2500 + 1200)
+    expect(s.status).toBe('overLimit')
+  })
+  test('weekly averages keep the UL amount', () => {
+    const logs = [item({ vitA: 4000, retinol: 3200 }, { date: '2026-09-19' }), item({ vitA: 4000, retinol: 0 }, { date: '2026-09-20' })]
+    const { intake } = averageIntake(groupByDate(logs), ['2026-09-19', '2026-09-20'])
+    expect(intake.vitA.ulAmount).toBe(1600)
+    expect(nutrientState(vitA, intake.vitA).status).toBe('above')
   })
 })

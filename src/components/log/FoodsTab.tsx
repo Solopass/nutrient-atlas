@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { db, type Food, type Meal } from '../../db/db'
 import { logSavedFood } from '../../db/logging'
 import { CustomFoodEditor } from './CustomFoodEditor'
+import { useGuard } from '../../lib/useGuard'
 import { NutrientChips } from './NutrientChips'
 import { SavedMealsList } from './SavedMealsList'
 
@@ -11,6 +12,7 @@ const SOURCE_LABEL: Record<Food['source'], string> = { usda: 'USDA', ai: 'AI', c
 export function FoodsTab({ meal, date, onLogged }: { meal: Meal; date: string; onLogged: (msg: string) => void }) {
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState<Food | 'new' | null>(null)
+  const guard = useGuard()
   const foods = useLiveQuery(() => db.foods.orderBy('lastUsedAt').reverse().toArray(), [])
 
   if (!foods) return null
@@ -83,10 +85,12 @@ export function FoodsTab({ meal, date, onLogged }: { meal: Meal; date: string; o
                   </button>
                 )}
                 <button
-                  onClick={async () => {
-                    await logSavedFood(f, meal, 1, date)
-                    onLogged(`Logged ${f.name} to ${meal}`)
-                  }}
+                  onClick={() =>
+                    guard(async () => {
+                      await logSavedFood(f, meal, 1, date)
+                      onLogged(`Logged ${f.name} to ${meal}`)
+                    })
+                  }
                   className="shrink-0 rounded-lg border border-(--line) px-3 py-1.5 text-sm hover:border-(--c-above) hover:text-(--c-above)"
                 >
                   + Log

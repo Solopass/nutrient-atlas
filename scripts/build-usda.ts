@@ -23,6 +23,8 @@ const MAP: Record<string, Source> = {
   carbs: { ids: [[1005, 1], [1050, 1]] },
   fiber: { ids: [[1079, 1]] },
   vitA: { ids: [[1106, 1]] },
+  // Hidden companion to vitA: the vitamin A UL covers preformed vitamin A (retinol) only, not beta-carotene.
+  retinol: { ids: [[1105, 1]] },
   vitC: { ids: [[1162, 1]] },
   vitD: { ids: [[1114, 1], [1110, 1 / 40]] }, // IU → mcg
   vitE: { ids: [[1109, 1]] },

@@ -1,7 +1,7 @@
 import { nameParts, nutrientsForGrams, type UsdaDb, type UsdaFood } from '../data/usda'
 import type { Diet } from './profile'
 import type { NutrientState } from '../types'
-import { amountAgainstUL } from './status'
+import { amountAgainstUL, ulPart } from './status'
 
 export interface FoodSuggestion {
   /** Where the pick comes from: the USDA table, your saved foods, or your saved meals. */
@@ -152,7 +152,7 @@ export function suggestFoods(
       limitCost += (v / limit) * 100 * (before > limit ? 3 : 1)
     }
     for (const s of capped) {
-      const v = add[s.nutrient.id] ?? 0
+      const v = ulPart(s.nutrient.id, add, false)
       const before = amountAgainstUL(s.nutrient, s.intake!)
       const ul = s.nutrient.upperLimit!
       if (before <= ul && before + v > ul) return null

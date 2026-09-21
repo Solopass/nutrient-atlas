@@ -1,11 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Meal } from '../../db/db'
 import { itemsKcal, logSavedMeal } from '../../lib/quickLog'
+import { useGuard } from '../../lib/useGuard'
 import { foodLabel } from './QuickAdd'
 
 /** Saved meals and recipes: log one portion, or delete. */
 export function SavedMealsList({ meal, date, onLogged }: { meal: Meal; date: string; onLogged: (msg: string) => void }) {
   const meals = useLiveQuery(() => db.meals.orderBy('lastUsedAt').reverse().toArray(), [])
+  const guard = useGuard()
   if (!meals || meals.length === 0) return null
 
   return (
@@ -24,10 +26,12 @@ export function SavedMealsList({ meal, date, onLogged }: { meal: Meal; date: str
               <div className="truncate text-xs text-(--muted)">{m.items.map((i) => foodLabel(i.name)).join(', ')}</div>
             </div>
             <button
-              onClick={async () => {
-                await logSavedMeal(m.id, date, meal)
-                onLogged(`Logged ${m.name} to ${meal}`)
-              }}
+              onClick={() =>
+                guard(async () => {
+                  await logSavedMeal(m.id, date, meal)
+                  onLogged(`Logged ${m.name} to ${meal}`)
+                })
+              }
               className="shrink-0 rounded-lg border border-(--line) px-3 py-1.5 text-sm hover:border-(--c-above) hover:text-(--c-above)"
             >
               + Log

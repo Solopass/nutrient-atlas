@@ -1,4 +1,4 @@
-# Nutrient Atlas: Product Specification v1.12
+# Nutrient Atlas: Product Specification v1.13
 
 What the app is and how it behaves today. For what's next, see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -155,6 +155,8 @@ Protein, Carbohydrates, Fat, Fiber · Vitamins A, C, D, E, K · Calcium, Magnesi
 - Energy: Mifflin–St Jeor BMR × activity × (1 + goal adjustment) + pregnancy 340 / lactation 400 kcal.
 - No official target (EPA, DHA, boron, sulfur, lutein, zeaxanthin, CoQ10, creatine): amount only.
 - ULs that apply to supplements only (magnesium, niacin, folic acid, vitamin E) carry a note.
+
+**Vitamin A upper limit:** the UL (3,000 mcg adults) covers preformed vitamin A only. The USDA table carries a hidden `retinol` value per food; the UL is checked against retinol from foods plus all vitamin A from supplements (labels rarely give the form). Foods without retinol data (labels, AI estimates) are treated as plant form. Best-next-food uses the same rule, so carrots are never rejected for vitamin A.
 
 ### Limits ("stay under"; never part of the score)
 | Nutrient | Daily limit | Source |

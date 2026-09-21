@@ -4,6 +4,7 @@ import { logNewFood } from '../../db/logging'
 import { parseMealResponse } from '../../lib/ai/parse'
 import { buildMealPrompt } from '../../lib/ai/prompt'
 import type { Confidence } from '../../lib/ai/types'
+import { useGuard } from '../../lib/useGuard'
 import { NutrientChips } from './NutrientChips'
 
 const DRAFT_KEY = 'ai-log-draft'
@@ -44,6 +45,7 @@ export function AiTab({ meal, date, onLogged }: { meal: Meal; date: string; onLo
   const [excluded, setExcluded] = useState<Set<number>>(new Set())
   const [multipliers, setMultipliers] = useState<Record<number, number>>({})
   const [saving, setSaving] = useState(false)
+  const guard = useGuard()
 
   // Keep an unsent draft so switching tabs or closing the sheet loses nothing.
   useEffect(() => {
@@ -74,9 +76,11 @@ export function AiTab({ meal, date, onLogged }: { meal: Meal; date: string; onLo
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const chosen = items.map((it, i) => ({ it, i })).filter(({ i }) => !excluded.has(i))
+  // Unticked items and items set to 0 servings are skipped (a 0-serving entry would still count as a logged food).
+  const chosen = items.map((it, i) => ({ it, i })).filter(({ i }) => !excluded.has(i) && (multipliers[i] ?? 1) > 0)
 
-  const save = async () => {
+  const save = () => guard(doSave)
+  const doSave = async () => {
     setSaving(true)
     try {
       for (const { it, i } of chosen) {

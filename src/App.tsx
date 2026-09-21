@@ -212,7 +212,8 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
   const outer = outerCats.flatMap((c) => states.filter((s) => s.nutrient.category === c))
 
   // ── Replay: step the Atlas through the last 30 days (rolling 7-day averages in the 7-day view) ──
-  const lapseDates = useMemo(() => dateRange(date, 30), [date])
+  // In the 7-day view the last frame is the same week the Atlas shows (ending yesterday when viewing today).
+  const lapseDates = useMemo(() => dateRange(week ? weekEnd : date, 30), [week, weekEnd, date])
   const [lapse, setLapse] = useState<{ i: number; playing: boolean } | null>(null)
   useEffect(() => setLapse(null), [date, week])
   // Playback steps through logged days only (the slider still reaches every day).

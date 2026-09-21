@@ -36,8 +36,11 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
     const a = document.createElement('a')
     a.href = url
     a.download = `nutrient-atlas-${localDate()}.json`
+    document.body.append(a)
     a.click()
-    URL.revokeObjectURL(url)
+    a.remove()
+    // Revoking right away can cancel the download in Firefox and Safari.
+    setTimeout(() => URL.revokeObjectURL(url), 30_000)
   }
 
   render() {

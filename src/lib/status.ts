@@ -12,9 +12,28 @@ export const STATUS_META: Record<Status, { label: string; range: string; color: 
   noTarget: { label: 'No official target', range: 'amount only', color: 'var(--c-notarget)' },
 }
 
-/** The amount the UL is compared with: supplement intake only for supplement-only ULs. */
+/**
+ * Nutrients whose UL covers one form only. Vitamin A's UL is for preformed
+ * vitamin A (retinol: liver, fish oils, supplements), not beta-carotene from
+ * plants, so a big day of carrots and sweet potato is not "over the limit".
+ */
+export const UL_BASIS: Record<string, string> = { vitA: 'retinol' }
+
+/**
+ * How much of an item's nutrient counts toward the UL. Foods count their
+ * retinol (USDA reports it; other foods are assumed plant-form); supplements
+ * count their whole vitamin A, since labels rarely say which form.
+ */
+export function ulPart(id: string, nutrients: Record<string, number>, supplement: boolean) {
+  const basis = UL_BASIS[id]
+  if (!basis || supplement) return nutrients[id] ?? 0
+  return nutrients[basis] ?? 0
+}
+
+/** The amount the UL is compared with: supplement intake only for supplement-only ULs; retinol only for vitamin A. */
 export function amountAgainstUL(n: Nutrient, intake: Intake) {
-  return n.ulAppliesTo === 'supplements' ? (intake.supplement ?? 0) * (n.ulSupplementScale ?? 1) : intake.amount
+  if (n.ulAppliesTo === 'supplements') return (intake.supplement ?? 0) * (n.ulSupplementScale ?? 1)
+  return intake.ulAmount ?? intake.amount
 }
 
 /** "Stay under" nutrients: green well below the limit, yellow near it, orange over. A limit of 0 means any amount is over. */

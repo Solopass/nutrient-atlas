@@ -50,10 +50,14 @@ export function averageIntake(byDate: Map<string, LogEntry[]>, dates: string[]) 
       s.amount += v.amount
       s.coverage += v.coverage
       s.supplement! += v.supplement ?? 0
+      if (v.ulAmount != null) s.ulAmount = (s.ulAmount ?? 0) + v.ulAmount
     }
   }
   const intake: Record<string, Intake> = {}
-  for (const [id, s] of Object.entries(sums)) intake[id] = { amount: s.amount / logged.length, coverage: s.coverage / logged.length, supplement: s.supplement! / logged.length }
+  for (const [id, s] of Object.entries(sums)) {
+    intake[id] = { amount: s.amount / logged.length, coverage: s.coverage / logged.length, supplement: s.supplement! / logged.length }
+    if (s.ulAmount != null) intake[id].ulAmount = s.ulAmount / logged.length
+  }
   return { intake, loggedDays: logged.length }
 }
 

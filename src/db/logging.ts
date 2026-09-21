@@ -1,3 +1,4 @@
+import { UL_BASIS, ulPart } from '../lib/status'
 import type { Intake } from '../types'
 import { db, localDate, type Food, type FoodSource, type LogEntry, type Meal } from './db'
 
@@ -82,6 +83,7 @@ export function intakeFromLogs(entries: LogEntry[]): Record<string, Intake> {
     let coverage = foods.length ? reported / foods.length : supplement > 0 ? 1 : 0
     if (supplement > 0 && foods.length) coverage = Math.max(coverage, 0.5)
     out[id] = { amount, coverage, supplement }
+    if (UL_BASIS[id]) out[id].ulAmount = entries.reduce((a, e) => a + ulPart(id, e.nutrients, e.supplementId != null) * e.multiplier, 0)
   }
   return out
 }

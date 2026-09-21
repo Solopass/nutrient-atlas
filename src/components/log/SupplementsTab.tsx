@@ -5,6 +5,7 @@ import { SUPPLEMENT_PRESETS } from '../../data/supplementPresets'
 import { formatDay } from '../../lib/history'
 import { createSupplement, deleteSupplement, pauseSupplement, resumeSupplement, setTaken, updateSupplement, type NewSupplement } from '../../lib/supplements'
 import type { Category } from '../../types'
+import { useGuard } from '../../lib/useGuard'
 import { LabelPaste } from './LabelPaste'
 import { NutrientChips } from './NutrientChips'
 import { NutrientRowsEditor, rowsFrom, rowsToNutrients, type Row } from './NutrientRows'
@@ -119,6 +120,7 @@ function SupplementEditor({ initial, onDone }: { initial: Supplement | null; onD
   const [rows, setRows] = useState<Row[]>(initial ? rowsFrom(initial.nutrients) : [])
   const [note, setNote] = useState<string | undefined>()
   const [saving, setSaving] = useState(false)
+  const guard = useGuard()
 
   const applyPreset = (key: string) => {
     const p = SUPPLEMENT_PRESETS.find((x) => x.key === key)!
@@ -133,13 +135,18 @@ function SupplementEditor({ initial, onDone }: { initial: Supplement | null; onD
   const nutrients = rowsToNutrients(rows)
   const valid = name.trim() && dose.trim() && Object.keys(nutrients).length > 0 && dosesPerDay > 0
 
-  const save = async () => {
-    setSaving(true)
-    const data: NewSupplement = { name: name.trim(), dose: dose.trim(), dosesPerDay, schedule, nutrients }
-    if (initial) await updateSupplement(initial.id, data)
-    else await createSupplement(data)
-    onDone()
-  }
+  const save = () =>
+    guard(async () => {
+      setSaving(true)
+      try {
+        const data: NewSupplement = { name: name.trim(), dose: dose.trim(), dosesPerDay, schedule, nutrients }
+        if (initial) await updateSupplement(initial.id, data)
+        else await createSupplement(data)
+        onDone()
+      } finally {
+        setSaving(false)
+      }
+    })
 
   const input = 'rounded-lg border border-(--line) bg-(--panel-2) px-3 py-2 text-sm focus:border-(--c-above) focus:outline-none'
 

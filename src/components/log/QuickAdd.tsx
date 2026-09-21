@@ -5,24 +5,26 @@ import { db, type Meal } from '../../db/db'
 import { logSavedFood } from '../../db/logging'
 import { formatDay } from '../../lib/history'
 import { copyEntries, itemsKcal, logSavedMeal, previousMeal } from '../../lib/quickLog'
+import { useGuard } from '../../lib/useGuard'
 
 /** One-tap logging: repeat a previous meal, saved meals, recent foods. Shown above search. */
 export function QuickAdd({ meal, date, onLogged }: { meal: Meal; date: string; onLogged: (msg: string) => void }) {
   const [busy, setBusy] = useState(false)
+  const guard = useGuard()
   const prev = useLiveQuery(() => previousMeal(date, meal), [date, meal])
   const saved = useLiveQuery(() => db.meals.orderBy('lastUsedAt').reverse().limit(8).toArray(), [])
   const recent = useLiveQuery(() => db.foods.orderBy('lastUsedAt').reverse().limit(10).toArray(), [])
 
-  const run = async (fn: () => Promise<unknown>, msg: string) => {
-    if (busy) return
-    setBusy(true)
-    try {
-      await fn()
-      onLogged(msg)
-    } finally {
-      setBusy(false)
-    }
-  }
+  const run = (fn: () => Promise<unknown>, msg: string) =>
+    guard(async () => {
+      setBusy(true)
+      try {
+        await fn()
+        onLogged(msg)
+      } finally {
+        setBusy(false)
+      }
+    })
 
   if (!prev && !saved?.length && !recent?.length) return null
 

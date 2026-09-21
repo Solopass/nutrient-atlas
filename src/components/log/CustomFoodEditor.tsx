@@ -3,6 +3,7 @@ import { db, localDate, type Food, type LogEntry, type Meal } from '../../db/db'
 import { parseDate } from '../../lib/history'
 import { itemsKcal } from '../../lib/quickLog'
 import type { Category } from '../../types'
+import { useGuard } from '../../lib/useGuard'
 import { LabelPaste } from './LabelPaste'
 import { NutrientChips } from './NutrientChips'
 import { NutrientRowsEditor, rowsFrom, rowsToNutrients, type Row } from './NutrientRows'
@@ -31,12 +32,14 @@ export function CustomFoodEditor({
   const [rows, setRows] = useState<Row[]>(initial ? rowsFrom(initial.nutrients) : [])
   const [calories, setCalories] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+  const guard = useGuard()
 
   const nutrients = rowsToNutrients(rows)
   const macroKcal = itemsKcal([{ multiplier: 1, nutrients }])
   const valid = name.trim() && serving.trim() && Object.keys(nutrients).length > 0
 
-  const save = async (logToo: boolean) => {
+  const save = (logToo: boolean) => guard(() => doSave(logToo))
+  const doSave = async (logToo: boolean) => {
     setSaving(true)
     const now = Date.now()
     const data = { name: name.trim(), serving: serving.trim(), grams: Number(grams) > 0 ? Number(grams) : undefined, nutrients }

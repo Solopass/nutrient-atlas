@@ -2,6 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import type { Meal } from '../../db/db'
 import { logNewFood } from '../../db/logging'
 import { loadUsda, nameParts, nutrientsForGrams, searchUsda, type UsdaDb, type UsdaFood } from '../../data/usda'
+import { useGuard } from '../../lib/useGuard'
 import { NutrientChips } from './NutrientChips'
 import { QuickAdd } from './QuickAdd'
 
@@ -76,7 +77,7 @@ export function SearchTab({ meal, date, onLogged }: { meal: Meal; date: string; 
                   <div className="mt-0.5 flex gap-2 text-[11px] text-(--muted)">
                     <span>{f.category}</span>
                     <span>·</span>
-                    <span>{Object.keys(f.per100g).length} nutrients</span>
+                    <span>{Object.keys(f.per100g).filter((k) => k !== 'retinol').length} nutrients</span>
                   </div>
                 </div>
                 {f.kcal != null && (
@@ -111,18 +112,24 @@ function FoodPicker({ food, meal, date, onLogged, onCancel }: { food: UsdaFood; 
   const [qty, setQty] = useState(1)
   const [customGrams, setCustomGrams] = useState(100)
   const [saving, setSaving] = useState(false)
+  const guard = useGuard()
 
   const unitGrams = choice === -1 ? customGrams : options[choice].grams
   const totalGrams = unitGrams * qty
   const preview = useMemo(() => nutrientsForGrams(food, totalGrams), [food, totalGrams])
   const kcal = food.kcal != null ? Math.round((food.kcal * totalGrams) / 100) : null
 
-  const log = async () => {
-    setSaving(true)
-    const label = choice === -1 ? `${customGrams} g` : `${options[choice].label} (${Math.round(unitGrams)} g)`
-    await logNewFood({ name: food.name, serving: label, grams: unitGrams, nutrients: nutrientsForGrams(food, unitGrams), source: 'usda' }, meal, qty, date)
-    onLogged(`Logged ${food.name.split(',')[0]} to ${meal}`)
-  }
+  const log = () =>
+    guard(async () => {
+      setSaving(true)
+      try {
+        const label = choice === -1 ? `${customGrams} g` : `${options[choice].label} (${Math.round(unitGrams)} g)`
+        await logNewFood({ name: food.name, serving: label, grams: unitGrams, nutrients: nutrientsForGrams(food, unitGrams), source: 'usda' }, meal, qty, date)
+        onLogged(`Logged ${food.name.split(',')[0]} to ${meal}`)
+      } finally {
+        setSaving(false)
+      }
+    })
 
   return (
     <div className="-mx-2 my-1 rounded-lg bg-(--panel-2) p-3">
