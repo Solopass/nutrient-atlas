@@ -1,4 +1,4 @@
-# Nutrient Atlas: Product Specification v1.10
+# Nutrient Atlas: Product Specification v1.11
 
 What the app is and how it behaves today. For what's next, see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -44,6 +44,9 @@ Answers save as you go. Setup stays open until finished or skipped.
   - 14 core wedges: macros, vitamins A/C/D/E/K, minerals Ca/Mg/K/Fe/Zn. Radius = % of target; solid to 100%, striped overflow to 150%; dashed UL marker; pulse on deficient wedges.
   - **Supplement share:** the part of a wedge (or outer-ring gauge) that came from supplements is dotted, above a divider at the food-only level.
   - **Previous period tick:** a light arc on each core wedge at yesterday's level (day view) or the prior 7 days' average (7-day view).
+  - **Colour by status or by meal** (remembered): meal mode stacks each wedge and outer gauge by breakfast / lunch / dinner / snacks / supplements, keeps the status outline, and shows kcal and share per meal above the chart. The hub shows the top 3 meals for a hovered nutrient.
+  - **7-day low–high whisker** (7-day view): dashed radial line from the lowest to the highest logged day, so a steady 100% reads differently from alternating 40% / 160%.
+  - **Keyboard and screen readers:** arrow keys move between nutrients (Home/End jump), Enter opens details; a text summary (score, below-target, over-limit, no-data) is attached to the chart.
   - Outer ring: every secondary nutrient as a mini radial gauge, grouped by category.
   - Hub shows the score, or the hovered nutrient's numbers, including food vs supplement % and the previous period's value. Hover dims the other nutrients; click opens detail.
 - **Coverage by category** (heatmap cells) and **Biggest gaps** (remaining amount + best foods) side panels, plus **Flags** (over UL, incomplete data).

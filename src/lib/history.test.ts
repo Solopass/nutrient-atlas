@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import type { LogEntry } from '../db/db'
 import { hasFood, intakeFromLogs } from '../db/logging'
 import type { Nutrient } from '../types'
-import { addDays, averageIntake, contributors, dateRange, groupByDate, nutrientSeries, streakEndingAt } from './history'
+import { addDays, averageIntake, contributors, dailyRange, dateRange, groupByDate, mealBreakdown, nutrientSeries, streakEndingAt } from './history'
 
 let id = 0
 const entry = (date: string, nutrients: Record<string, number>, extra: Partial<LogEntry> = {}): LogEntry => ({
@@ -97,5 +97,37 @@ describe('itemsKcal', () => {
   test('Atwater factors, including alcohol at 7 kcal/g', async () => {
     const { itemsKcal } = await import('./quickLog')
     expect(itemsKcal([{ multiplier: 2, nutrients: { protein: 10, carbs: 10, fat: 10, alcohol: 14 } }])).toBe(2 * (40 + 40 + 90 + 98))
+  })
+})
+
+describe('Atlas meal split and daily range', () => {
+  const vitC = { id: 'vitC', target: 100 } as Nutrient
+  const days = ['2026-09-01', '2026-09-02', '2026-09-03']
+  const logs = [
+    entry(days[0], { vitC: 40 }, { meal: 'breakfast' }),
+    entry(days[0], { vitC: 20 }, { meal: 'dinner', multiplier: 2 }),
+    pill(days[0], { vitC: 50 }),
+    entry(days[1], { vitC: 30 }, { meal: 'breakfast' }),
+    pill(days[2], { vitC: 50 }), // supplement-only day: not a logged day in the week view
+  ]
+  const byDate = groupByDate(logs)
+
+  test('meal groups average over logged days and add up to the Atlas amount', () => {
+    const m = mealBreakdown(byDate, days)
+    expect(m.breakfast!.vitC).toBe(35)
+    expect(m.dinner!.vitC).toBe(20)
+    expect(m.supplement!.vitC).toBe(25)
+    const total = Object.values(m).reduce((a, g) => a + (g!.vitC ?? 0), 0)
+    expect(total).toBeCloseTo(averageIntake(byDate, days).intake.vitC.amount)
+  })
+
+  test('the day view can split a supplements-only day', () => {
+    expect(mealBreakdown(byDate, [days[2]])).toEqual({})
+    expect(mealBreakdown(byDate, [days[2]], false).supplement!.vitC).toBe(50)
+  })
+
+  test('daily range spans the lowest and highest logged day', () => {
+    expect(dailyRange(vitC, byDate, days)).toEqual({ min: 30, max: 130, days: 2 })
+    expect(dailyRange(vitC, byDate, [days[1]])).toBeNull() // one day is not a range
   })
 })

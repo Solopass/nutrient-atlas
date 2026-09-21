@@ -1,7 +1,8 @@
 import { useState, type FocusEvent, type KeyboardEvent, type PointerEvent, type ReactNode, type SVGProps } from 'react'
 import { CATEGORY_LABEL } from '../data/nutrients'
 import { STATUS_META, fmt, scoreColor, type DayScore } from '../lib/status'
-import type { Category, NutrientState, Status } from '../types'
+import type { LogGroup } from '../db/db'
+import type { Category, Nutrient, NutrientState, Status } from '../types'
 
 // ── Geometry ──────────────────────────────────────────────────────
 const SIZE = 900
@@ -109,6 +110,60 @@ interface Props {
   compact: boolean
   /** Previous period (yesterday, or the 7 days before) as % of target per nutrient, drawn as a tick on each wedge. */
   compare?: { label: string; pct: Map<string, number | null> } | null
+  /** Colour wedges by status, or stack them by the meal each amount came from. */
+  colorBy?: 'status' | 'meal'
+  /** Average amount per meal group per nutrient, for colorBy="meal". */
+  meals?: Partial<Record<LogGroup, Record<string, number>>> | null
+  /** 7-day view: lowest and highest daily % per nutrient, drawn as a whisker. */
+  range?: Map<string, { min: number; max: number; days: number } | null> | null
+}
+
+export const MEAL_ORDER: LogGroup[] = ['breakfast', 'lunch', 'dinner', 'snack', 'supplement']
+export const MEAL_SHORT: Record<LogGroup, string> = { breakfast: 'B', lunch: 'L', dinner: 'D', snack: 'S', supplement: 'Supp' }
+
+/** % of target contributed by each meal group, in eating order. */
+function mealStack(n: Nutrient, meals: Props['meals']) {
+  if (!meals || !n.target) return []
+  return MEAL_ORDER.map((meal) => ({ meal, pct: ((meals[meal]?.[n.id] ?? 0) / n.target!) * 100 })).filter((x) => x.pct > 0)
+}
+
+/** Stacked segments from r(0) outward, one per meal. */
+function MealSegments({ stack, r, a0, a1 }: { stack: ReturnType<typeof mealStack>; r: (pct: number) => number; a0: number; a1: number }) {
+  let acc = 0
+  return (
+    <g pointerEvents="none">
+      {stack.map(({ meal, pct }) => {
+        const r0 = r(acc)
+        acc += pct
+        const r1 = r(acc)
+        if (r1 - r0 < 0.4) return null
+        return (
+          <g key={meal}>
+            <path d={sector(r0, r1, a0, a1)} style={{ fill: `var(--m-${meal})`, fillOpacity: 0.78 }} />
+            {meal === 'supplement' && <path d={sector(r0, r1, a0, a1)} fill="url(#supp)" />}
+            {acc - pct > 0 && <path d={arc(r0, a0, a1)} fill="none" stroke="var(--bg)" strokeWidth="1.2" />}
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
+/** One-paragraph text version of the chart for screen readers. */
+function describe(states: NutrientState[], score: DayScore) {
+  const name = (s: NutrientState) => `${s.nutrient.name} ${s.pct != null ? Math.round(s.pct) + '%' : ''}`.trim()
+  const low = states.filter((s) => s.status === 'deficient' || s.status === 'attention').sort((a, b) => (a.pct ?? 0) - (b.pct ?? 0))
+  const over = states.filter((s) => s.status === 'overLimit')
+  const unknown = states.filter((s) => s.status === 'noData').length
+  return [
+    `Nourishment score ${Math.round(score.score)}%, ${score.tracked.met} of ${score.tracked.total} targets met.`,
+    low.length ? `Below target: ${low.map(name).join(', ')}.` : 'Nothing below target.',
+    over.length ? `Over the upper limit: ${over.map(name).join(', ')}.` : '',
+    unknown ? `${unknown} with no data.` : '',
+    'Use the arrow keys to move between nutrients and Enter for details.',
+  ]
+    .filter(Boolean)
+    .join(' ')
 }
 
 /** Share of the % that came from supplements, and the food-only remainder. */
@@ -119,7 +174,8 @@ function split(state: NutrientState) {
   return { suppPct, foodPct: Math.max(0, pct - suppPct) }
 }
 
-export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, compare = null }: Props) {
+export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, compare = null, colorBy = 'status', meals = null, range = null }: Props) {
+  const byMeal = colorBy === 'meal' && meals != null
   const [hoverId, setHoverId] = useState<string | null>(null)
   const coreSegs = layout(core, 4, 1.2)
   const outerSegs = layout(outer, 3.5, 0.8)
@@ -138,11 +194,20 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
     onFocus: (e: FocusEvent<SVGGElement>) => e.currentTarget.matches(':focus-visible') && setHoverId(id),
     onBlur: () => setHoverId((h) => (h === id ? null : h)),
     onClick: () => onSelect(id),
-    onKeyDown: (e: KeyboardEvent) => {
+    onKeyDown: (e: KeyboardEvent<SVGGElement>) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault()
         onSelect(id)
+        return
       }
+      // Arrow keys walk around the chart (core wedges, then the outer ring); Home/End jump to the ends.
+      const step = ({ ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 } as Record<string, number>)[e.key]
+      if (step == null && e.key !== 'Home' && e.key !== 'End') return
+      e.preventDefault()
+      const all = [...(e.currentTarget.ownerSVGElement?.querySelectorAll<SVGGElement>('g[role=button]') ?? [])]
+      const i = all.indexOf(e.currentTarget)
+      const next = e.key === 'Home' ? 0 : e.key === 'End' ? all.length - 1 : (i + step + all.length) % all.length
+      all[next]?.focus()
     },
     role: 'button',
     tabIndex: 0,
@@ -150,7 +215,8 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
   })
 
   return (
-    <svg viewBox={view} className="mx-auto block h-auto w-full max-w-[880px] select-none" role="group" aria-label="Nutrient Atlas">
+    <svg viewBox={view} className="mx-auto block h-auto w-full max-w-[880px] select-none" role="group" aria-label="Nutrient Atlas" aria-describedby="atlas-desc">
+      <desc id="atlas-desc">{describe([...core, ...outer], score)}</desc>
       <defs>
         {STATUSES.map((s) => (
           <radialGradient key={s} id={`g-${s}`} gradientUnits="userSpaceOnUse" cx={C} cy={C} r={R100}>
@@ -229,6 +295,7 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
           const ulPct = n.upperLimit && n.target && n.ulAppliesTo !== 'supplements' ? (n.upperLimit / n.target) * 100 : null
           const { suppPct, foodPct } = split(state)
           const prev = compare?.pct.get(n.id) ?? null
+          const rg = range?.get(n.id) ?? null
           return (
             <g
               key={n.id}
@@ -240,7 +307,13 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
               <path d={sector(R0, R100, a0, a1)} fill="var(--panel-2)" opacity={hot ? 1 : 0.75} />
               <path d={sector(R100, RCAP, a0, a1)} fill="var(--panel-2)" opacity={hot ? 0.5 : 0.22} />
               {noData && <path d={sector(R0, R100, a0, a1)} fill="url(#hatch)" />}
-              {pct != null && pct > 0 && (
+              {byMeal && pct != null && pct > 0 && (
+                <>
+                  <MealSegments stack={mealStack(n, meals)} r={rOf} a0={a0} a1={a1} />
+                  <path d={arc(rOf(pct), a0 + 0.4, a1 - 0.4)} fill="none" stroke={color} strokeWidth={hot ? 4 : 3} filter="url(#glow)" />
+                </>
+              )}
+              {!byMeal && pct != null && pct > 0 && (
                 <>
                   <path d={sector(R0, rMain, a0, a1)} fill={`url(#g-${status})`} />
                   {pct > 100 && (
@@ -259,10 +332,17 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
                   />
                 </>
               )}
-              {pct != null && suppPct > 0 && rOf(pct) - rOf(foodPct) > 1 && (
+              {!byMeal && pct != null && suppPct > 0 && rOf(pct) - rOf(foodPct) > 1 && (
                 <g pointerEvents="none">
                   <path d={sector(rOf(foodPct), rOf(pct), a0, a1)} fill="url(#supp)" />
                   <path d={arc(rOf(foodPct), a0 + 0.4, a1 - 0.4)} fill="none" stroke="var(--bg)" strokeOpacity="0.8" strokeWidth="1.2" />
+                </g>
+              )}
+              {rg && (
+                <g pointerEvents="none" opacity={hot ? 0.95 : 0.6}>
+                  <line x1={polar(rOf(rg.min), mid).x} y1={polar(rOf(rg.min), mid).y} x2={polar(rOf(rg.max), mid).x} y2={polar(rOf(rg.max), mid).y} stroke="var(--fg)" strokeWidth="1.2" strokeDasharray="1.5 2" />
+                  <path d={arc(rOf(rg.min), mid - 1.6, mid + 1.6)} fill="none" stroke="var(--fg)" strokeWidth="1.6" />
+                  <path d={arc(rOf(rg.max), mid - 1.6, mid + 1.6)} fill="none" stroke="var(--fg)" strokeWidth="1.6" />
                 </g>
               )}
               {prev != null && (
@@ -348,10 +428,12 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
               <g key={n.id} {...interact(n.id)} opacity={hoverId != null && !hot ? 0.4 : 1} style={{ transition: 'opacity 200ms' }} aria-label={`${n.name} ${pct != null ? Math.round(pct) + '%' : STATUS_META[status].label}`}>
                 <path d={sector(OUT0, OUT1, a0, a1)} fill="var(--panel-2)" opacity={hot ? 1 : 0.8} />
                 {status === 'noData' && <path d={sector(OUT0, OUT1, a0, a1)} fill="url(#hatch)" />}
-                {fillR > OUT0 && (
-                  <path d={sector(OUT0, fillR, a0, a1)} fill={color} opacity={status === 'noTarget' ? 0.22 : hot ? 0.95 : 0.75} />
+                {byMeal && status !== 'noTarget' && pct != null ? (
+                  <MealSegments stack={mealStack(n, meals)} r={(p) => OUT0 + ((OUT1 - OUT0) * Math.min(p, 100)) / 100} a0={a0} a1={a1} />
+                ) : (
+                  fillR > OUT0 && <path d={sector(OUT0, fillR, a0, a1)} fill={color} opacity={status === 'noTarget' ? 0.22 : hot ? 0.95 : 0.75} />
                 )}
-                {suppPct > 0 && fillR - foodR > 0.5 && <path d={sector(foodR, fillR, a0, a1)} fill="url(#supp)" pointerEvents="none" />}
+                {!byMeal && suppPct > 0 && fillR - foodR > 0.5 && <path d={sector(foodR, fillR, a0, a1)} fill="url(#supp)" pointerEvents="none" />}
                 {(hot || selected) && (
                   <path d={sector(OUT0 - 1.5, OUT1 + 1.5, a0 - 0.2, a1 + 0.2)} fill="none" stroke="var(--fg)" strokeOpacity={selected ? 0.9 : 0.5} strokeWidth="1.3" />
                 )}
@@ -387,12 +469,26 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
           </textPath>
         </text>
       ))}
-      <Hub state={hovered} score={score} k={k} compare={compare} />
+      <Hub state={hovered} score={score} k={k} compare={compare} meals={byMeal ? meals : null} range={hovered ? (range?.get(hovered.nutrient.id) ?? null) : null} />
     </svg>
   )
 }
 
-function Hub({ state, score, k, compare }: { state: NutrientState | null; score: DayScore; k: number; compare: Props['compare'] }) {
+function Hub({
+  state,
+  score,
+  k,
+  compare,
+  meals,
+  range,
+}: {
+  state: NutrientState | null
+  score: DayScore
+  k: number
+  compare: Props['compare']
+  meals: Props['meals']
+  range: { min: number; max: number; days: number } | null
+}) {
   if (!state) {
     const color = scoreColor(score.score)
     const r = HUB - 26
@@ -444,9 +540,26 @@ function Hub({ state, score, k, compare }: { state: NutrientState | null; score:
       <text x={C} y={C + 34} textAnchor="middle" fontSize="8" letterSpacing="1.2" fill={meta.color}>
         {meta.label.toUpperCase()}
       </text>
-      {suppPct > 0 && (
+      {meals && state.pct != null ? (
+        <text x={C} y={C + 49} textAnchor="middle" fontSize="8" fill="var(--dim)" fontFamily="var(--font-mono)">
+          {mealStack(n, meals)
+            .sort((a, b) => b.pct - a.pct)
+            .slice(0, 3)
+            .map((m, i) => (
+              <tspan key={m.meal} style={{ fill: `var(--m-${m.meal})` }}>
+                {i ? ' · ' : ''}
+                {MEAL_SHORT[m.meal]} {Math.round((m.pct / state.pct!) * 100)}%
+              </tspan>
+            ))}
+        </text>
+      ) : suppPct > 0 && (
         <text x={C} y={C + 49} textAnchor="middle" fontSize="8" fill="var(--dim)" fontFamily="var(--font-mono)">
           food {Math.round(foodPct)}% · supp {Math.round(suppPct)}%
+        </text>
+      )}
+      {range && (
+        <text x={C} y={C + 61} textAnchor="middle" fontSize="7.5" fill="var(--muted)" fontFamily="var(--font-mono)">
+          range {Math.round(range.min)}–{Math.round(range.max)}% · {range.days}d
         </text>
       )}
       {prev != null && (

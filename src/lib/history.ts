@@ -1,4 +1,4 @@
-import { localDate, type LogEntry } from '../db/db'
+import { localDate, type LogEntry, type LogGroup } from '../db/db'
 import { hasFood, intakeFromLogs } from '../db/logging'
 import type { Intake, Nutrient } from '../types'
 import { dayScore, nutrientState } from './status'
@@ -102,3 +102,27 @@ export function streakEndingAt(byDate: Map<string, LogEntry[]>, end: string) {
 
 /** Dashboard link for a date (today has the bare route). */
 export const dayHref = (date: string) => (date === localDate() ? '#/' : `#/day/${date}`)
+
+/**
+ * Average daily amount per meal group (breakfast … supplement) over the
+ * food-logged days in `dates`, the same days `averageIntake` uses, so the
+ * groups add up to the Atlas amount.
+ */
+export function mealBreakdown(byDate: Map<string, LogEntry[]>, dates: string[], requireFood = true) {
+  // The day view shows a supplements-only day too, so it passes requireFood = false.
+  const logged = dates.filter((d) => (requireFood ? hasFood(byDate.get(d)) : !!byDate.get(d)?.length))
+  const out: Partial<Record<LogGroup, Record<string, number>>> = {}
+  for (const d of logged) {
+    for (const l of byDate.get(d)!) {
+      const g = (out[l.meal] ??= {})
+      for (const [id, v] of Object.entries(l.nutrients)) g[id] = (g[id] ?? 0) + (v * l.multiplier) / logged.length
+    }
+  }
+  return out
+}
+
+/** Lowest and highest daily % of target across the logged days in `dates`; null with under 2 days of data. */
+export function dailyRange(n: Nutrient, byDate: Map<string, LogEntry[]>, dates: string[]) {
+  const v = nutrientSeries(n, byDate, dates).filter((x): x is number => x != null && Number.isFinite(x))
+  return v.length >= 2 ? { min: Math.min(...v), max: Math.max(...v), days: v.length } : null
+}

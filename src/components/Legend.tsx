@@ -33,6 +33,12 @@ export function Legend() {
         <span className="h-0.5 w-3 rounded-full bg-(--fg)/80" />
         Previous day / week
       </span>
+      <span className="flex items-center gap-1.5">
+        <svg width="12" height="12" aria-hidden className="text-(--fg)/80">
+          <path d="M2 1.5h8M6 1.5v9M2 10.5h8" stroke="currentColor" strokeWidth="1.3" fill="none" strokeDasharray="0" />
+        </svg>
+        7-day low–high
+      </span>
     </div>
   )
 }

@@ -97,7 +97,7 @@ Still to do:
 
 - **Tests ✅:** `bun test` (~100 tests). Next: component tests for the Atlas and log sheet, and a Playwright smoke test of the first-run → log → dashboard flow.
 - Mock data now only powers the demo dashboard (`mockIntake`, `mockHistory`).
-- Accessibility pass: keyboard navigation of the Atlas, screen-reader summary of the day, colour-blind safe status palette (add shape/pattern cues).
+- Accessibility pass: keyboard navigation of the Atlas ✅, screen-reader summary ✅. Still to do: colour-blind safe status palette (add shape/pattern cues).
 - Light theme.
 - Performance: move USDA parsing to a Web Worker if load time on low-end phones is noticeable.
 - **Error boundary ✅:** crash screen with Reload, Back to Atlas and Download backup (reads the database directly). Test with `#/dev/crash` in dev.

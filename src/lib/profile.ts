@@ -1,6 +1,6 @@
 import type { LabId, LabResult } from './labs'
 
-export type Sex ='male' | 'female'
+export type Sex = 'male' | 'female'
 export type LifeStage = 'none' | 'pregnant' | 'lactating'
 export type Activity = 'sedentary' | 'light' | 'moderate' | 'active' | 'athlete'
 export type Goal = 'health' | 'muscle' | 'fatloss' | 'endurance'
@@ -20,6 +20,8 @@ export interface Profile {
   showAdvanced: boolean
   /** Atlas range; null = automatic (week once 3+ of the last 7 days are logged) */
   atlasRange: 'day' | 'week' | null
+  /** Atlas wedge colouring: by status (default) or stacked by meal. */
+  atlasColor: 'status' | 'meal'
   /** Manual overrides; null = use the calculated value. */
   energyOverride: number | null
   proteinPerKgOverride: number | null
@@ -39,6 +41,7 @@ export const DEFAULT_PROFILE: Profile = {
   units: 'metric',
   showAdvanced: false,
   atlasRange: null,
+  atlasColor: 'status',
   energyOverride: null,
   proteinPerKgOverride: null,
   labs: {},

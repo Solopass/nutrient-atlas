@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { AtlasChart } from './components/AtlasChart'
+import { AtlasToolbar } from './components/AtlasToolbar'
 import { DetailPanel, type NutrientHistory } from './components/DetailPanel'
 import { HistoryPage } from './components/history/HistoryPage'
 import { CalendarIcon, GearIcon } from './components/icons'
@@ -20,7 +21,7 @@ import { SCORE_HISTORY } from './data/mockHistory'
 import { CORE_CATEGORIES } from './data/nutrients'
 import { db, localDate, type LogEntry } from './db/db'
 import { hasFood, intakeFromLogs } from './db/logging'
-import { addDays, averageIntake, contributors, dateRange, dayHref, formatDay, groupByDate, isValidDate, nutrientSeries, scoreForLogs, streakEndingAt } from './lib/history'
+import { addDays, averageIntake, contributors, dailyRange, dateRange, dayHref, formatDay, groupByDate, isValidDate, mealBreakdown, nutrientSeries, scoreForLogs, streakEndingAt } from './lib/history'
 import { describeProfile } from './lib/profile'
 import { loadSampleData } from './lib/sampleData'
 import { ensurePersistentStorage } from './lib/storage'
@@ -174,6 +175,13 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
   }, [demo, week, byDate, week7, dayLogs])
 
   const states = useMemo(() => nutrients.map((n) => nutrientState(n, intake[n.id])), [nutrients, intake])
+
+  // Per-meal split for the "By meal" colouring, and the daily low–high range for the 7-day whiskers.
+  const meals = useMemo(
+    () => (demo ? null : week ? mealBreakdown(byDate, week7) : mealBreakdown(new Map([[date, dayLogs]]), [date], false)),
+    [demo, week, byDate, week7, date, dayLogs],
+  )
+  const range = useMemo(() => (demo || !week ? null : new Map(nutrients.map((n) => [n.id, dailyRange(n, byDate, week7)]))), [demo, week, nutrients, byDate, week7])
 
   // Previous period for the Atlas tick marks: the 7 days before the week, or the day before.
   const compare = useMemo(() => {
@@ -355,7 +363,8 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
             <CategoryPanel states={states} categories={[...CORE_CATEGORIES, ...outerCats]} {...sel} />
           </div>
           <div className="order-1 xl:order-none">
-            <AtlasChart core={core} outer={outer} score={score} compact={compact} compare={compare} {...sel} />
+            {!demo && <AtlasToolbar colorBy={profile.atlasColor} onChange={(atlasColor) => update({ atlasColor })} meals={meals} week={week} />}
+            <AtlasChart core={core} outer={outer} score={score} compact={compact} compare={compare} colorBy={profile.atlasColor} meals={meals} range={range} {...sel} />
           </div>
           <div className="order-3 xl:order-none">
             <GapsPanel states={states} {...sel} />

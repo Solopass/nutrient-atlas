@@ -36,6 +36,13 @@
   --k-amino: #d8b4fe;
   --k-advanced: #94a3b8;
   --k-limit: #fb923c;
+
+  /* meals (Atlas "by meal" colouring) */
+  --m-breakfast: #fbbf24;
+  --m-lunch: #2dd4bf;
+  --m-dinner: #a78bfa;
+  --m-snack: #f472b6;
+  --m-supplement: #cbd5e1;
 }
 
 body {

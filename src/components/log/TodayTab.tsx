@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { db, LOG_GROUPS, type LogEntry } from '../../db/db'
 import { itemsKcal, saveMeal } from '../../lib/quickLog'
 import { NutrientChips } from './NutrientChips'
@@ -8,14 +8,41 @@ export function TodayTab({ date }: { date: string }) {
   const entries = useLiveQuery(() => db.logs.where('date').equals(date).sortBy('loggedAt'), [date])
   const [saving, setSaving] = useState<string | null>(null) // meal group being saved
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
+  const [removed, setRemoved] = useState<LogEntry | null>(null)
+  // The undo offer fades after a few seconds.
+  useEffect(() => {
+    if (!removed) return
+    const t = setTimeout(() => setRemoved(null), 6000)
+    return () => clearTimeout(t)
+  }, [removed])
+  const undoBar = removed && (
+    <div role="status" className="sticky top-0 z-10 mb-3 flex items-center gap-3 rounded-lg bg-(--panel-2) px-3 py-2 text-sm shadow-[inset_0_0_0_1px_var(--line)]">
+      <span className="min-w-0 flex-1 truncate text-(--dim)">Removed {removed.name}</span>
+      <button
+        onClick={() => {
+          db.logs.add(removed)
+          setRemoved(null)
+        }}
+        className="font-medium text-(--c-above) hover:underline"
+      >
+        Undo
+      </button>
+    </div>
+  )
   if (!entries) return null
 
   if (entries.length === 0) {
-    return <div className="py-12 text-center text-sm text-(--muted)">Nothing logged on this day yet.</div>
+    return (
+      <div>
+        {undoBar}
+        <div className="py-12 text-center text-sm text-(--muted)">Nothing logged on this day yet.</div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-5">
+      {undoBar}
       {savedMsg && <p className="rounded-lg bg-(--c-good)/10 px-3 py-2 text-sm text-(--c-good)">{savedMsg}</p>}
       {LOG_GROUPS.map((meal) => {
         const rows = entries.filter((e) => e.meal === meal)
@@ -63,17 +90,12 @@ export function TodayTab({ date }: { date: string }) {
                       <NutrientChips nutrients={e.nutrients} multiplier={e.multiplier} max={5} />
                     </div>
                   </div>
-                  <input
-                    type="number"
-                    min={0.25}
-                    step={0.25}
-                    value={+e.multiplier.toFixed(2)}
-                    onChange={(ev) => db.logs.update(e.id, { multiplier: Math.max(0, Number(ev.target.value) || 0) })}
-                    className="w-14 shrink-0 rounded border border-(--line) bg-(--bg) px-1.5 py-0.5 font-mono text-xs"
-                    aria-label={`Servings of ${e.name}`}
-                  />
+                  <ServingsInput entry={e} />
                   <button
-                    onClick={() => db.logs.delete(e.id)}
+                    onClick={() => {
+                      db.logs.delete(e.id)
+                      setRemoved(e)
+                    }}
                     className="shrink-0 rounded px-2 py-1 text-(--muted) hover:bg-(--panel-2) hover:text-(--c-deficient)"
                     aria-label={`Remove ${e.name}`}
                   >
@@ -89,9 +111,35 @@ export function TodayTab({ date }: { date: string }) {
   )
 }
 
+/** Servings box that keeps its own text while typing, so clearing it to type a new number doesn't save 0. */
+function ServingsInput({ entry: e }: { entry: LogEntry }) {
+  const shown = String(+e.multiplier.toFixed(2))
+  const [text, setText] = useState(shown)
+  useEffect(() => setText((t) => (Number(t) === e.multiplier ? t : shown)), [e.multiplier, shown])
+  const valid = (v: string) => v.trim() !== '' && Number(v) > 0 && Number(v) <= 100
+  return (
+    <input
+      type="number"
+      inputMode="decimal"
+      min={0.25}
+      step={0.25}
+      value={text}
+      onChange={(ev) => {
+        setText(ev.target.value)
+        if (valid(ev.target.value)) db.logs.update(e.id, { multiplier: Number(ev.target.value) })
+      }}
+      onBlur={() => !valid(text) && setText(shown)}
+      aria-invalid={!valid(text)}
+      className={`w-14 shrink-0 rounded border bg-(--bg) px-1.5 py-0.5 font-mono text-xs ${valid(text) ? 'border-(--line)' : 'border-(--c-deficient)'}`}
+      aria-label={`Servings of ${e.name}`}
+    />
+  )
+}
+
 function SaveMealForm({ entries, defaultName, onCancel, onSaved }: { entries: LogEntry[]; defaultName: string; onCancel: () => void; onSaved: (name: string) => void }) {
   const [name, setName] = useState(defaultName)
   const [servings, setServings] = useState(1)
+  const busy = useRef(false)
   const input = 'rounded-lg border border-(--line) bg-(--bg) px-2.5 py-1.5 text-sm focus:border-(--c-above) focus:outline-none'
 
   return (
@@ -99,7 +147,8 @@ function SaveMealForm({ entries, defaultName, onCancel, onSaved }: { entries: Lo
       className="mb-2 flex flex-wrap items-end gap-2 rounded-lg bg-(--panel-2) p-3"
       onSubmit={async (ev) => {
         ev.preventDefault()
-        if (!name.trim()) return
+        if (!name.trim() || busy.current) return
+        busy.current = true
         await saveMeal(name.trim(), entries, servings)
         onSaved(name.trim())
       }}
