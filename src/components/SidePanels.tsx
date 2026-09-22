@@ -81,7 +81,7 @@ export function CategoryPanel({ states, categories, selectedId, onSelect }: Comm
 /** The lowest nutrients, ranked, with how much is left and what to eat. */
 export function GapsPanel({ states, selectedId, onSelect }: Common) {
   const gaps = states
-    .filter((s) => s.pct != null && s.pct < 80 && s.nutrient.category !== 'advanced' && s.nutrient.category !== 'limit')
+    .filter((s) => s.pct != null && s.pct < 80 && s.nutrient.category !== 'advanced' && s.nutrient.category !== 'limit' && !s.nutrient.sunCovered)
     .sort((a, b) => a.pct! - b.pct!)
     .slice(0, 7)
   const flags = states.filter((s) => s.status === 'overLimit')

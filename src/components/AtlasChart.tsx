@@ -410,6 +410,7 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
               </text>
               <text x={polar(R0 + 34 * k, mid).x} y={polar(R0 + 34 * k, mid).y + 9 * k} textAnchor="middle" dominantBaseline="central" fill={color} fontSize={11 * k} fontWeight="600" fontFamily="var(--font-mono)" style={HALO}>
                 {pct != null ? `${Math.round(pct)}%` : '—'}
+                {n.sunCovered && <tspan fill="var(--c-attention)"> ☀</tspan>}
               </text>
               {status === 'overLimit' && (
                 <g transform={`translate(${polar(RCAP - 16, mid).x} ${polar(RCAP - 16, mid).y})`}>

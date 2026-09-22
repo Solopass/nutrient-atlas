@@ -1,11 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo } from 'react'
-import { db, localDate } from '../../db/db'
+import { db } from '../../db/db'
 import { hasFood } from '../../db/logging'
 import { addDays, averageIntake, dateRange, groupByDate } from '../../lib/history'
 import type { ScoreContext } from '../../lib/products/score'
 import { nutrientState } from '../../lib/status'
 import { useProfile } from '../../state/profile'
+import { useDayComplete } from '../../state/dayComplete'
 
 /**
  * What products are scored against: the last 7 complete days, once from food
@@ -13,7 +14,7 @@ import { useProfile } from '../../state/profile'
  */
 export function useScoreContext(): ScoreContext & { loggedDays: number } {
   const { nutrients, profile } = useProfile()
-  const end = addDays(localDate(), -1)
+  const end = useDayComplete().lastComplete
   const logs = useLiveQuery(() => db.logs.where('date').between(addDays(end, -6), end, true, true).toArray(), [end])
   return useMemo(() => {
     const dates = dateRange(end, 7)

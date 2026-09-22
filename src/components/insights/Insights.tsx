@@ -117,11 +117,16 @@ export function WeeklyReportCard({ report }: { report: WeeklyReport | null }) {
                 {Math.round(report.score ?? 0)}
                 <span className="text-lg text-(--muted)">%</span>
               </span>
-              {hasPrev && report.prevScore != null && (
-                <span className={`font-mono text-xs ${report.score! >= report.prevScore ? 'text-(--c-good)' : 'text-(--c-deficient)'}`}>
-                  {report.score! >= report.prevScore ? '▲' : '▼'} {Math.abs(Math.round(report.score! - report.prevScore))} vs last week
-                </span>
-              )}
+              {hasPrev && report.prevScore != null && (() => {
+                const d = Math.round(report.score! - report.prevScore)
+                return d === 0 ? (
+                  <span className="font-mono text-xs text-(--muted)">= same as last week</span>
+                ) : (
+                  <span className={`font-mono text-xs ${d > 0 ? 'text-(--c-good)' : 'text-(--c-deficient)'}`}>
+                    {d > 0 ? '▲' : '▼'} {Math.abs(d)} vs last week
+                  </span>
+                )
+              })()}
             </div>
             <table className="mt-3 w-full text-xs">
               <thead>

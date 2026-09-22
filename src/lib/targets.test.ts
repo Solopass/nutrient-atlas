@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { DEFAULT_PROFILE, energyTarget, proteinPerKg, type Profile } from './profile'
-import { personalize } from './targets'
+import { personalize, sunCoversVitaminD } from './targets'
+import { dayScore, nutrientState } from './status'
 
 const targets = (patch: Partial<Profile> = {}) => {
   const p = { ...DEFAULT_PROFILE, ...patch }
@@ -99,5 +100,24 @@ describe('limits', () => {
     expect(targets().caffeine.target).toBe(400)
     expect(targets({ sex: 'female', lifeStage: 'pregnant' }).caffeine.target).toBe(200)
     expect(targets({ age: 16 }).caffeine.target).toBe(100)
+  })
+})
+
+describe('vitamin D sun setting', () => {
+  const vitD = (p: Partial<typeof DEFAULT_PROFILE>) => personalize({ ...DEFAULT_PROFILE, ...p }).find((n) => n.id === 'vitD')!
+  test('off by default; on marks vitamin D sun-covered without changing the target', () => {
+    expect(vitD({}).sunCovered).toBeUndefined()
+    expect(vitD({ sunExposure: true })).toMatchObject({ sunCovered: true, target: vitD({}).target })
+  })
+  test('a low vitamin D blood test overrides it; a normal one keeps it', () => {
+    expect(sunCoversVitaminD({ ...DEFAULT_PROFILE, sunExposure: true, labs: { vitD: { value: 15, unit: 'ng/mL', date: '2026-09-01' } } })).toBe(false)
+    expect(sunCoversVitaminD({ ...DEFAULT_PROFILE, sunExposure: true, labs: { vitD: { value: 90, unit: 'nmol/L', date: '2026-09-01' } } })).toBe(true)
+  })
+  test('sun-covered vitamin D neither lowers the score nor counts in coverage', () => {
+    const on = personalize({ ...DEFAULT_PROFILE, sunExposure: true })
+    const off = personalize(DEFAULT_PROFILE)
+    const full = (ns: typeof on) => ns.map((n) => nutrientState(n, n.target ? { amount: n.id === 'vitD' ? 0.1 : n.target, coverage: 1 } : undefined))
+    expect(dayScore(full(on)).score).toBeGreaterThan(dayScore(full(off)).score)
+    expect(dayScore(full(on)).tracked.total).toBe(dayScore(full(off)).tracked.total - 1)
   })
 })

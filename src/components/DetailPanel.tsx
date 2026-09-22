@@ -164,6 +164,12 @@ function PanelBody({ state, onClose, history }: { state: NutrientState; onClose:
         </p>
       )}
 
+      {n.sunCovered && (
+        <p className="mt-4 rounded-md border border-(--c-attention)/40 bg-(--c-attention)/5 p-3 text-sm text-(--dim)">
+          <span className="text-(--c-attention)">☀ Sun setting on.</span> You said you get regular sun, so vitamin D from food isn't counted in your score or gaps. Skin makes most people's vitamin D in spring and summer, less in winter or at high latitudes. A blood test (25(OH)D) is the real answer; a low result switches this off.
+        </p>
+      )}
+
       <LabCard state={state} />
 
       {history ? (

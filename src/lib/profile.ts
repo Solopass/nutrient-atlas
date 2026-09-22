@@ -24,6 +24,8 @@ export interface Profile {
   atlasColor: 'status' | 'meal'
   /** ISO currency code for product prices. */
   currency: string
+  /** Gets regular midday sun on skin, so vitamin D from food isn't counted as a gap. */
+  sunExposure: boolean
   /** Manual overrides; null = use the calculated value. */
   energyOverride: number | null
   proteinPerKgOverride: number | null
@@ -45,6 +47,7 @@ export const DEFAULT_PROFILE: Profile = {
   atlasRange: null,
   atlasColor: 'status',
   currency: 'USD',
+  sunExposure: false,
   energyOverride: null,
   proteinPerKgOverride: null,
   labs: {},

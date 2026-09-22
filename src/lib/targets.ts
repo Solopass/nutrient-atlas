@@ -1,6 +1,7 @@
 import { NUTRIENTS } from '../data/nutrients'
 import type { Nutrient, TargetKind } from '../types'
 import { GOALS, energyTarget, proteinPerKg, type Profile } from './profile'
+import { LAB_BY_ID, labBand, toCanonical } from './labs'
 
 /**
  * Personal daily targets from the Dietary Reference Intakes (National
@@ -92,17 +93,32 @@ export function driOverrides(p: Profile): Record<string, Override> {
   return o
 }
 
+/**
+ * "I get regular sun" covers vitamin D, unless a blood test says otherwise:
+ * a low 25(OH)D result means the sun isn't doing the job, so food counts again.
+ */
+export function sunCoversVitaminD(p: Profile) {
+  if (!p.sunExposure) return false
+  const lab = p.labs?.vitD
+  if (!lab) return true
+  const band = labBand(LAB_BY_ID.get('vitD')!, toCanonical(LAB_BY_ID.get('vitD')!, lab), p)
+  return band === 'ok' || band === 'high'
+}
+
 /** Nutrient definitions with this profile's targets and upper limits applied. */
 export function personalize(p: Profile): Nutrient[] {
   const o = driOverrides(p)
+  const sun = sunCoversVitaminD(p)
   return NUTRIENTS.map((n) => {
     const x = o[n.id]
-    if (!x) return n
+    const sunCovered = sun && n.id === 'vitD' ? { sunCovered: true } : null
+    if (!x) return sunCovered ? { ...n, ...sunCovered } : n
     return {
       ...n,
       target: x.target !== undefined ? x.target : n.target,
       targetKind: x.kind ?? n.targetKind,
       upperLimit: x.ul ?? n.upperLimit,
+      ...sunCovered,
     }
   })
 }

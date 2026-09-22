@@ -9,6 +9,7 @@ import { HistoryPage } from './components/history/HistoryPage'
 import { ProductsPage } from './components/products/ProductsPage'
 import { CalendarIcon, GearIcon, ShelfIcon } from './components/icons'
 import { Legend } from './components/Legend'
+import { WhatsNew } from './components/WhatsNew'
 import { Logo } from './components/Logo'
 import { LimitsPanel } from './components/LimitsPanel'
 import { PeriodicTable } from './components/PeriodicTable'
@@ -34,6 +35,7 @@ import { dayScore, nutrientState, scoreColor } from './lib/status'
 import { atlasPng, shareOrDownload } from './lib/atlasImage'
 import { itemsKcal } from './lib/quickLog'
 import { useProfile } from './state/profile'
+import { setTodayComplete, useDayComplete } from './state/dayComplete'
 import type { Category, Intake } from './types'
 
 const OUTER: Category[] = ['bvitamin', 'trace', 'fatty', 'amino']
@@ -167,8 +169,10 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
   const demo = totalLogs === 0
   const byDate = useMemo(() => groupByDate(logs ?? []), [logs])
 
-  // Today is still in progress, so the 7-day view of today uses the 7 complete days before it.
-  const weekEnd = date === today ? addDays(date, -1) : date
+  // Today is still in progress (unless marked complete), so the 7-day view of today uses the 7 complete days before it.
+  const { todayDone, inProgress: isInProgress } = useDayComplete()
+  const inProgress = isInProgress(date)
+  const weekEnd = inProgress ? addDays(date, -1) : date
   const week7 = useMemo(() => dateRange(weekEnd, 7), [weekEnd])
   const loggedIn7 = week7.filter((d) => hasFood(byDate.get(d))).length
   // With no complete logged day in the window yet (e.g. your first day), a 7-day view would be empty; show the day instead.
@@ -338,7 +342,7 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
       dates,
       series: nutrientSeries(selected.nutrient, byDate, dates),
       contributors: contributors(rangeLogs, selected.nutrient.id),
-      rangeLabel: week ? (date === today ? '7 days before today' : 'last 7 days') : formatDay(date, 'short').toLowerCase(),
+      rangeLabel: week ? (inProgress ? '7 days before today' : 'last 7 days') : formatDay(date, 'short').toLowerCase(),
     }
   }, [demo, selected, date, week, week7, byDate])
 
@@ -371,7 +375,7 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
               {demo ? (
                 <span className="text-(--c-attention)">Demo data. Log a meal to see yours</span>
               ) : week ? (
-                `7-day average · ${loggedDays} of 7 days logged${date === today ? ' · today not included' : ''}`
+                `7-day average · ${loggedDays} of 7 days logged${inProgress ? ' · today not included' : date === today ? ' · including today' : ''}`
               ) : (
                 `${foodCount} item${foodCount === 1 ? '' : 's'} logged${suppCount ? ` · ${suppCount} supplement${suppCount === 1 ? '' : 's'}` : ''}`
               )}
@@ -385,6 +389,16 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
 
         <div className="flex flex-wrap items-center gap-2">
           <DateNav date={date} today={today} />
+          {date === today && !demo && (
+            <button
+              onClick={() => setTodayComplete(!todayDone)}
+              aria-pressed={todayDone}
+              title={todayDone ? 'Today counts as a finished day. Tap to undo.' : "Done eating today? Count today in the 7-day view and averages now instead of at midnight."}
+              className={`rounded-full px-3 py-1.5 text-[13px] transition ${todayDone ? 'bg-(--c-good)/15 text-(--c-good) shadow-[inset_0_0_0_1px_var(--c-good)]' : 'bg-(--panel) text-(--dim) shadow-[inset_0_0_0_1px_var(--line)] hover:text-(--fg)'}`}
+            >
+              {todayDone ? '✓ Day complete' : 'Done for today'}
+            </button>
+          )}
           <div className="inline-flex rounded-full bg-(--panel) p-0.5 shadow-[inset_0_0_0_1px_var(--line)]" role="group" aria-label="Atlas range">
             {(['day', 'week'] as const).map((r) => (
               <button
@@ -471,7 +485,21 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
           </div>
         )}
 
-        <StatCards states={states} score={score} onSelect={setSelectedId} history={history14} streak={streak} week={week} date={date} eatenNames={eatenNames} prev={compare} inProgress={date === today} onPreview={onPreview} pinnedPreview={pinnedPreview?.key ?? null} />
+        <StatCards states={states} score={score} onSelect={setSelectedId} history={history14} streak={streak} week={week} date={date} eatenNames={eatenNames} prev={compare} inProgress={inProgress} onPreview={onPreview} pinnedPreview={pinnedPreview?.key ?? null} />
+
+        {!demo && !isDefault && (
+          <WhatsNew
+            onReplay={() => {
+              startLapse()
+              document.getElementById('atlas-svg')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }}
+            onByMeal={() => {
+              update({ atlasColor: 'meal' })
+              document.getElementById('atlas-svg')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }}
+            onShowAtlas={() => document.getElementById('atlas-svg')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+          />
+        )}
 
         {!demo && <InsightsCard report={report} onSelect={setSelectedId} />}
 

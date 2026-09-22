@@ -82,11 +82,14 @@ function ScoreCard({ history, current, week, prev, inProgress }: { history: (num
           {Math.round(today)}
           <span className="text-lg text-(--muted)">%</span>
         </span>
-        {delta != null && (
-          <span className={`font-mono text-xs ${delta >= 0 ? 'text-(--c-good)' : 'text-(--c-deficient)'}`}>
-            {delta >= 0 ? '▲' : '▼'} {Math.abs(Math.round(delta))} vs {prev!.label}
-          </span>
-        )}
+        {delta != null &&
+          (Math.round(delta) === 0 ? (
+            <span className="font-mono text-xs text-(--muted)">= same as {prev!.label}</span>
+          ) : (
+            <span className={`font-mono text-xs ${delta > 0 ? 'text-(--c-good)' : 'text-(--c-deficient)'}`}>
+              {delta > 0 ? '▲' : '▼'} {Math.abs(Math.round(delta))} vs {prev!.label}
+            </span>
+          ))}
       </div>
       <svg viewBox={`0 -2 ${W} ${H + 4}`} className="mt-auto h-12 w-full overflow-visible" preserveAspectRatio="none">
         <defs>

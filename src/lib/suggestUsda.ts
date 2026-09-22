@@ -123,7 +123,7 @@ export function suggestFoods(
   count = 3,
   own: OwnCandidate[] = [],
 ): FoodSuggestion[] {
-  const gaps = states.filter((s) => s.pct != null && s.pct < 80 && s.nutrient.target && s.nutrient.category !== 'limit' && s.nutrient.category !== 'advanced')
+  const gaps = states.filter((s) => s.pct != null && s.pct < 80 && s.nutrient.target && s.nutrient.category !== 'limit' && s.nutrient.category !== 'advanced' && !s.nutrient.sunCovered)
   if (gaps.length === 0) return []
   const limits = states.filter((s) => s.nutrient.category === 'limit' && s.nutrient.target)
   const capped = states.filter((s) => s.nutrient.upperLimit != null && s.nutrient.ulAppliesTo !== 'supplements' && s.intake)

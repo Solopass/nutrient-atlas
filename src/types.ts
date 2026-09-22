@@ -31,6 +31,8 @@ export interface Nutrient {
   ulAppliesTo?: 'supplements'
   /** Converts supplement amounts into the UL's basis (folate: mcg DFE → mcg folic acid). */
   ulSupplementScale?: number
+  /** Covered by sunlight for this person (vitamin D with the "regular sun" setting): shown, but not counted as a gap. */
+  sunCovered?: boolean
   why: string
   lowSigns: string
   sources: string[]

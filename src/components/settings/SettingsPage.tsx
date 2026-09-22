@@ -17,6 +17,7 @@ import {
   type Units,
 } from '../../lib/profile'
 import { fmt } from '../../lib/status'
+import { sunCoversVitaminD } from '../../lib/targets'
 import { useProfile } from '../../state/profile'
 import type { Category } from '../../types'
 import { Logo } from '../Logo'
@@ -99,6 +100,23 @@ export function SettingsPage() {
                 )}
               </Field>
             </div>
+            <Field
+              label="Sun"
+              hint={
+                sunCoversVitaminD(p) || !p.sunExposure
+                  ? 'Skin makes vitamin D from midday sun (roughly 10–30 minutes on arms and face, most days, spring to autumn). With regular sun, vitamin D from food is shown but not counted as a gap.'
+                  : 'Your vitamin D blood test is low, so vitamin D counts as a gap even with this on.'
+              }
+            >
+              <Segmented<'little' | 'regular'>
+                value={p.sunExposure ? 'regular' : 'little'}
+                options={[
+                  { value: 'little', label: 'Little sun' },
+                  { value: 'regular', label: 'Regular sun' },
+                ]}
+                onChange={(v) => update({ sunExposure: v === 'regular' })}
+              />
+            </Field>
             {p.sex === 'female' && (
               <Field label="Life stage" hint="Pregnancy and lactation raise targets for folate, iron, iodine, choline, protein and more.">
                 <Segmented<LifeStage>

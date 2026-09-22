@@ -66,7 +66,8 @@ export function nutrientState(nutrient: Nutrient, intake: Intake | undefined): N
 const MET: Status[] = ['good', 'above', 'overLimit']
 const SCORED: Category[] = ['macro', 'vitamin', 'mineral', 'bvitamin', 'trace', 'fatty', 'amino']
 
-export const isScorable = (s: NutrientState) => s.status !== 'noData' && s.status !== 'noTarget'
+// Sun-covered vitamin D is shown but doesn't count either way.
+export const isScorable = (s: NutrientState) => s.status !== 'noData' && s.status !== 'noTarget' && !s.nutrient.sunCovered
 export const isMet = (s: NutrientState) => MET.includes(s.status)
 
 export interface DayScore {

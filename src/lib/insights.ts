@@ -39,7 +39,7 @@ export interface WeeklyReport {
 
 const ANIMAL = /\b(beef|pork|chicken|turkey|lamb|veal|fish|salmon|tuna|cod|shrimp|egg|duck|oyster|clam|mussel|sardine|liver|meat|ham|bacon|sausage|venison|mackerel|trout|halibut|crab|lobster)\b/i
 
-const scorable = (s: NutrientState) => s.nutrient.target != null && s.nutrient.category !== 'limit' && s.nutrient.category !== 'advanced'
+const scorable = (s: NutrientState) => s.nutrient.target != null && s.nutrient.category !== 'limit' && s.nutrient.category !== 'advanced' && !s.nutrient.sunCovered
 
 /** Nutrients that each diet or life stage commonly falls short on. */
 function riskList(p: Profile): { label: string; ids: string[]; why: string } | null {
@@ -185,6 +185,7 @@ export function weeklyReport(opts: {
       .map((id) => byId.get(id)!)
       .filter(Boolean)
       .filter((s) => {
+        if (s.nutrient.sunCovered) return false
         if (s.nutrient.id === 'dha') {
           const epaDha = (cur.intake.dha?.amount ?? 0) + (cur.intake.epa?.amount ?? 0)
           return epaDha < 250 && !suppCovers('dha')

@@ -10,6 +10,7 @@ import type { Category, Nutrient } from '../../types'
 import { Logo } from '../Logo'
 import { foodStreak } from '../../lib/streak'
 import { WeeklyReportCard, useWeeklyReport } from '../insights/Insights'
+import { useDayComplete } from '../../state/dayComplete'
 
 const HEAT_DAYS = 28
 const ROW_CATS: Category[] = ['macro', 'vitamin', 'mineral', 'bvitamin', 'trace', 'fatty', 'amino']
@@ -33,13 +34,14 @@ export function HistoryPage() {
     return m
   }, [byDate, nutrients])
 
-  const report = useWeeklyReport(logs, addDays(today, -1))
+  const { lastComplete, todayDone } = useDayComplete()
+  const report = useWeeklyReport(logs, lastComplete)
   const streak = useLiveQuery(() => foodStreak(today), [today]) // not capped by the 90 days loaded here
 
   const last30 = dateRange(today, 30)
   const logged30 = last30.filter((d) => scores.has(d))
-  // Today is still in progress: count it as logged, but keep it out of averages.
-  const complete30 = logged30.filter((d) => d !== today)
+  // Today is still in progress (unless marked complete): count it as logged, but keep it out of averages.
+  const complete30 = logged30.filter((d) => d !== today || todayDone)
   const avg30 = complete30.length ? complete30.reduce((a, d) => a + scores.get(d)!, 0) / complete30.length : null
   const strong30 = complete30.filter((d) => scores.get(d)! >= 80).length
   const bestStreak = useMemo(() => {
@@ -81,9 +83,9 @@ export function HistoryPage() {
         <div className="grid gap-5 lg:grid-cols-[400px_minmax(0,1fr)] lg:items-start">
           <div className="space-y-5">
             <MonthCalendar month={month} setMonth={setMonth} today={today} scores={scores} byDate={byDate} />
-            <PersistentGaps nutrients={nutrients} byDate={byDate} today={today} />
+            <PersistentGaps nutrients={nutrients} byDate={byDate} end={lastComplete} />
           </div>
-          <NutrientHeatmap nutrients={nutrients} byDate={byDate} today={today} />
+          <NutrientHeatmap nutrients={nutrients} byDate={byDate} today={today} todayDone={todayDone} />
         </div>
       </main>
     </div>
@@ -184,8 +186,8 @@ function MonthCalendar({
 }
 
 /** Nutrients most often under 80% on logged days over the last 28 days. */
-function PersistentGaps({ nutrients, byDate, today }: { nutrients: Nutrient[]; byDate: Map<string, LogEntry[]>; today: string }) {
-  const dates = dateRange(addDays(today, -1), HEAT_DAYS) // complete days only
+function PersistentGaps({ nutrients, byDate, end }: { nutrients: Nutrient[]; byDate: Map<string, LogEntry[]>; end: string }) {
+  const dates = dateRange(end, HEAT_DAYS) // complete days only
   const { intake, loggedDays } = averageIntake(byDate, dates)
   const rows = nutrients
     .filter((n) => n.target != null && ROW_CATS.includes(n.category))
@@ -251,9 +253,9 @@ const cellStyle = (n: Nutrient, v: number) =>
 const pctLabel = (v: number) => (v === Infinity ? 'over' : `${Math.round(v)}%`)
 
 /** Rows = nutrients, columns = the last 28 days, colour = % of target (or of the limit, reversed). GitHub-heatmap style. */
-function NutrientHeatmap({ nutrients, byDate, today }: { nutrients: Nutrient[]; byDate: Map<string, LogEntry[]>; today: string }) {
+function NutrientHeatmap({ nutrients, byDate, today, todayDone }: { nutrients: Nutrient[]; byDate: Map<string, LogEntry[]>; today: string; todayDone: boolean }) {
   const dates = dateRange(today, HEAT_DAYS)
-  const { intake } = averageIntake(byDate, dates.filter((d) => d !== today)) // avg column excludes today (in progress)
+  const { intake } = averageIntake(byDate, dates.filter((d) => d !== today || todayDone)) // avg column excludes today while in progress
   const rows = [...ROW_CATS, 'limit' as const].flatMap((c) => nutrients.filter((n) => n.category === c && n.target != null))
   const avgOf = (n: Nutrient) => {
     const i = intake[n.id]

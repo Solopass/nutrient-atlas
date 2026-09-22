@@ -100,7 +100,7 @@ export function scoreProduct(p: Product, ctx: ScoreContext): ProductScore {
     let offered = 0
     for (const s of baseline) {
       const add = pct[s.nutrient.id]
-      if (!add || !scorable(s.nutrient) || s.nutrient.category === 'advanced') continue
+      if (!add || !scorable(s.nutrient) || s.nutrient.category === 'advanced' || s.nutrient.sunCovered) continue
       const now = s.pct ?? 0
       offered += Math.min(add, 100)
       closed += Math.min(add, Math.max(0, 100 - now))
