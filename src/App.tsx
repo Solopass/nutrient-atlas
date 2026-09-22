@@ -82,7 +82,12 @@ export default function App() {
   useEffect(() => {
     if (firstRun) setInSetup(true)
   }, [firstRun])
-  const needsSetup = inSetup || firstRun
+  // A backup restored from Settings brings its own "onboarded" flag: setup is done.
+  useEffect(() => {
+    if (onboarded) setInSetup(false)
+  }, [onboarded])
+  const dashboardRoute = route === '' || route.startsWith('day/')
+  const needsSetup = (inSetup && dashboardRoute) || firstRun
   // Once there's something worth keeping, ask the browser not to clear it under storage pressure.
   useEffect(() => {
     if (onboarded) ensurePersistentStorage()

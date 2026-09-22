@@ -2,11 +2,21 @@
 
 A nutrition tracker built around micronutrient coverage: a radial "Nutrient Atlas" of core nutrients, surrounded by a periodic table of secondary ones, with personal DRI targets, USDA food search and AI meal estimation. See [SPEC.md](SPEC.md) and the [roadmap](docs/ROADMAP.md).
 
-## Run
+## Use it on this PC (daily)
+
+Double-click **`Nutrient Atlas.cmd`**. It builds the latest version, serves it in the background on http://localhost:4173 and opens it in its own window.
+
+- **Install it once:** in that window's Edge menu, choose *Apps → Install Nutrient Atlas* (or the install icon in the address bar). You get a Start menu / taskbar app that opens in its own window and **works even when the server isn't running** (the app is cached for offline use). Installed apps also get protected storage.
+- **After updates:** run `Nutrient Atlas.cmd` again. The installed app picks up the new version automatically.
+- **Your data lives with `localhost:4173` in that browser.** Development runs on other ports (5173 dev, 5174 test), so work in progress never touches it. Back up now and then (Settings → Export backup).
+- **Moving from another browser or port:** Export backup there, then in the new place use **Restore a backup…** on the setup screen (or Settings → Import backup).
+
+## Develop
 
 ```bash
 bun install
-bun run dev
+bun run dev        # http://localhost:5173, hot reload
+bun run app        # production build served on http://localhost:4173 (what the launcher runs)
 ```
 
 ## Tests

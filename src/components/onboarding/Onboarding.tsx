@@ -21,6 +21,7 @@ import {
 } from '../../lib/profile'
 import { fmt } from '../../lib/status'
 import { createSupplement } from '../../lib/supplements'
+import { describeBackup, readBackup, restoreBackup } from '../../lib/backup'
 import { useProfile } from '../../state/profile'
 import { Logo } from '../Logo'
 import { ChoiceCards, Field, NumberField, Segmented } from '../settings/Controls'
@@ -108,9 +109,12 @@ export function Onboarding({ onFinish }: { onFinish: (exit: OnboardingExit) => v
                 ← Back
               </button>
             ) : (
-              <button onClick={() => finish('sample')} className="px-2 py-2 text-sm text-(--muted) hover:text-(--fg)">
-                Just explore with sample data
-              </button>
+              <span className="flex flex-wrap gap-x-1">
+                <button onClick={() => finish('sample')} className="px-2 py-2 text-sm text-(--muted) hover:text-(--fg)">
+                  Explore with sample data
+                </button>
+                <RestoreButton onDone={() => onFinish('atlas')} />
+              </span>
             )}
             <button onClick={next} disabled={busy} className="rounded-full disabled:opacity-60 bg-(--c-above) px-5 py-2 text-sm font-semibold text-white shadow-[0_0_24px_-6px_var(--c-above)] hover:brightness-110">
               {step === 0 ? 'Get started' : STEPS[step] === 'Supplements' ? (picked.size ? `Add ${picked.size} & continue` : 'None, continue') : 'Continue'}
@@ -119,6 +123,41 @@ export function Onboarding({ onFinish }: { onFinish: (exit: OnboardingExit) => v
         )}
       </div>
     </div>
+  )
+}
+
+/** Restore a backup file from Settings → Export (moving to a new browser or the installed app). */
+function RestoreButton({ onDone }: { onDone: () => void }) {
+  const ref = useRef<HTMLInputElement>(null)
+  const [error, setError] = useState<string | null>(null)
+  return (
+    <>
+      <button onClick={() => ref.current?.click()} className="px-2 py-2 text-sm text-(--muted) hover:text-(--fg)">
+        Restore a backup…
+      </button>
+      <input
+        ref={ref}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        onChange={async (e) => {
+          const f = e.target.files?.[0]
+          e.target.value = ''
+          if (!f) return
+          try {
+            const data = await readBackup(f)
+            if (!confirm(`Restore this ${describeBackup(data)}?`)) return
+            await restoreBackup(data)
+            // Older backups may predate the "onboarded" flag; a restored profile means setup is done.
+            if (!data.settings?.some((s) => s.key === 'onboarded')) await db.settings.put({ key: 'onboarded', value: new Date().toISOString() })
+            onDone()
+          } catch (err) {
+            setError((err as Error).message)
+          }
+        }}
+      />
+      {error && <span className="w-full px-2 text-xs text-(--c-deficient)">{error}</span>}
+    </>
   )
 }
 

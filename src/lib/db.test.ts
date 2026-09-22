@@ -160,3 +160,26 @@ describe('quick log', () => {
     expect((await db.meals.get(id as number))?.useCount).toBe(1)
   })
 })
+
+describe('backup', () => {
+  test('export → restore round-trips every table and replaces what was there', async () => {
+    const { makeBackup, readBackup, restoreBackup, describeBackup } = await import('./backup')
+    await db.settings.put({ key: 'profile', value: { age: 27 } })
+    await createSupplement(D3)
+    await db.products.add({ kind: 'supplement', brand: 'B', name: 'Mag', serving: '1', nutrients: { magnesium: 200 }, source: 'manual', createdAt: 0, updatedAt: 0 } as never)
+    const snap = await makeBackup()
+    const file = new File([JSON.stringify(snap)], 'b.json')
+    await db.logs.add({ date: today, loggedAt: 0, meal: 'lunch', name: 'extra', serving: '1', multiplier: 1, nutrients: {} } as Omit<LogEntry, 'id'> as LogEntry)
+    const data = await readBackup(file)
+    expect(describeBackup(data)).toContain('1 supplements')
+    await restoreBackup(data)
+    expect((await db.logs.toArray()).map((l) => l.name)).not.toContain('extra') // the extra entry is gone
+    expect((await db.products.toArray()).map((p) => p.name)).toEqual(['Mag'])
+    expect((await db.settings.get('profile'))?.value).toEqual({ age: 27 })
+  })
+  test('rejects files that are not backups', async () => {
+    const { readBackup } = await import('./backup')
+    await expect(readBackup(new File(['not json'], 'x.json'))).rejects.toThrow(/isn't/)
+    await expect(readBackup(new File([JSON.stringify({ app: 'other' })], 'x.json'))).rejects.toThrow(/isn't/)
+  })
+})

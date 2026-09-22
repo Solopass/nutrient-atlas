@@ -1,26 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useRef, useState } from 'react'
-import { db, localDate, type Food, type LogEntry, type Product, type SavedMeal, type Setting, type Supplement } from '../../db/db'
+import { db, localDate } from '../../db/db'
+import { describeBackup, makeBackup, readBackup, restoreBackup } from '../../lib/backup'
 import { dailyTotalsCsv, entriesCsv } from '../../lib/csv'
 import { formatDay } from '../../lib/history'
 import { loadSampleData, removeSampleData } from '../../lib/sampleData'
 import { ensurePersistentStorage, storageStatus } from '../../lib/storage'
 import { useProfile } from '../../state/profile'
 import { Section } from './Controls'
-
-const EXPORT_VERSION = 4
-
-interface ExportFile {
-  app: 'nutrient-atlas'
-  version: number
-  exportedAt: string
-  settings: Setting[]
-  foods: Food[]
-  logs: LogEntry[]
-  supplements?: Supplement[]
-  meals?: SavedMeal[]
-  products?: Product[]
-}
 
 function download(name: string, body: string, type: string) {
   const url = URL.createObjectURL(new Blob([body], { type }))
@@ -56,17 +43,7 @@ export function DataSection() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const exportData = async () => {
-    const data: ExportFile = {
-      app: 'nutrient-atlas',
-      version: EXPORT_VERSION,
-      exportedAt: new Date().toISOString(),
-      settings: await db.settings.toArray(),
-      foods: await db.foods.toArray(),
-      logs: await db.logs.toArray(),
-      supplements: await db.supplements.toArray(),
-      meals: await db.meals.toArray(),
-      products: await db.products.toArray(),
-    }
+    const data = await makeBackup()
     download(`nutrient-atlas-${localDate()}.json`, JSON.stringify(data, null, 1), 'application/json')
     await db.settings.put({ key: 'lastBackup', value: localDate() })
     setMessage({ text: `Exported ${data.logs.length} log entries and ${data.foods.length} foods.`, tone: 'good' })
@@ -85,18 +62,9 @@ export function DataSection() {
 
   const importData = async (file: File) => {
     try {
-      const data = JSON.parse(await file.text()) as ExportFile
-      if (data.app !== 'nutrient-atlas' || !Array.isArray(data.logs) || !Array.isArray(data.foods)) throw new Error('Not a Nutrient Atlas export file.')
-      if (!confirm(`Replace all current data with this backup from ${data.exportedAt.slice(0, 10)}? (${data.logs.length} log entries, ${data.foods.length} foods)`)) return
-      await db.transaction('rw', [db.settings, db.foods, db.logs, db.supplements, db.meals, db.products], async () => {
-        await Promise.all([db.settings.clear(), db.foods.clear(), db.logs.clear(), db.supplements.clear(), db.meals.clear(), db.products.clear()])
-        await db.settings.bulkPut(data.settings ?? [])
-        await db.foods.bulkPut(data.foods)
-        await db.logs.bulkPut(data.logs)
-        await db.supplements.bulkPut(data.supplements ?? [])
-        await db.meals.bulkPut(data.meals ?? [])
-        await db.products.bulkPut(data.products ?? [])
-      })
+      const data = await readBackup(file)
+      if (!confirm(`Replace all current data with this ${describeBackup(data)}?`)) return
+      await restoreBackup(data)
       setMessage({ text: 'Backup restored.', tone: 'good' })
     } catch (e) {
       setMessage({ text: `Import failed: ${(e as Error).message}`, tone: 'bad' })
