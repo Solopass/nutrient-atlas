@@ -11,6 +11,7 @@ import { LabelPaste } from '../log/LabelPaste'
 import { NutrientRowsEditor, rowsFrom, rowsToNutrients, type Row } from '../log/NutrientRows'
 import { Segmented } from '../settings/Controls'
 import { Flags, PartBars, ScoreBadge, Stars } from './ProductBits'
+import { productKey } from './ProductImport'
 
 const CATS: Category[] = ['vitamin', 'mineral', 'bvitamin', 'trace', 'fatty', 'amino', 'macro', 'limit', 'advanced']
 const NAME = new Map(NUTRIENTS.map((n) => [n.id, n.name]))
@@ -83,7 +84,13 @@ export function ProductEditor({
       if (!valid) return
       const { id: _id, ...data } = draft
       if (initial) await db.products.update(initial.id, data)
-      else await db.products.add(data as Product)
+      else {
+        // The same product again (same barcode, or same kind + brand + name) updates it instead of adding a copy.
+        const key = productKey(draft)
+        const twin = (await db.products.toArray()).find((x) => (draft.barcode && x.barcode === draft.barcode) || productKey(x) === key)
+        if (twin) await db.products.update(twin.id, { ...data, createdAt: twin.createdAt, rating: data.rating ?? twin.rating, notes: data.notes ?? twin.notes })
+        else await db.products.add(data as Product)
+      }
       onDone()
     })
 

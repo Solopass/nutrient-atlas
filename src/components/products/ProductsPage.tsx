@@ -4,7 +4,7 @@ import { db, localDate, mealForTime, type Product } from '../../db/db'
 import { logNewFood } from '../../db/logging'
 import { productsToJson } from '../../lib/products/io'
 import { money, scoreAll, type ProductScore } from '../../lib/products/score'
-import { createSupplement } from '../../lib/supplements'
+import { createSupplement, resumeSupplement } from '../../lib/supplements'
 import { useGuard } from '../../lib/useGuard'
 import { useProfile } from '../../state/profile'
 import { Logo } from '../Logo'
@@ -82,6 +82,13 @@ export function ProductsPage() {
 
   const takeDaily = (p: Product) =>
     guard(async () => {
+      // A paused supplement with this name is resumed, not duplicated.
+      const names = [displayName(p).toLowerCase(), p.name.toLowerCase()]
+      const paused = (supplements ?? []).find((s) => !s.active && names.includes(s.name.trim().toLowerCase()))
+      if (paused) {
+        await resumeSupplement(paused.id)
+        return flash(`Resumed ${paused.name}; logged for today.`)
+      }
       await createSupplement({ name: displayName(p), dose: p.serving, dosesPerDay: p.servingsPerDay ?? 1, schedule: 'daily', nutrients: p.nutrients })
       flash(`${displayName(p)} added to your daily supplements and logged for today.`)
     })

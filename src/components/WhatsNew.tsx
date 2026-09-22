@@ -27,7 +27,7 @@ export function WhatsNew({ onReplay, onByMeal, onShowAtlas }: { onReplay: () => 
     { icon: '◑', title: 'Colour by meal', body: 'See which meal supplies each nutrient.', action: 'Try it', run: onByMeal },
     { icon: '◎', title: 'Preview a food', body: 'Hover a Best next food pick (or tap ◎ Preview) to see what it would add.', action: 'Show Atlas', run: onShowAtlas },
     { icon: '◉', title: 'Food footprint', body: 'Tap a food under the Atlas to see everything it gave you.', action: 'Show Atlas', run: onShowAtlas },
-    { icon: '✓', title: 'Done for today', body: 'Mark the day complete to count it in weekly views before midnight.', action: 'Got it', run: () => {} },
+    { icon: '✓', title: 'Done for today', body: 'Mark the day complete to count it in weekly views before midnight.', action: 'Show me', run: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
     { icon: '☀', title: 'Sun setting', body: 'Get regular sun? Stop vitamin D from food counting as a gap.', action: 'Settings', run: () => (location.hash = '#/settings') },
   ]
 

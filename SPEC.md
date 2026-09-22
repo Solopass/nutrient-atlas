@@ -137,6 +137,7 @@ Rate the branded supplements and packaged foods you use or are considering. Stor
   - *Forms (supplements):* well-established differences only (magnesium/zinc oxide poor; glycinate, citrate etc. good; D3 over D2; MK-7; chelated iron; B12 and folate forms treated as equivalent). Unknown forms are not penalised.
   - *Value:* cost per useful dose, compared with the cheapest product in the list that provides the same nutrients (≥ 25% of target a day for supplements, ≥ 10% per serving for foods).
   - Over an upper limit on its own caps the score at 40 and is flagged; close to it, or over it together with what you already get, is a warning. Poor forms, high sodium/sugar/saturated fat, token doses and nutrients your current supplements already cover are flagged.
+- **No duplicates:** adding a product that matches an existing one (same barcode, or same kind + brand + name) updates it, keeping your rating and notes. “Take daily” on a product whose supplement is paused resumes it.
 - **List:** supplements / foods, search, tags, sort (overall, fills my gaps, value, my rating, newest), currency, your 1–5 star rating and notes, “Take daily” (creates a daily supplement) or “Log a serving”.
 - **Compare** up to 4 side by side: score parts, cost per day, serving, and every nutrient as % of your target with form markers; best in each row highlighted (past 100% counts as a tie; over the upper limit never wins).
 - **Share list** writes a JSON product pack others can import (the share sheet on phones, a download elsewhere).
