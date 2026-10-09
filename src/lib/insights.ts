@@ -4,7 +4,7 @@ import { hasFood } from '../db/logging'
 import type { NutrientState, Nutrient } from '../types'
 import { addDays, averageIntake, contributors, dateRange, groupByDate, nutrientSeries, parseDate } from './history'
 import type { Profile } from './profile'
-import { LABS, readLab } from './labs'
+import { LABS, labHistory, readLab, type LabResult } from './labs'
 import { dayScore, fmt, nutrientState } from './status'
 import { topFoodsFor } from './suggestUsda'
 
@@ -51,6 +51,13 @@ function riskList(p: Profile): { label: string; ids: string[]; why: string } | n
     return { label: 'vegan diets', ids: ['b12', 'iodine', 'dha', 'zinc', 'iron', 'calcium', 'vitD', 'ala'], why: 'These are scarce or less absorbable in plant foods.' }
   if (p.diet === 'vegetarian') return { label: 'vegetarian diets', ids: ['b12', 'iron', 'zinc', 'dha', 'iodine'], why: 'These are scarcer or less absorbable without meat and fish.' }
   return null
+}
+
+/** " Was 18 ng/mL on Mar 3." when there is an earlier result to compare with. */
+function trendNote(history: LabResult[]) {
+  if (history.length < 2) return ''
+  const prev = history[history.length - 2]
+  return ` Was ${fmt(prev.value)} ${prev.unit} on ${parseDate(prev.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}.`
 }
 
 const weekday = (date: string) => parseDate(date).toLocaleDateString(undefined, { weekday: 'long' })
@@ -224,7 +231,7 @@ export function weeklyReport(opts: {
       id: `lab-${def.id}`,
       kind: 'risk',
       title: `${def.name} ${fmt(result.value)} ${result.unit}: ${def.bandLabel[r.band].toLowerCase()}${r.stale ? ` (${r.months} months ago)` : ''}`,
-      body: `${r.headline}. ${r.advice}`,
+      body: `${r.headline}.${trendNote(labHistory(profile, def.id))} ${r.advice}`,
       nutrientIds: [def.nutrientId],
       foods: r.band !== 'high' && intakeLow ? foodIdeas(s.nutrient) : undefined,
       priority: { deficient: 90, low: 82, high: 78, ok: 0 }[r.band] - (r.stale ? 10 : 0),

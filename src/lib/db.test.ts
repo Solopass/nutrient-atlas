@@ -183,3 +183,23 @@ describe('backup', () => {
     await expect(readBackup(new File([JSON.stringify({ app: 'other' })], 'x.json'))).rejects.toThrow(/isn't/)
   })
 })
+
+describe('saveLab keeps history and the latest result in step', () => {
+  test('add, add newer, edit, remove', async () => {
+    const { saveLab } = await import('../state/profile')
+    await db.settings.clear()
+    await saveLab('vitD', { result: { value: 18, unit: 'ng/mL', date: '2026-03-01' } })
+    await saveLab('vitD', { result: { value: 31, unit: 'ng/mL', date: '2026-09-01' } })
+    await saveLab('vitD', { result: { value: 33, unit: 'ng/mL', date: '2026-09-02' }, replaceDate: '2026-09-01' })
+    let p = (await db.settings.get('profile'))!.value as Profile
+    expect(p.labHistory!.vitD!.map((r) => `${r.date}:${r.value}`)).toEqual(['2026-03-01:18', '2026-09-02:33'])
+    expect(p.labs.vitD!.value).toBe(33)
+    await saveLab('vitD', { removeDate: '2026-09-02' })
+    p = (await db.settings.get('profile'))!.value as Profile
+    expect(p.labs.vitD!.value).toBe(18)
+    await saveLab('vitD', { removeDate: '2026-03-01' })
+    p = (await db.settings.get('profile'))!.value as Profile
+    expect(p.labs.vitD).toBeUndefined()
+    expect(p.labHistory?.vitD).toBeUndefined()
+  })
+})

@@ -33,8 +33,10 @@ export interface Profile {
   /** Manual overrides; null = use the calculated value. */
   energyOverride: number | null
   proteinPerKgOverride: number | null
-  /** Optional blood-test results (see lib/labs.ts). */
+  /** Optional blood-test results (see lib/labs.ts): the latest per test… */
   labs: Partial<Record<LabId, LabResult>>
+  /** …and every result per test, oldest first (missing on older profiles). */
+  labHistory?: Partial<Record<LabId, LabResult[]>>
 }
 
 export const DEFAULT_PROFILE: Profile = {

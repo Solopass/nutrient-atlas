@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
 import { db } from '../db/db'
 import { DEFAULT_PROFILE, energyTarget, type Profile } from '../lib/profile'
-import type { LabId, LabResult } from '../lib/labs'
+import { labHistory, removeLabResult, upsertLabResult, type LabId, type LabResult } from '../lib/labs'
 import { personalize } from '../lib/targets'
 import { useAppearance } from './appearance'
 import type { Nutrient } from '../types'
@@ -32,14 +32,23 @@ export function saveProfile(patch: Partial<Profile>) {
   })
 }
 
-/** Set or clear one lab result without touching the others (read inside the transaction, like saveProfile). */
-export function saveLab(id: LabId, result: LabResult | null) {
+/**
+ * Add or edit one lab result (`replaceDate`: the date of the entry being edited),
+ * or remove the one dated `removeDate`. Keeps the full history and the latest
+ * result in step; read inside the transaction, like saveProfile.
+ */
+export function saveLab(id: LabId, change: { result: LabResult; replaceDate?: string | null } | { removeDate: string }) {
   return db.transaction('rw', db.settings, async () => {
-    const current = ((await db.settings.get('profile'))?.value ?? {}) as Partial<Profile>
+    const current = { ...DEFAULT_PROFILE, ...(((await db.settings.get('profile'))?.value ?? {}) as Partial<Profile>) }
+    const before = labHistory(current, id)
+    const { history, latest } = 'removeDate' in change ? removeLabResult(before, change.removeDate) : upsertLabResult(before, change.result, change.replaceDate)
     const labs = { ...current.labs }
-    if (result) labs[id] = result
+    const all = { ...current.labHistory }
+    if (latest) labs[id] = latest
     else delete labs[id]
-    await db.settings.put({ key: 'profile', value: { ...DEFAULT_PROFILE, ...current, labs } })
+    if (history.length) all[id] = history
+    else delete all[id]
+    await db.settings.put({ key: 'profile', value: { ...current, labs, labHistory: all } })
   })
 }
 

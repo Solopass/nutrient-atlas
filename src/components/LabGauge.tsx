@@ -1,4 +1,4 @@
-import { BAND_COLOR, type LabBand, type LabDef } from '../lib/labs'
+import { BAND_COLOR, labPosition, type LabBand, type LabDef } from '../lib/labs'
 import type { Profile } from '../lib/profile'
 import { fmt } from '../lib/status'
 
@@ -9,15 +9,22 @@ import { fmt } from '../lib/status'
 export function LabGauge({ def, canonical, profile }: { def: LabDef; canonical: number | null; profile: Pick<Profile, 'sex'> }) {
   const [d, l, ok] = def.bands(profile)
   const max = def.scaleMax
-  const pos = (v: number) => Math.sqrt(Math.min(Math.max(v, 0), max) / max) * 100
+  const min = def.scaleMin ?? 0
+  const pos = (v: number) => labPosition(def, v) * 100
   const bands: { band: LabBand; from: number; to: number }[] = [
-    { band: 'deficient', from: 0, to: d },
+    { band: 'deficient', from: min, to: d },
     { band: 'low', from: d, to: l },
     { band: 'ok', from: l, to: Math.min(ok, max) },
     ...(ok < max ? [{ band: 'high' as const, from: ok, to: max }] : []),
   ]
   const unit = def.units[0].unit
-  const edges = [d, l, ...(ok < max ? [ok] : [])]
+  // Band edge labels, skipping any that would collide with the previous one or the ends.
+  const edges: number[] = []
+  for (const e of [d, l, ...(ok < max ? [ok] : [])]) {
+    const p = pos(e)
+    if (p < 9 || p > 92 || p - pos(edges[edges.length - 1] ?? min) < 15) continue
+    edges.push(e)
+  }
 
   return (
     <div className="pt-4">
@@ -38,20 +45,20 @@ export function LabGauge({ def, canonical, profile }: { def: LabDef; canonical: 
               className="absolute -top-5 -translate-x-1/2 font-mono text-[10.5px] font-semibold whitespace-nowrap"
               style={{ left: `clamp(1.5rem, ${pos(canonical)}%, calc(100% - 1.5rem))` }}
             >
-              {fmt(canonical)}
+              {fmt(canonical)} <span className="font-normal text-(--muted)">{unit}</span>
               {canonical > max && '→'}
             </div>
           </>
         )}
       </div>
       <div className="relative mt-1 h-3.5 font-mono text-[9.5px] text-(--muted)">
-        <span className="absolute left-0">0</span>
+        <span className="absolute left-0">{fmt(min)}</span>
         {edges.map((e) => (
           <span key={e} className="absolute -translate-x-1/2" style={{ left: `${pos(e)}%` }}>
             {fmt(e)}
           </span>
         ))}
-        <span className="absolute right-0">{unit}</span>
+        {canonical == null && <span className="absolute right-0">{unit}</span>}
       </div>
     </div>
   )

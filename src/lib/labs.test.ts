@@ -3,7 +3,7 @@ import type { LogEntry } from '../db/db'
 import { cell, dailyTotalsCsv, entriesCsv } from './csv'
 import { dateRange } from './history'
 import { weeklyReport } from './insights'
-import { LAB_BY_ID, labBand, monthsSince, readLab, toCanonical, validLabValue } from './labs'
+import { LAB_BY_ID, LAB_FOR_NUTRIENT, labBand, labHistory, monthsSince, readLab, removeLabResult, toCanonical, upsertLabResult, validLabValue } from './labs'
 import { DEFAULT_PROFILE, type Profile } from './profile'
 import { nutrientState } from './status'
 import { personalize } from './targets'
@@ -110,5 +110,38 @@ describe('CSV export', () => {
     const col = lines[0].split(',').indexOf('Protein (g)')
     expect(lines[1].split(',').slice(0, 7)).toEqual(['2026-09-19', '08:05', 'breakfast', 'Oats', '40 g', '1', 'food'])
     expect(lines[2].split(',')[col]).toBe('12')
+  })
+})
+
+describe('lab history', () => {
+  const r = (date: string, value: number, unit = 'ng/mL') => ({ date, value, unit })
+  test('older profiles: the single latest result is the history', () => {
+    expect(labHistory({ labs: { vitD: r('2026-01-01', 20) } }, 'vitD')).toEqual([r('2026-01-01', 20)])
+    expect(labHistory({ labs: {} }, 'vitD')).toEqual([])
+  })
+  test('upsert adds by date, replaces the edited entry, keeps order, reports the latest', () => {
+    let { history, latest } = upsertLabResult([], r('2026-03-01', 18))
+    ;({ history, latest } = upsertLabResult(history, r('2026-01-01', 12)))
+    expect(history.map((x) => x.date)).toEqual(['2026-01-01', '2026-03-01'])
+    expect(latest.value).toBe(18)
+    // Editing the March entry's date to April moves it rather than adding a third.
+    ;({ history, latest } = upsertLabResult(history, r('2026-04-01', 31), '2026-03-01'))
+    expect(history.map((x) => `${x.date}:${x.value}`)).toEqual(['2026-01-01:12', '2026-04-01:31'])
+    expect(removeLabResult(history, '2026-04-01').latest!.value).toBe(12)
+    expect(removeLabResult([r('2026-01-01', 1)], '2026-01-01').latest).toBeNull()
+  })
+  test('new tests: folate, magnesium (mmol/L), omega-3 index', () => {
+    const p = DEFAULT_PROFILE
+    expect(labBand(LAB_BY_ID.get('folate')!, toCanonical(LAB_BY_ID.get('folate')!, { value: 5.5, unit: 'nmol/L' }), p)).toBe('deficient') // 2.4 ng/mL
+    expect(labBand(LAB_BY_ID.get('magnesium')!, toCanonical(LAB_BY_ID.get('magnesium')!, { value: 0.85, unit: 'mmol/L' }), p)).toBe('ok') // 2.07 mg/dL
+    expect(labBand(LAB_BY_ID.get('magnesium')!, 1.7, p)).toBe('low')
+    expect(labBand(LAB_BY_ID.get('omega3')!, 5.2, p)).toBe('low')
+    expect(labBand(LAB_BY_ID.get('omega3')!, 9, p)).toBe('ok')
+    expect(LAB_FOR_NUTRIENT.get('epa')?.id).toBe('omega3')
+  })
+  test('magnesium: a normal level with low intake explains that blood levels hide shortfalls', () => {
+    const mg = LAB_BY_ID.get('magnesium')!
+    const r2 = readLab(mg, { value: 2.1, unit: 'mg/dL', date: TODAY }, state('magnesium', 50), DEFAULT_PROFILE, TODAY)
+    expect(r2.advice).toMatch(/can miss a shortfall/)
   })
 })

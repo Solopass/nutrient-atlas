@@ -7,7 +7,7 @@ import type { Profile } from './profile'
  * deliberately hedged. Cut-offs are common reference points, not a diagnosis.
  */
 
-export type LabId = 'vitD' | 'ferritin' | 'b12'
+export type LabId = 'vitD' | 'ferritin' | 'b12' | 'folate' | 'magnesium' | 'omega3'
 export type LabBand = 'deficient' | 'low' | 'ok' | 'high'
 
 export interface LabResult {
@@ -30,11 +30,17 @@ export interface LabDef {
   bands: (p: Pick<Profile, 'sex'>) => [number, number, number]
   /** Right end of the gauge (canonical). */
   scaleMax: number
+  /** Left end of the gauge (default 0); for tests with a narrow normal range. */
+  scaleMin?: number
+  /** Gauge scale: square root (default; keeps narrow low bands visible) or linear. */
+  scale?: 'sqrt' | 'linear'
   bandLabel: Record<LabBand, string>
   /** Why blood can be low while intake looks fine. */
   lowDespiteIntake: string
   /** Caveat for readings above range. */
   high: string
+  /** Normal level but low intake (default: stores are fine for now). */
+  normalButLowIntake?: string
   source: string
 }
 
@@ -52,6 +58,7 @@ export const LABS: LabDef[] = [
     scaleMax: 80,
     bandLabel: { deficient: 'Deficient', low: 'Inadequate', ok: 'Adequate', high: 'High' },
     lowDespiteIntake: 'Most vitamin D comes from sun on skin, not food, so little sun (winter, indoors, darker skin, sunscreen) can explain a low level even when food intake is on target.',
+    normalButLowIntake: 'Your level is fine, so sun is probably covering what food does not. Levels drop over winter.',
     high: 'Above 50 ng/mL (125 nmol/L) has no known extra benefit and may carry risk. Check supplement doses with your clinician.',
     source: 'National Academies (IOM) 2011',
   },
@@ -91,8 +98,96 @@ export const LABS: LabDef[] = [
   },
 ]
 
+LABS.push(
+  {
+    id: 'folate',
+    name: 'Folate',
+    test: 'serum folate',
+    nutrientId: 'b9',
+    units: [
+      { unit: 'ng/mL', factor: 1 },
+      { unit: 'nmol/L', factor: 1 / 2.266 },
+    ],
+    bands: () => [3, 6, Infinity],
+    scaleMax: 25,
+    bandLabel: { deficient: 'Deficient', low: 'Borderline', ok: 'Normal', high: 'High' },
+    lowDespiteIntake: 'Low folate with good intake can come from regular heavy drinking, some medicines (methotrexate, some anti-seizure drugs) or absorption problems. A clinician can check.',
+    high: '',
+    normalButLowIntake: 'Serum folate reflects recent intake, so it can stay normal for a while; aim for the target, especially if pregnancy is possible.',
+    source: 'NIH Office of Dietary Supplements',
+  },
+  {
+    id: 'magnesium',
+    name: 'Magnesium',
+    test: 'serum magnesium',
+    nutrientId: 'magnesium',
+    units: [
+      { unit: 'mg/dL', factor: 1 },
+      { unit: 'mmol/L', factor: 2.43 },
+      { unit: 'mEq/L', factor: 1.215 },
+    ],
+    bands: () => [1.6, 1.8, 2.6],
+    scaleMin: 1,
+    scaleMax: 3,
+    scale: 'linear',
+    bandLabel: { deficient: 'Low', low: 'Borderline', ok: 'Normal', high: 'High' },
+    lowDespiteIntake: 'The body holds blood magnesium in a narrow range, so a low result usually means losses (diuretics, acid-reducing medicines, alcohol, diarrhoea) more than diet. Worth raising with a clinician.',
+    high: 'High blood magnesium is unusual; it usually comes from kidney problems or large supplement or laxative doses. Check with a clinician.',
+    normalButLowIntake: 'Blood magnesium stays normal even when intake is short (the body draws on bone), so this test can miss a shortfall. Intake still matters.',
+    source: 'Typical laboratory reference range',
+  },
+  {
+    id: 'omega3',
+    name: 'Omega-3 index',
+    test: 'EPA + DHA in red cells',
+    nutrientId: 'dha',
+    units: [{ unit: '%', factor: 1 }],
+    bands: () => [4, 8, Infinity],
+    scaleMax: 12,
+    bandLabel: { deficient: 'Low', low: 'Intermediate', ok: 'Desirable', high: 'High' },
+    lowDespiteIntake: 'The index reflects EPA and DHA over the past 3–4 months, so recent changes take time to show. Retest after a few months.',
+    high: '',
+    normalButLowIntake: 'Your index is in the desirable range; it moves slowly, so a few low weeks will not change it yet.',
+    source: 'Omega-3 index (Harris & von Schacky)',
+  },
+)
+
+/** Where a value sits on this test's gauge, 0–1 (clamped). */
+export function labPosition(def: LabDef, v: number) {
+  const min = def.scaleMin ?? 0
+  const t = Math.min(Math.max((v - min) / (def.scaleMax - min), 0), 1)
+  return def.scale === 'linear' ? t : Math.sqrt(t)
+}
+
 export const LAB_BY_ID = new Map(LABS.map((l) => [l.id, l]))
 export const LAB_FOR_NUTRIENT = new Map(LABS.map((l) => [l.nutrientId, l]))
+LAB_FOR_NUTRIENT.set('epa', LAB_BY_ID.get('omega3')!) // the omega-3 index is EPA + DHA
+
+/**
+ * All results for one test, oldest first. Older profiles only stored the latest
+ * result in `labs`, so that counts as a one-entry history.
+ */
+export function labHistory(p: Pick<Profile, 'labs' | 'labHistory'>, id: LabId): LabResult[] {
+  const h = p.labHistory?.[id]
+  if (h?.length) return [...h].sort((a, b) => a.date.localeCompare(b.date))
+  return p.labs?.[id] ? [p.labs[id]!] : []
+}
+
+/**
+ * Add or replace one result (same date, or the entry being edited) and return
+ * the new history plus the latest result.
+ */
+export function upsertLabResult(history: LabResult[], result: LabResult, replaceDate?: string | null) {
+  const next = history.filter((r) => r.date !== result.date && r.date !== replaceDate)
+  next.push(result)
+  next.sort((a, b) => a.date.localeCompare(b.date))
+  return { history: next, latest: next[next.length - 1] }
+}
+
+export function removeLabResult(history: LabResult[], date: string) {
+  const next = history.filter((r) => r.date !== date)
+  return { history: next, latest: next[next.length - 1] ?? null }
+}
 
 export const BAND_COLOR: Record<LabBand, string> = {
   deficient: 'var(--c-deficient)',
@@ -165,9 +260,7 @@ export function readLab(def: LabDef, result: LabResult, intake: NutrientState | 
   } else {
     headline = intakeLow ? `${level}, but intake is ${Math.round(pct!)}% of target` : `${level}`
     advice = intakeLow
-      ? def.id === 'vitD'
-        ? 'Your level is fine, so sun is probably covering what food does not. Levels drop over winter.'
-        : 'Your stores are fine for now; intake below target can run them down over months.'
+      ? (def.normalButLowIntake ?? 'Your stores are fine for now; intake below target can run them down over months.')
       : intakeOk
         ? 'Blood level and intake both look good.'
         : 'Your blood level is in the usual range.'

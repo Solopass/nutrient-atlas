@@ -3,10 +3,11 @@ import { CATEGORY_LABEL } from '../data/nutrients'
 import { localDate } from '../db/db'
 import { addDays, formatDay } from '../lib/history'
 import { PARTIAL_COVERAGE, STATUS_META, amountAgainstUL, fmt } from '../lib/status'
-import { BAND_COLOR, LAB_FOR_NUTRIENT, readLab } from '../lib/labs'
+import { BAND_COLOR, LAB_FOR_NUTRIENT, labHistory, readLab } from '../lib/labs'
 import { useProfile } from '../state/profile'
 import type { NutrientState } from '../types'
 import { LabGauge } from './LabGauge'
+import { LabTrend } from './LabTrend'
 
 export interface NutrientHistory {
   dates: string[]
@@ -226,6 +227,7 @@ function LabCard({ state }: { state: NutrientState }) {
         {r.headline}
       </p>
       <LabGauge def={def} canonical={r.canonical} profile={profile} />
+      <LabTrend def={def} history={labHistory(profile, def.id)} profile={profile} />
       <p className="mt-2 text-xs leading-relaxed text-(--dim)">{r.advice}</p>
       {r.stale && <p className="mt-1.5 text-[11px] text-(--c-attention)">Tested {r.months} months ago. Levels change, so a newer test will be more useful.</p>}
       <p className="mt-1.5 text-[10px] text-(--muted)">Bands: {def.source}. Not a diagnosis.</p>
