@@ -8,6 +8,7 @@ import { DetailPanel, type NutrientHistory } from './components/DetailPanel'
 import { CalendarIcon, GearIcon, ShelfIcon } from './components/icons'
 import { Legend } from './components/Legend'
 import { WhatsNew } from './components/WhatsNew'
+import { BackupReminder } from './components/BackupReminder'
 import { Logo } from './components/Logo'
 import { LimitsPanel } from './components/LimitsPanel'
 import { PeriodicTable } from './components/PeriodicTable'
@@ -534,6 +535,8 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
         )}
 
         <StatCards states={states} score={score} onSelect={setSelectedId} history={history14} streak={streak} week={week} date={date} eatenNames={eatenNames} prev={compare} inProgress={inProgress} onPreview={onPreview} pinnedPreview={pinnedPreview?.key ?? null} />
+
+        {!demo && <BackupReminder />}
 
         {!demo && !isDefault && (
           <WhatsNew

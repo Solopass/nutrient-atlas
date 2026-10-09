@@ -1,5 +1,6 @@
 import { applyDailySupplements } from './supplements'
-import { db, type Food, type LogEntry, type Product, type SavedMeal, type Setting, type Supplement } from '../db/db'
+import { db, localDate, type Food, type LogEntry, type Product, type SavedMeal, type Setting, type Supplement } from '../db/db'
+import { download } from './download'
 
 export const EXPORT_VERSION = 4
 
@@ -27,6 +28,15 @@ export async function makeBackup(): Promise<ExportFile> {
     meals: await db.meals.toArray(),
     products: await db.products.toArray(),
   }
+}
+
+/** Download a full backup and remember when (for the backup reminder). */
+export async function exportBackup() {
+  const data = await makeBackup()
+  download(`nutrient-atlas-${localDate()}.json`, JSON.stringify(data, null, 1), 'application/json')
+  await db.settings.put({ key: 'lastBackup', value: localDate() })
+  await db.settings.delete('backupSnoozedUntil')
+  return data
 }
 
 /** Read and check a backup file without touching the database. */

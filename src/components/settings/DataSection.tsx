@@ -1,25 +1,14 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useRef, useState } from 'react'
 import { db, localDate } from '../../db/db'
-import { describeBackup, makeBackup, readBackup, restoreBackup } from '../../lib/backup'
+import { describeBackup, exportBackup, readBackup, restoreBackup } from '../../lib/backup'
 import { dailyTotalsCsv, entriesCsv } from '../../lib/csv'
+import { download } from '../../lib/download'
 import { formatDay } from '../../lib/history'
 import { loadSampleData, removeSampleData } from '../../lib/sampleData'
 import { ensurePersistentStorage, storageStatus } from '../../lib/storage'
 import { useProfile } from '../../state/profile'
 import { Section } from './Controls'
-
-function download(name: string, body: string, type: string) {
-  const url = URL.createObjectURL(new Blob([body], { type }))
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  document.body.append(a)
-  a.click()
-  a.remove()
-  // Revoking right away can cancel the download in Firefox and Safari.
-  setTimeout(() => URL.revokeObjectURL(url), 30_000)
-}
 
 export function DataSection() {
   const { nutrients } = useProfile()
@@ -43,9 +32,7 @@ export function DataSection() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const exportData = async () => {
-    const data = await makeBackup()
-    download(`nutrient-atlas-${localDate()}.json`, JSON.stringify(data, null, 1), 'application/json')
-    await db.settings.put({ key: 'lastBackup', value: localDate() })
+    const data = await exportBackup()
     setMessage({ text: `Exported ${data.logs.length} log entries and ${data.foods.length} foods.`, tone: 'good' })
   }
 
