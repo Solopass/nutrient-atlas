@@ -1,10 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
-import { db, type Food, type Meal } from '../../db/db'
+import { db, type Food, type Meal, type SavedMeal } from '../../db/db'
 import { logSavedFood } from '../../db/logging'
 import { CustomFoodEditor } from './CustomFoodEditor'
 import { useGuard } from '../../lib/useGuard'
 import { NutrientChips } from './NutrientChips'
+import { RecipeBuilder } from './RecipeBuilder'
 import { SavedMealsList } from './SavedMealsList'
 
 const SOURCE_LABEL: Record<Food['source'], string> = { usda: 'USDA', ai: 'AI', custom: 'Label' }
@@ -12,10 +13,24 @@ const SOURCE_LABEL: Record<Food['source'], string> = { usda: 'USDA', ai: 'AI', c
 export function FoodsTab({ meal, date, onLogged }: { meal: Meal; date: string; onLogged: (msg: string) => void }) {
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState<Food | 'new' | null>(null)
+  const [recipe, setRecipe] = useState<SavedMeal | 'new' | null>(null)
   const guard = useGuard()
   const foods = useLiveQuery(() => db.foods.orderBy('lastUsedAt').reverse().toArray(), [])
 
   if (!foods) return null
+  if (recipe) {
+    return (
+      <RecipeBuilder
+        initial={recipe === 'new' ? null : recipe}
+        meal={meal}
+        date={date}
+        onDone={(logged) => {
+          setRecipe(null)
+          if (logged) onLogged(logged)
+        }}
+      />
+    )
+  }
   if (editing) {
     return (
       <CustomFoodEditor
@@ -36,6 +51,16 @@ export function FoodsTab({ meal, date, onLogged }: { meal: Meal; date: string; o
   return (
     <div>
       <button
+        onClick={() => setRecipe('new')}
+        className="mb-2 flex w-full items-center gap-3 rounded-lg bg-(--panel-2) p-3 text-left shadow-[inset_0_0_0_1px_var(--line)] transition hover:shadow-[inset_0_0_0_1px_var(--c-above)]"
+      >
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-(--c-above)/15 text-base text-(--c-above)">⚗</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium">Build a recipe</span>
+          <span className="block text-xs text-(--muted)">Home cooking: add ingredients and how many portions it makes; log one portion at a time.</span>
+        </span>
+      </button>
+      <button
         onClick={() => setEditing('new')}
         className="mb-5 flex w-full items-center gap-3 rounded-lg bg-(--panel-2) p-3 text-left shadow-[inset_0_0_0_1px_var(--line)] transition hover:shadow-[inset_0_0_0_1px_var(--c-above)]"
       >
@@ -46,7 +71,7 @@ export function FoodsTab({ meal, date, onLogged }: { meal: Meal; date: string; o
         </span>
       </button>
 
-      <SavedMealsList meal={meal} date={date} onLogged={onLogged} />
+      <SavedMealsList meal={meal} date={date} onLogged={onLogged} onEdit={setRecipe} />
 
       {foods.length === 0 ? (
         <div className="py-10 text-center text-sm text-(--muted)">No saved foods yet. Every food you log is saved here for one-tap re-logging.</div>

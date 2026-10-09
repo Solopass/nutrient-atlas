@@ -125,6 +125,26 @@ const steps: [string, () => Promise<void>][] = [
     },
   ],
   [
+    'build and save a recipe',
+    async () => {
+      const sheet = '[role=dialog][aria-label="Log food"]'
+      await click('+ Log food')
+      await click('My foods', LOG)
+      await waitFor('My foods', `[...document.querySelectorAll('${sheet} button')].some((b) => b.textContent.includes('Build a recipe'))`)
+      await js(`[...document.querySelectorAll('${sheet} button')].find((b) => b.textContent.includes('Build a recipe')).click()`)
+      await fill(`${sheet} input[placeholder="e.g. Lentil dal"]`, 'Test dal')
+      await waitFor('the ingredient search', `!document.querySelector('${sheet} input[aria-label="Add an ingredient"]')?.placeholder.includes('Loading')`, 20_000)
+      await fill(`${sheet} input[aria-label="Add an ingredient"]`, 'lentils boiled')
+      await waitFor('ingredient results', `document.querySelectorAll('${sheet} [aria-label="Ingredient results"] button').length > 0`)
+      await js(`document.querySelector('${sheet} [aria-label="Ingredient results"] button').click()`)
+      await click('Add to recipe', LOG)
+      await waitFor('the per-portion summary', `/One portion · \\d+ kcal/.test(document.querySelector('${sheet} [aria-label="One portion"]')?.innerText ?? '')`)
+      await js(`[...document.querySelectorAll('${sheet} button')].find((b) => b.textContent.trim() === 'Save').click()`) // not "Save and log"
+      await waitFor('the saved recipe', `[...document.querySelectorAll('${sheet} li')].some((li) => /Test dal/.test(li.textContent) && /1 of 4 portions/.test(li.textContent))`)
+      await js(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
+    },
+  ],
+  [
     'nutrient detail panel opens and closes',
     async () => {
       await js(`document.querySelector('[aria-label^="Potassium"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))`)

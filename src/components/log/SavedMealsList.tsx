@@ -1,18 +1,18 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, type Meal } from '../../db/db'
+import { db, type Meal, type SavedMeal } from '../../db/db'
 import { itemsKcal, logSavedMeal } from '../../lib/quickLog'
 import { useGuard } from '../../lib/useGuard'
 import { foodLabel } from '../../data/usda'
 
-/** Saved meals and recipes: log one portion, or delete. */
-export function SavedMealsList({ meal, date, onLogged }: { meal: Meal; date: string; onLogged: (msg: string) => void }) {
+/** Saved meals and recipes: log one portion, edit, or delete. */
+export function SavedMealsList({ meal, date, onLogged, onEdit }: { meal: Meal; date: string; onLogged: (msg: string) => void; onEdit?: (m: SavedMeal) => void }) {
   const meals = useLiveQuery(() => db.meals.orderBy('lastUsedAt').reverse().toArray(), [])
   const guard = useGuard()
   if (!meals || meals.length === 0) return null
 
   return (
     <section className="mb-5">
-      <h3 className="mb-1 text-[10.5px] font-medium tracking-[0.16em] text-(--muted) uppercase">Saved meals</h3>
+      <h3 className="mb-1 text-[10.5px] font-medium tracking-[0.16em] text-(--muted) uppercase">Saved meals and recipes</h3>
       <ul className="divide-y divide-(--line)">
         {meals.map((m) => (
           <li key={m.id} className="flex items-center gap-3 py-2.5">
@@ -25,6 +25,11 @@ export function SavedMealsList({ meal, date, onLogged }: { meal: Meal; date: str
               </div>
               <div className="truncate text-xs text-(--muted)">{m.items.map((i) => foodLabel(i.name)).join(', ')}</div>
             </div>
+            {onEdit && (
+              <button onClick={() => onEdit(m)} className="shrink-0 text-xs text-(--muted) hover:text-(--fg)">
+                Edit
+              </button>
+            )}
             <button
               onClick={() =>
                 guard(async () => {
