@@ -1,3 +1,4 @@
 *.cmd text eol=crlf
 *.sh text eol=lf
 .githooks/* text eol=lf
+public/_headers text eol=lf
