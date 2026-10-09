@@ -1,4 +1,4 @@
-# Nutrient Atlas: Product Specification v1.16
+# Nutrient Atlas: Product Specification v1.17
 
 What the app is and how it behaves today. For what's next, see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -152,6 +152,7 @@ Rate the branded supplements and packaged foods you use or are considering. Stor
 - **Sun:** “Little sun” / “Regular sun”. With regular sun, vitamin D keeps its target and is shown (with ☀), but isn't counted in the score, category coverage, gaps, suggestions, insights or product gap scores. A low vitamin D blood test switches it off automatically.
 - **Blood tests (optional):** vitamin D 25(OH)D (ng/mL or nmol/L), ferritin (ng/mL = µg/L), B12 (pg/mL or pmol/L), each with test date. Banded deficient / low / normal / high (IOM 2011 for vitamin D: <12, 12–20, 20–50, >50 ng/mL; WHO 2020 for ferritin: <15, 15–30, up to 150 women / 200 men; NIH ODS for B12: <200, 200–300 pg/mL). Shown on a square-root gauge. The detail panel for vitamin D, iron and B12 reads the lab against intake (e.g. "low even though intake is on target" → absorption, sun or losses). Results over 12 months old are flagged. Stored in the profile, so they travel with backups. Never changes targets. See [src/lib/labs.ts](src/lib/labs.ts).
 - **Run setup again** link.
+- **Appearance:** theme System / Dark / Light, and status colours Standard / Colour-blind safe (Okabe–Ito blue/orange set plus a shape on every status: ▼ deficient, ▽ needs attention, ● good, ▲ above, ⚠ over the limit, on Atlas wedges, periodic tiles, gaps, limits and the detail panel; low category cells are hatched). Every colour is a CSS token; the chosen theme is applied before first paint from localStorage, so there is no flash.
 - **Your data:** counts, storage protection status (the app requests persistent storage once set up, with a Protect button if not granted), last backup date, MB used, export JSON backup, import (replace), load / remove sample history, delete all.
 - **Spreadsheet export (CSV):** daily totals (one row per day, a daily-target row, entry counts, kcal, score, one column per nutrient) or every entry (time, meal, food, servings, type, amounts eaten). Missing data is an empty cell, never 0; UTF-8 BOM for Excel; text that starts with = + - @ is defused. See [src/lib/csv.ts](src/lib/csv.ts).
 - **Live targets preview:** BMR, burn, target kcal, and every nutrient's target, kind and UL.

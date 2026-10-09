@@ -50,13 +50,13 @@ The goal: make it good enough that you want to open it every day, and fix what d
 | # | Item | Why | Size |
 |---|---|---|---|
 | A1 | **You use it for a week**, and we keep a friction list (anything slow, confusing or missing) | Real use finds problems no review does | – |
-| A2 | **Colour-blind-safe status** (shapes and patterns alongside red/yellow/green) and a **light theme** | About 1 in 12 men can't tell the status colours apart | M |
+| A2 ✅ | **Colour-blind-safe status** (shapes and patterns alongside red/yellow/green) and a **light theme** | About 1 in 12 men can't tell the status colours apart | M |
 | A3 ✅ | **"Day complete" button**, so today counts in the weekly view before midnight | Removes the last "today is still in progress" distortions | S |
 | A4 ✅ | **Vitamin D sun setting** ("I get regular sun"), so vitamin D isn't always red for people who get sun | Removes a false alarm, in line with the "honest" principle | S |
 | A5 | **Lab results over time** (a trend per test) plus more tests: folate, magnesium, omega-3 index | Shows whether changes are working | M |
 | A6 ✅ | **What's new** tips for Products, Replay, By meal and Preview | These features are hard to find right now | S |
 | A7 | **Speed:** move USDA parsing to a Web Worker; check startup on a low-end phone | First load on phones | S–M |
-| A8 | **End-to-end smoke test** (setup → log → dashboard → products) using the headless Edge script we already have | Catches regressions across the whole app | M |
+| A8 ✅ | **End-to-end smoke test** (setup → log → dashboard → products) using the headless Edge script we already have | Catches regressions across the whole app | M |
 | A9 | *Stretch:* drag a wedge on the Atlas to adjust a portion | Makes the chart itself the logging tool | M |
 
 ### Phase B: live on your phone. **Decision: hosting** (free: private GitHub repo + Cloudflare Pages, see [HOSTING.md](HOSTING.md))

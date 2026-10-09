@@ -93,6 +93,7 @@ function PanelBody({ state, onClose, history }: { state: NutrientState; onClose:
           className="mb-2 rounded-full px-2.5 py-0.5 text-xs font-medium"
           style={{ background: `color-mix(in oklab, ${meta.color} 20%, transparent)`, color: meta.color }}
         >
+          <span className="status-glyph">{meta.glyph} </span>
           {meta.label}
         </span>
       </div>

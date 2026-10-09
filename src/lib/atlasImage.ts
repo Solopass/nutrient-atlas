@@ -51,7 +51,7 @@ export async function atlasPng(svg: SVGSVGElement, info: SnapshotInfo, size = 14
     canvas.height = img.height + header + 60
     const ctx = canvas.getContext('2d')!
     const bg = ctx.createRadialGradient(size / 2, header + img.height / 2, 0, size / 2, header + img.height / 2, size * 0.75)
-    bg.addColorStop(0, '#101a2b')
+    bg.addColorStop(0, css.getPropertyValue('--glow').trim() || '#101a2b')
     bg.addColorStop(1, css.getPropertyValue('--bg').trim() || '#080b11')
     ctx.fillStyle = bg
     ctx.fillRect(0, 0, canvas.width, canvas.height)

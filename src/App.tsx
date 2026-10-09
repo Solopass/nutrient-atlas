@@ -365,7 +365,7 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,#101a2b_0%,var(--bg)_70%)]">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,var(--glow)_0%,var(--bg)_70%)]">
       <header className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4 px-4 pt-6 pb-4 sm:px-6">
         <div className="flex items-center gap-3">
           <Logo />

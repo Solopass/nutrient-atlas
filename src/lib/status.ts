@@ -2,14 +2,15 @@ import type { Category, Intake, Nutrient, NutrientState, Status } from '../types
 
 export const PARTIAL_COVERAGE = 0.6
 
-export const STATUS_META: Record<Status, { label: string; range: string; color: string }> = {
-  deficient: { label: 'Deficient', range: '0–49%', color: 'var(--c-deficient)' },
-  attention: { label: 'Needs attention', range: '50–79%', color: 'var(--c-attention)' },
-  good: { label: 'Good', range: '80–120%', color: 'var(--c-good)' },
-  above: { label: 'Above target', range: '>120%', color: 'var(--c-above)' },
-  overLimit: { label: 'Over upper limit', range: '> UL', color: 'var(--c-over)' },
-  noData: { label: 'No data', range: 'foods lack values', color: 'var(--c-nodata)' },
-  noTarget: { label: 'No official target', range: 'amount only', color: 'var(--c-notarget)' },
+/** `glyph`: a shape for each status, so status never depends on colour alone (shown in colour-blind mode and in the legend). */
+export const STATUS_META: Record<Status, { label: string; range: string; color: string; glyph: string }> = {
+  deficient: { label: 'Deficient', range: '0–49%', color: 'var(--c-deficient)', glyph: '▼' },
+  attention: { label: 'Needs attention', range: '50–79%', color: 'var(--c-attention)', glyph: '▽' },
+  good: { label: 'Good', range: '80–120%', color: 'var(--c-good)', glyph: '●' },
+  above: { label: 'Above target', range: '>120%', color: 'var(--c-above)', glyph: '▲' },
+  overLimit: { label: 'Over upper limit', range: '> UL', color: 'var(--c-over)', glyph: '⚠' },
+  noData: { label: 'No data', range: 'foods lack values', color: 'var(--c-nodata)', glyph: '○' },
+  noTarget: { label: 'No official target', range: 'amount only', color: 'var(--c-notarget)', glyph: '·' },
 }
 
 /**

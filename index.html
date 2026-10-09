@@ -12,6 +12,15 @@
     <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
     <title>Nutrient Atlas</title>
+    <script>
+      try {
+        var a = JSON.parse(localStorage.getItem(atlas-appearance) || null)
+        if (a) {
+          document.documentElement.dataset.theme = a.theme
+          document.documentElement.dataset.palette = a.palette
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

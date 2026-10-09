@@ -70,7 +70,7 @@ export function Onboarding({ onFinish }: { onFinish: (exit: OnboardingExit) => v
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,#12203a_0%,var(--bg)_70%)] px-4 py-8">
+    <div className="grid min-h-screen place-items-center bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,var(--glow)_0%,var(--bg)_70%)] px-4 py-8">
       <div className="card w-full max-w-xl p-6 sm:p-8">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex gap-1.5" aria-label={`Step ${step + 1} of ${STEPS.length}`}>

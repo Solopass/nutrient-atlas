@@ -15,6 +15,9 @@ export function Legend() {
               border: s === 'noData' ? `1.5px dashed ${STATUS_META[s].color}` : undefined,
             }}
           />
+          <span className="font-mono text-[10px]" style={{ color: STATUS_META[s].color }} aria-hidden>
+            {STATUS_META[s].glyph}
+          </span>
           {STATUS_META[s].label}
           <span className="text-(--muted)">{STATUS_META[s].range}</span>
         </span>
@@ -25,7 +28,7 @@ export function Legend() {
       </span>
       <span className="flex items-center gap-1.5">
         <svg width="12" height="12" aria-hidden className="rounded-sm bg-(--c-good)/70">
-          {[3, 9].flatMap((x) => [3, 9].map((y) => <circle key={`${x}${y}`} cx={x} cy={y} r="1.3" fill="#fff" fillOpacity="0.75" />))}
+          {[3, 9].flatMap((x) => [3, 9].map((y) => <circle key={`${x}${y}`} cx={x} cy={y} r="1.3" fill="var(--supp-dot)" fillOpacity="0.75" />))}
         </svg>
         From supplements
       </span>

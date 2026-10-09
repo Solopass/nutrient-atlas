@@ -15,6 +15,7 @@ import {
   type LifeStage,
   type Sex,
   type Units,
+  type Profile,
 } from '../../lib/profile'
 import { fmt } from '../../lib/status'
 import { sunCoversVitaminD } from '../../lib/targets'
@@ -32,7 +33,7 @@ export function SettingsPage() {
   const ftIn = cmToFtIn(p.heightCm)
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,#101a2b_0%,var(--bg)_70%)]">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,var(--glow)_0%,var(--bg)_70%)]">
       <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 pt-6 pb-4 sm:px-6">
         <div className="flex items-center gap-3">
           <a href="#/" aria-label="Back to Atlas">
@@ -158,6 +159,32 @@ export function SettingsPage() {
               </Field>
               <Field label="Custom protein" hint={`Goal default: ${GOALS[p.goal].proteinPerKg} g/kg. Leave empty to use it.`}>
                 <NumberField value={p.proteinPerKgOverride} allowEmpty min={0.6} max={3} step={0.1} placeholder={String(GOALS[p.goal].proteinPerKg)} onCommit={(v) => update({ proteinPerKgOverride: v })} suffix="g/kg" width="w-24" />
+              </Field>
+            </div>
+          </Section>
+
+          <Section title="Appearance" hint="Colour-blind safe uses blue/orange status colours and adds a shape to every status (▼ deficient, ▽ needs attention, ● good, ▲ above, ⚠ over the limit).">
+            <div className="flex flex-wrap gap-x-6 gap-y-4">
+              <Field label="Theme">
+                <Segmented<Profile['theme']>
+                  value={p.theme}
+                  options={[
+                    { value: 'system', label: 'System' },
+                    { value: 'dark', label: 'Dark' },
+                    { value: 'light', label: 'Light' },
+                  ]}
+                  onChange={(theme) => update({ theme })}
+                />
+              </Field>
+              <Field label="Status colours">
+                <Segmented<Profile['palette']>
+                  value={p.palette}
+                  options={[
+                    { value: 'standard', label: 'Standard' },
+                    { value: 'cb', label: 'Colour-blind safe' },
+                  ]}
+                  onChange={(palette) => update({ palette })}
+                />
               </Field>
             </div>
           </Section>

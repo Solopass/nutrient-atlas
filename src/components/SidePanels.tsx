@@ -61,7 +61,7 @@ export function CategoryPanel({ states, categories, selectedId, onSelect }: Comm
                       title={`${s.nutrient.name}: ${s.pct != null ? Math.round(s.pct) + '%' : STATUS_META[s.status].label}`}
                       className="h-4 min-w-4 flex-1 rounded-[3px] transition hover:scale-125"
                       style={{
-                        background: noData ? 'transparent' : color,
+                        background: noData ? 'transparent' : s.status === 'deficient' || s.status === 'attention' ? `repeating-linear-gradient(135deg, ${color} 0 3px, color-mix(in oklab, ${color} 45%, transparent) 3px 5px)` : color,
                         opacity: noData ? 1 : s.status === 'noTarget' ? 0.3 : 0.85,
                         border: noData ? `1px dashed ${color}` : undefined,
                         outline: selectedId === s.nutrient.id ? '1.5px solid var(--fg)' : undefined,
@@ -112,6 +112,7 @@ export function GapsPanel({ states, selectedId, onSelect }: Common) {
                       <div className="flex items-baseline justify-between gap-2 text-xs">
                         <span className="truncate">{n.name}</span>
                         <span className="font-semibold font-mono" style={{ color }}>
+                          <span className="status-glyph">{STATUS_META[s.status].glyph} </span>
                           {Math.round(s.pct!)}%
                         </span>
                       </div>

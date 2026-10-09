@@ -65,7 +65,7 @@ export function NutrientTile({ state, index, selected, onSelect }: Props) {
           )}
         </span>
         <span className="font-semibold" style={{ color }}>
-          {status === 'overLimit' && '⚠ '}
+          {status === 'overLimit' ? '⚠ ' : <span className="status-glyph">{STATUS_META[status].glyph} </span>}
           {pctLabel}
         </span>
       </div>

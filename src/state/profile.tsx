@@ -4,6 +4,7 @@ import { db } from '../db/db'
 import { DEFAULT_PROFILE, energyTarget, type Profile } from '../lib/profile'
 import type { LabId, LabResult } from '../lib/labs'
 import { personalize } from '../lib/targets'
+import { useAppearance } from './appearance'
 import type { Nutrient } from '../types'
 
 interface ProfileState {
@@ -50,6 +51,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const profile = useMemo(() => ({ ...DEFAULT_PROFILE, ...stored }), [stored])
 
   const update = useCallback((patch: Partial<Profile>) => saveProfile(patch), [])
+  useAppearance(profile, loaded)
 
   const value = useMemo<ProfileState>(() => {
     const nutrients = personalize(profile)

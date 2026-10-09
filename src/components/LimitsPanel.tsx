@@ -50,6 +50,7 @@ function Gauge({ state, selected, onSelect }: { state: NutrientState; selected: 
       <div className="flex items-baseline justify-between gap-1">
         <span className="truncate text-xs text-(--dim)">{n.shortName ?? n.name}</span>
         <span className="font-mono text-sm font-semibold" style={{ color: noData ? 'var(--muted)' : color }}>
+          {!noData && status !== 'overLimit' && <span className="status-glyph">{STATUS_META[status].glyph} </span>}
           {noData ? '—' : pct != null ? `${Math.round(pct)}%` : status === 'overLimit' ? '⚠' : '0%'}
         </span>
       </div>

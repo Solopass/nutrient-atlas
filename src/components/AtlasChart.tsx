@@ -97,7 +97,7 @@ function TangentText({ r, angle, children, ...rest }: { r: number; angle: number
   )
 }
 
-const HALO = { paintOrder: 'stroke', stroke: 'rgba(8,11,16,0.85)', strokeWidth: 3, strokeLinejoin: 'round' } as const
+const HALO = { paintOrder: 'stroke', stroke: 'var(--halo)', strokeWidth: 3, strokeLinejoin: 'round' } as const
 const STATUSES = Object.keys(STATUS_META) as Status[]
 
 // ── Component ─────────────────────────────────────────────────────
@@ -262,12 +262,12 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
         ))}
         {/* Dots = the part that came from supplements (pills) */}
         <pattern id="supp" width="5" height="5" patternUnits="userSpaceOnUse">
-          <circle cx="2.5" cy="2.5" r="1.15" style={{ fill: "#fff", fillOpacity: 0.6 }} />
+          <circle cx="2.5" cy="2.5" r="1.15" style={{ fill: 'var(--supp-dot)', fillOpacity: 0.6 }} />
         </pattern>
         <radialGradient id="bg-glow" gradientUnits="userSpaceOnUse" cx={C} cy={C} r={OUT1 + 40}>
           <stop offset="0" style={{ stopColor: scoreColor(score.score), stopOpacity: 0.1 }} />
-          <stop offset="0.6" style={{ stopColor: '#4c8dff', stopOpacity: 0.05 }} />
-          <stop offset="1" style={{ stopColor: '#4c8dff', stopOpacity: 0 }} />
+          <stop offset="0.6" style={{ stopColor: 'var(--c-above)', stopOpacity: 0.05 }} />
+          <stop offset="1" style={{ stopColor: 'var(--c-above)', stopOpacity: 0 }} />
         </radialGradient>
         <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <line x1="0" y1="0" x2="0" y2="6" style={{ stroke: 'var(--c-nodata)', strokeWidth: 1.4, strokeOpacity: 0.6 }} />
@@ -371,8 +371,8 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
               )}
               {overlay?.kind === 'footprint' && ov >= 1 && (
                 <g pointerEvents="none">
-                  <path d={sector(R0, rOf(ov), a0, a1)} fill="#fff" fillOpacity="0.24" />
-                  <path d={arc(rOf(ov), a0 + 0.4, a1 - 0.4)} fill="none" stroke="#fff" strokeWidth="2.2" />
+                  <path d={sector(R0, rOf(ov), a0, a1)} fill="var(--fg)" fillOpacity="0.24" />
+                  <path d={arc(rOf(ov), a0 + 0.4, a1 - 0.4)} fill="none" stroke="var(--fg)" strokeWidth="2.2" />
                 </g>
               )}
               {overlay?.kind === 'preview' && ov >= 0.5 && (
@@ -409,6 +409,7 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
                 {n.symbol}
               </text>
               <text x={polar(R0 + 34 * k, mid).x} y={polar(R0 + 34 * k, mid).y + 9 * k} textAnchor="middle" dominantBaseline="central" fill={color} fontSize={11 * k} fontWeight="600" fontFamily="var(--font-mono)" style={HALO}>
+                <tspan className="status-glyph">{STATUS_META[status].glyph} </tspan>
                 {pct != null ? `${Math.round(pct)}%` : '—'}
                 {n.sunCovered && <tspan fill="var(--c-attention)"> ☀</tspan>}
               </text>
@@ -475,7 +476,7 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
                 ) : (
                   fillR > o0 && <path d={sector(o0, fillR, a0, a1)} fill={color} opacity={status === 'noTarget' ? 0.22 : hot ? 0.95 : 0.75} />
                 )}
-                {overlay?.kind === 'footprint' && ov >= 1 && <path d={sector(o0, ringR(ov), a0, a1)} fill="#fff" fillOpacity="0.45" pointerEvents="none" />}
+                {overlay?.kind === 'footprint' && ov >= 1 && <path d={sector(o0, ringR(ov), a0, a1)} fill="var(--fg)" fillOpacity="0.45" pointerEvents="none" />}
                 {overlay?.kind === 'preview' && ov >= 0.5 && n.target != null && (pct ?? 0) < 100 && (
                   <Ghost r0={ringR(pct ?? 0)} r1={ringR((pct ?? 0) + ov)} a0={a0} a1={a1} color={STATUS_META[statusFor((pct ?? 0) + ov)].color} />
                 )}
