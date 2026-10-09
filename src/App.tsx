@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import { AtlasChart, type AtlasOverlay } from './components/AtlasChart'
+import { AtlasChart, snapServings, type AtlasOverlay } from './components/AtlasChart'
 import { AtlasToolbar, ReplayBar } from './components/AtlasToolbar'
 import { FoodStrip, type FoodSummary } from './components/FoodStrip'
 import { foodLabel } from './components/log/QuickAdd'
@@ -280,13 +280,39 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
     const days = week ? week7.filter((d) => hasFood(byDate.get(d))) : [date]
     const map = new Map<string, FoodSummary>()
     for (const l of days.flatMap((d) => byDate.get(d) ?? [])) {
-      const f = map.get(l.name) ?? { name: l.name, nutrients: {}, kcal: 0, supplement: l.supplementId != null }
+      const f = map.get(l.name) ?? { name: l.name, nutrients: {}, kcal: 0, supplement: l.supplementId != null, servings: 0 }
       for (const [id, v] of Object.entries(l.nutrients)) f.nutrients[id] = (f.nutrients[id] ?? 0) + (v * l.multiplier) / days.length
       f.kcal += itemsKcal([l]) / days.length
+      f.servings! += l.multiplier
       map.set(l.name, f)
     }
     return [...map.values()].sort((a, b) => Number(a.supplement) - Number(b.supplement) || b.kcal - a.kcal)
   }, [demo, week, week7, byDate, date])
+  const [undoScale, setUndoScale] = useState<{ name: string; before: { id: number; multiplier: number }[] } | null>(null)
+  useEffect(() => {
+    if (!undoScale) return
+    const t = setTimeout(() => setUndoScale(null), 8000)
+    return () => clearTimeout(t)
+  }, [undoScale])
+  useEffect(() => setUndoScale(null), [date, week])
+  /** Set the day's total servings of a food (entries keep their proportions), snapped to quarter servings. */
+  const setServings = useCallback(
+    async (name: string, total: number) => {
+      const entries = dayLogs.filter((l) => l.name === name)
+      const now = entries.reduce((a, l) => a + l.multiplier, 0)
+      const next = snapServings(total)
+      if (!entries.length || now <= 0 || Math.abs(next - now) < 1e-9) return
+      const k = next / now
+      setUndoScale({ name, before: entries.map((l) => ({ id: l.id, multiplier: l.multiplier })) })
+      await db.transaction('rw', db.logs, () => Promise.all(entries.map((l) => db.logs.update(l.id, { multiplier: Math.round(l.multiplier * k * 1000) / 1000 }))))
+    },
+    [dayLogs],
+  )
+  const undoServings = async () => {
+    if (!undoScale) return
+    await db.transaction('rw', db.logs, () => Promise.all(undoScale.before.map((b) => db.logs.update(b.id, { multiplier: b.multiplier }))))
+    setUndoScale(null)
+  }
   const preview = hoverPreview ?? pinnedPreview
   const overlay = useMemo<AtlasOverlay | null>(() => {
     if (lapse) return null
@@ -300,7 +326,7 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
       return { kind: 'preview', name: preview.name, pct: toPct(preview.nutrients), score: { from: score.score, to: dayScore(withFood).score } }
     }
     const f = footprint ? foods.find((x) => x.name === footprint) : null
-    return f ? { kind: 'footprint', name: foodLabel(f.name), pct: toPct(f.nutrients) } : null
+    return f ? { kind: 'footprint', name: foodLabel(f.name), pct: toPct(f.nutrients), servings: week ? undefined : f.servings } : null
   }, [lapse, preview, footprint, foods, nutrients, intake, score.score])
 
   // ── Save the Atlas as an image ──
@@ -549,12 +575,27 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
               meals={lapseView?.meals ?? meals}
               range={lapse ? null : range}
               overlay={overlay}
+              onFootprintScale={
+                !week && footprint ? (factor) => {
+                  const f = foods.find((x) => x.name === footprint)
+                  if (f?.servings) setServings(f.name, f.servings * factor)
+                } : undefined
+              }
               {...sel}
             />
-            {!lapse && <FoodStrip foods={foods} active={footprint} week={week} onToggle={(name) => {
-              setPinnedPreview(null)
-              setFootprint((f) => (f === name ? null : name))
-            }} />}
+            {!lapse && (
+              <FoodStrip
+                foods={foods}
+                active={footprint}
+                week={week}
+                onToggle={(name) => {
+                  setPinnedPreview(null)
+                  setFootprint((f) => (f === name ? null : name))
+                }}
+                onServings={week ? undefined : setServings}
+                undo={undoScale ? { name: undoScale.name, run: undoServings } : null}
+              />
+            )}
           </div>
           <div className="order-3 xl:order-none">
             <GapsPanel states={states} {...sel} />

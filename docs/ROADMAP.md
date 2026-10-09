@@ -57,7 +57,7 @@ The goal: make it good enough that you want to open it every day, and fix what d
 | A6 ✅ | **What's new** tips for Products, Replay, By meal and Preview | These features are hard to find right now | S |
 | A7 ✅ | **Speed:** USDA table, search, Best next food and weekly food ideas moved to a Web Worker. Simulated slow phone (6× CPU): main-thread blocking on dashboard load 2.07 s → 1.08 s, longest freeze 0.54 s → 0.35 s | First load on phones | S–M |
 | A8 ✅ | **End-to-end smoke test** (setup → log → dashboard → products) using the headless Edge script we already have | Catches regressions across the whole app | M |
-| A9 | *Stretch:* drag a wedge on the Atlas to adjust a portion | Makes the chart itself the logging tool | M |
+| A9 ✅ | *Stretch:* drag a wedge on the Atlas to adjust a portion | Makes the chart itself the logging tool | M |
 
 ### Phase B: live on your phone. **Decision: hosting** (free: private GitHub repo + Cloudflare Pages, see [HOSTING.md](HOSTING.md))
 

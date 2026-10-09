@@ -1,4 +1,4 @@
-import { useState, type FocusEvent, type KeyboardEvent, type PointerEvent, type ReactNode, type SVGProps } from 'react'
+import { useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type PointerEvent, type ReactNode, type SVGProps } from 'react'
 import { CATEGORY_LABEL } from '../data/nutrients'
 import { STATUS_META, fmt, scoreColor, type DayScore } from '../lib/status'
 import type { LogGroup } from '../db/db'
@@ -118,6 +118,8 @@ interface Props {
   range?: Map<string, { min: number; max: number; days: number } | null> | null
   /** A food drawn on top: what it would add (preview) or what it supplied (footprint). */
   overlay?: AtlasOverlay | null
+  /** Footprint in the day view: drag a wedge's footprint in or out to change the servings (factor ≥ 0.1). */
+  onFootprintScale?: (factor: number) => void
 }
 
 export interface AtlasOverlay {
@@ -127,7 +129,14 @@ export interface AtlasOverlay {
   pct: Map<string, number>
   /** Preview only: nourishment score now and with the food. */
   score?: { from: number; to: number }
+  /** Footprint (day view): servings of this food logged that day, shown while dragging to resize. */
+  servings?: number
+  /** Footprint: drag factor in progress (set inside the chart). */
+  dragging?: number
 }
+
+/** Portions snap to quarter servings, never below a quarter. */
+export const snapServings = (s: number) => Math.max(0.25, Math.round(s * 4) / 4)
 
 const statusFor = (p: number): Status => (p < 50 ? 'deficient' : p < 80 ? 'attention' : p <= 120 ? 'good' : 'above')
 const clip = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1) + '…' : t)
@@ -199,7 +208,58 @@ function split(state: NutrientState) {
   return { suppPct, foodPct: Math.max(0, pct - suppPct) }
 }
 
-export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, compare = null, colorBy = 'status', meals = null, range = null, overlay = null }: Props) {
+export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, compare = null, colorBy = 'status', meals = null, range = null, overlay: overlayIn = null, onFootprintScale }: Props) {
+  // ── Drag a footprint to resize the food's portion ──
+  const svgRef = useRef<SVGSVGElement>(null)
+  const drag = useRef<{ base: number; x: number; y: number; moved: boolean } | null>(null)
+  const justDragged = useRef(false)
+  const [dragScale, setDragScale] = useState<number | null>(null)
+  const overlay = useMemo<AtlasOverlay | null>(() => {
+    if (!overlayIn || dragScale == null || overlayIn.kind !== 'footprint') return overlayIn
+    return { ...overlayIn, pct: new Map([...overlayIn.pct].map(([k, v]) => [k, v * dragScale])), dragging: dragScale }
+  }, [overlayIn, dragScale])
+  const canDrag = !!onFootprintScale && overlayIn?.kind === 'footprint'
+  const pctAt = (clientX: number, clientY: number) => {
+    const svg = svgRef.current!
+    const pt = svg.createSVGPoint()
+    pt.x = clientX
+    pt.y = clientY
+    const p = pt.matrixTransform(svg.getScreenCTM()!.inverse())
+    return Math.min(Math.max(((Math.hypot(p.x - C, p.y - C) - R0) / (R100 - R0)) * 100, 0.5), CAP)
+  }
+  const dragHandlers = canDrag
+    ? {
+        onPointerMove: (e: PointerEvent) => {
+          const d = drag.current
+          if (!d) return
+          if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 4) return
+          d.moved = true
+          setDragScale(Math.min(Math.max(pctAt(e.clientX, e.clientY) / d.base, 0.1), 6))
+        },
+        onPointerUp: () => {
+          const d = drag.current
+          drag.current = null
+          if (d?.moved && dragScale != null) {
+            justDragged.current = true // the click that follows must not open the detail panel
+            onFootprintScale!(dragScale)
+          }
+          setDragScale(null)
+        },
+        onPointerCancel: () => {
+          drag.current = null
+          setDragScale(null)
+        },
+      }
+    : {}
+  const startDrag = (e: PointerEvent, base: number) => {
+    if (!canDrag || base < 1) return
+    drag.current = { base, x: e.clientX, y: e.clientY, moved: false }
+    try {
+      svgRef.current?.setPointerCapture(e.pointerId) // keep getting moves when the pointer leaves the wedge
+    } catch {
+      /* not an active pointer (rare); moves over the chart still work */
+    }
+  }
   const byMeal = colorBy === 'meal' && meals != null
   const [hoverId, setHoverId] = useState<string | null>(null)
   const coreSegs = layout(core, 4, 1.2)
@@ -222,7 +282,10 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
     onPointerLeave: () => setHoverId((h) => (h === id ? null : h)),
     onFocus: (e: FocusEvent<SVGGElement>) => e.currentTarget.matches(':focus-visible') && setHoverId(id),
     onBlur: () => setHoverId((h) => (h === id ? null : h)),
-    onClick: () => onSelect(id),
+    onClick: () => {
+      if (justDragged.current) return void (justDragged.current = false)
+      onSelect(id)
+    },
     onKeyDown: (e: KeyboardEvent<SVGGElement>) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault()
@@ -244,7 +307,17 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
   })
 
   return (
-    <svg id="atlas-svg" viewBox={view} className="atlas mx-auto block h-auto w-full max-w-[880px] select-none" role="group" aria-label="Nutrient Atlas" aria-describedby="atlas-desc">
+    <svg
+      id="atlas-svg"
+      ref={svgRef}
+      viewBox={view}
+      className={`atlas mx-auto block h-auto w-full max-w-[880px] select-none ${dragScale != null ? 'atlas-dragging' : ''}`}
+      role="group"
+      aria-label="Nutrient Atlas"
+      aria-describedby="atlas-desc"
+      style={canDrag ? { touchAction: 'none' } : undefined}
+      {...dragHandlers}
+    >
       <desc id="atlas-desc">{describe([...core, ...outer], score)}</desc>
       <defs>
         {STATUSES.map((s) => (
@@ -327,12 +400,14 @@ export function AtlasChart({ core, outer, score, selectedId, onSelect, compact, 
           const rg = range?.get(n.id) ?? null
           const ov = overlay?.pct.get(n.id) ?? 0
           const faded = overlay?.kind === 'footprint' && ov < 1
+          const baseOv = overlayIn?.pct.get(n.id) ?? 0
           return (
             <g
               key={n.id}
               {...interact(n.id)}
+              onPointerDown={(e) => startDrag(e, baseOv)}
+              style={{ transition: 'opacity 200ms', cursor: canDrag && baseOv >= 1 ? 'ns-resize' : undefined }}
               opacity={dimmed ? 0.32 : faded ? 0.3 : 1}
-              style={{ transition: 'opacity 200ms' }}
               aria-label={`${n.name} ${pct != null ? Math.round(pct) + '%' : STATUS_META[status].label}`}
             >
               <path d={sector(R0, R100, a0, a1)} fill="var(--panel-2)" opacity={hot ? 1 : 0.75} />
@@ -564,11 +639,11 @@ function Hub({
           {clip(overlay.name, 24)}
         </text>
         <text x={C} y={C + 12} textAnchor="middle" fontSize="30" fontWeight="750" fill={preview ? scoreColor(to) : 'var(--fg)'} fontFamily="var(--font-mono)">
-          {preview ? Math.round(to) : footprintCount}
+          {preview ? Math.round(to) : overlay.dragging != null && overlay.servings != null ? `×${snapServings(overlay.servings * overlay.dragging)}` : footprintCount}
           {preview && <tspan fontSize="13" fill="var(--muted)">%</tspan>}
         </text>
         <text x={C} y={C + 30} textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="var(--font-mono)">
-          {preview ? `score, now ${Math.round(overlay.score?.from ?? 0)}% (+${Math.round(to - (overlay.score?.from ?? 0))})` : 'nutrients ≥ 10% of target'}
+          {preview ? `score, now ${Math.round(overlay.score?.from ?? 0)}% (+${Math.round(to - (overlay.score?.from ?? 0))})` : overlay.dragging != null ? 'servings when you let go' : overlay.servings != null ? 'nutrients ≥ 10% · drag to resize' : 'nutrients ≥ 10% of target'}
         </text>
       </g>
     )

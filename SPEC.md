@@ -1,4 +1,4 @@
-# Nutrient Atlas: Product Specification v1.19
+# Nutrient Atlas: Product Specification v1.20
 
 What the app is and how it behaves today. For what's next, see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -51,6 +51,7 @@ Answers save as you go. Setup stays open until finished or skipped.
   - **Replay 30 days:** plays the Atlas through the last 30 days (rolling 7-day averages in the 7-day view), skipping unlogged days; a scrubber reaches any day. Wedges glide between days where the browser can animate SVG paths.
   - **What-if preview:** hovering a Best-next-food suggestion (or its Preview button, which pins it and scrolls the Atlas into view on phones) draws translucent dashed ghosts of what it would add, in the colour each nutrient would reach; the hub shows the new score. Logging it clears the preview.
   - **Food footprint:** a strip of the foods behind the view (day, or daily average for the week) sits under the Atlas; tapping one outlines its share of every wedge, fades nutrients it doesn't touch, and counts nutrients it supplies at 10%+ of target.
+  - **Resize a portion on the chart (day view):** with a food's footprint showing, drag any of its segments in or out; the footprint follows live, the hub shows the new servings, and releasing sets that day's total servings of the food (entries keep their proportions, snapped to ¼ serving, never below ¼). − / + buttons under the food strip do the same; Undo for 8 seconds. Off in the 7-day view.
   - **Save image:** exports a PNG (chart plus title, date, profile and score); on phones it opens the share sheet.
   - **Phones:** the outer ring is drawn as a slim colour band (no symbols) so secondary nutrients stay visible and tappable.
   - **Keyboard and screen readers:** arrow keys move between nutrients (Home/End jump), Enter opens details; a text summary (score, below-target, over-limit, no-data) is attached to the chart.
