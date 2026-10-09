@@ -63,8 +63,23 @@ export const hasFood = (entries: LogEntry[] | undefined) => !!entries?.some((e) 
  * amount but never lower coverage (a vitamin D pill says nothing about
  * protein). A nutrient that only a supplement reports counts as partial:
  * the supplement amount is known, the food amount isn't.
+ *
+ * Results are cached per array: the dashboard asks for the same day once per
+ * nutrient (7-day whiskers, trends), and log arrays are never mutated after
+ * they're built (Dexie queries and groupByDate return fresh arrays).
+ * Treat the result as read-only.
  */
 export function intakeFromLogs(entries: LogEntry[]): Record<string, Intake> {
+  const cached = intakeCache.get(entries)
+  if (cached) return cached
+  const out = sumIntake(entries)
+  intakeCache.set(entries, out)
+  return out
+}
+
+const intakeCache = new WeakMap<LogEntry[], Record<string, Intake>>()
+
+function sumIntake(entries: LogEntry[]): Record<string, Intake> {
   const out: Record<string, Intake> = {}
   if (entries.length === 0) return out
   const foods = entries.filter((e) => e.supplementId == null)

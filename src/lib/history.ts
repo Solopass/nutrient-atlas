@@ -32,7 +32,11 @@ export function formatDay(date: string, style: 'long' | 'short' = 'long') {
 // ── Aggregation ───────────────────────────────────────────────────
 export function groupByDate(logs: LogEntry[]) {
   const map = new Map<string, LogEntry[]>()
-  for (const l of logs) map.set(l.date, [...(map.get(l.date) ?? []), l])
+  for (const l of logs) {
+    const day = map.get(l.date)
+    if (day) day.push(l)
+    else map.set(l.date, [l])
+  }
   return map
 }
 

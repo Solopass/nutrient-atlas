@@ -49,6 +49,20 @@ function useMedia(query: string) {
   )
 }
 
+/** False for the first frame, then true: lets the Atlas paint before below-the-fold sections render. */
+function useAfterFirstPaint() {
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    let t = 0
+    const raf = requestAnimationFrame(() => (t = window.setTimeout(() => setReady(true))))
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(t)
+    }
+  }, [])
+  return ready
+}
+
 function useHashRoute() {
   return useSyncExternalStore(
     (cb) => {
@@ -168,6 +182,7 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
   const showAdvanced = profile.showAdvanced
   const compact = !useMedia('(min-width: 768px)')
   const today = localDate()
+  const belowFold = useAfterFirstPaint()
 
   // 44 days back covers the 30-day trend plus the prior-week comparison.
   const from = addDays(date, -43)
@@ -609,13 +624,17 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
           </div>
         </div>
 
-        <LimitsPanel states={states} {...sel} />
+        {belowFold && (
+          <div className="defer-paint space-y-5">
+            <LimitsPanel states={states} {...sel} />
 
-        <PeriodicTable states={states} categories={outerCats} {...sel} />
+            <PeriodicTable states={states} categories={outerCats} {...sel} />
 
-        <div className="pt-2">
-          <Legend />
-        </div>
+            <div className="pt-2">
+              <Legend />
+            </div>
+          </div>
+        )}
       </main>
 
       <DetailPanel state={selected} onClose={close} history={nutrientHistory} />

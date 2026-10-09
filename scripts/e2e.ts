@@ -104,6 +104,8 @@ const steps: [string, () => Promise<void>][] = [
     async () => {
       await waitFor('the Atlas', `document.getElementById('atlas-svg')`)
       await waitFor('the supplement in the header', `/1 supplement/.test(document.querySelector('header p')?.innerText ?? '')`)
+      // Drawn just after the Atlas (deferred, below the fold).
+      await waitFor('the limits and periodic table', `/Periodic table/.test(document.querySelector('main').textContent) && /stay under/.test(document.querySelector('main').textContent)`)
       if ((await text()).includes('Set up your profile')) throw new Error('Finished setup but the dashboard still asks to set up a profile')
     },
   ],

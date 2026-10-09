@@ -216,3 +216,9 @@ button:focus-visible,
     animation: none;
   }
 }
+
+/* Below-the-fold dashboard sections: skip layout and paint until they're near the viewport. */
+.defer-paint {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}

@@ -49,6 +49,21 @@ describe('intakeFromLogs', () => {
     expect(intakeFromLogs([pill('d', { vitD: 50 })]).vitD.coverage).toBe(1)
   })
 
+  test('is computed once per log array; a new array (e.g. after an edit) is recomputed', () => {
+    const day = [entry('d', { iron: 2 })]
+    expect(intakeFromLogs(day)).toBe(intakeFromLogs(day))
+    const edited = day.map((e) => ({ ...e, multiplier: 3 }))
+    expect(intakeFromLogs(edited).iron.amount).toBe(6)
+    expect(intakeFromLogs(day).iron.amount).toBe(2)
+  })
+
+  test('groupByDate keeps entry order within a day', () => {
+    const [a, b, c] = [entry('d1', {}), entry('d2', {}), entry('d1', {})]
+    const map = groupByDate([a, b, c])
+    expect(map.get('d1')).toEqual([a, c])
+    expect(map.get('d2')).toEqual([b])
+  })
+
   test('hasFood ignores supplement entries', () => {
     expect(hasFood([pill('d', {})])).toBe(false)
     expect(hasFood([pill('d', {}), entry('d', {})])).toBe(true)
