@@ -30,7 +30,7 @@ It waits for your go-ahead. Nothing is pushed or published without it.
 4. **Optional custom domain** (e.g. `atlas.yourdomain.com`) in Pages → Custom domains. HTTPS is automatic.
 5. **Move your data to the phone:** on the PC, Settings → Export backup; on the phone, *Restore a backup…* on the setup screen. Each device then keeps its own data until sync (Phase D).
 
-After that, **every push to `main` deploys**, and every other branch gets its own preview URL, so changes can be tried on the phone before they go live. Before deploying, run the checks (`bun run typecheck`, `bun test`, `bun run e2e`).
+After that, **every push to `main` deploys**, and every other branch gets its own preview URL, so changes can be tried on the phone before they go live. Before deploying, run the checks: `bun run typecheck` and `bun test` (both also run on every commit), and `bun run e2e`.
 
 ## Files to add at deploy time
 
@@ -53,7 +53,7 @@ After that, **every push to `main` deploys**, and every other branch gets its ow
 
 - `sw.js` must never be cached long, or phones won't pick up updates. Hashed `/assets/*` (including the USDA worker) can be cached forever.
 - `camera=(self)` allows barcode scanning in Products.
-- Hash routing (`#/history`) means no single-page redirect rules are needed.
+- Hash routing (`#/history`, `#/report`) means no single-page redirect rules are needed. Pages load as separate hashed chunks, all precached by the service worker, so they work offline.
 - The app calls one outside service: Open Food Facts, for barcode lookups (only the barcode number is sent).
 
 ## Updates and data safety
@@ -61,7 +61,7 @@ After that, **every push to `main` deploys**, and every other branch gets its ow
 - The service worker is `autoUpdate`: a device gets the new version on the next launch after a deploy.
 - User data lives in each device's IndexedDB and is **never uploaded**. The site only serves code and public USDA data.
 - Dexie schema changes must always be additive `db.version(n)` upgrades (currently 5). Never edit an old version, or installed copies break.
-- Before risky changes: Settings → Export backup. The app shows the last backup date and requests protected storage; installed apps usually get it.
+- Before risky changes: Settings → Export backup. The app shows the last backup date, reminds you on the dashboard after 14 days, and requests protected storage; installed apps usually get it.
 
 ## Privacy and cost
 
