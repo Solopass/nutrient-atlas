@@ -1,0 +1,8 @@
+#!/bin/sh
+# Runs before every commit: type check and unit tests (a few seconds).
+# Skip in an emergency with: git commit --no-verify
+# The whole-app test (bun run e2e, ~15 s) is run by hand before larger changes.
+echo "pre-commit: typecheck + unit tests…"
+bun run --silent typecheck || { echo "pre-commit: typecheck failed"; exit 1; }
+bun test 2>&1 | tail -3 | grep -q " 0 fail" || { bun test 2>&1 | grep -E "\(fail\)|error:" | head -20; echo "pre-commit: tests failed"; exit 1; }
+echo "pre-commit: ok"
