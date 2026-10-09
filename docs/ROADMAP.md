@@ -86,7 +86,7 @@ The goal: make it good enough that you want to open it every day, and fix what d
 
 | # | Item | Size |
 |---|---|---|
-| B1 | Push to a private GitHub repo; Cloudflare Pages builds each push. Needs your OK and two free accounts | S |
+| B1 | Push to a private GitHub repo; Cloudflare Pages builds each push. Needs your OK and two free accounts. **Step-by-step plan, decisions and go-day checklist: [HOSTING.md](HOSTING.md)** | S |
 | B2 | Install on your phone; one-week field test (offline, notch, keyboard, storage protection when installed) | – |
 | B3 ✅ (needs a real-phone check) | Camera scanning: built in on Android Chrome; on iPhone an opt-in add-on the browser downloads itself (nothing bundled). Done early, in phone prep | M |
 | B4 | "Export to Files/Drive" on phones (the in-app reminder is done, E6) | S |
