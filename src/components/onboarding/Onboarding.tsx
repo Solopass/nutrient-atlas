@@ -22,7 +22,7 @@ import {
 import { fmt } from '../../lib/status'
 import { createSupplement } from '../../lib/supplements'
 import { describeBackup, readBackup, restoreBackup } from '../../lib/backup'
-import { useProfile } from '../../state/profile'
+import { saveProfile, useProfile } from '../../state/profile'
 import { Logo } from '../Logo'
 import { ChoiceCards, Field, NumberField, Segmented } from '../settings/Controls'
 
@@ -37,7 +37,9 @@ export function Onboarding({ onFinish }: { onFinish: (exit: OnboardingExit) => v
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const existing = useLiveQuery(() => db.supplements.toArray(), [])
 
-  const finish = async (exit: OnboardingExit) => {
+  /** `completed`: went through the steps, so the answers (even untouched defaults) are this person's profile. */
+  const finish = async (exit: OnboardingExit, completed = false) => {
+    if (completed) await saveProfile({})
     await db.settings.put({ key: 'onboarded', value: new Date().toISOString() })
     onFinish(exit)
   }
@@ -100,7 +102,7 @@ export function Onboarding({ onFinish }: { onFinish: (exit: OnboardingExit) => v
             existing={(existing ?? []).map((s) => s.name)}
           />
         )}
-        {step === 4 && <Ready onFinish={finish} />}
+        {step === 4 && <Ready onFinish={(exit) => finish(exit, true)} />}
 
         {step < STEPS.length - 1 && (
           <div className="mt-8 flex items-center justify-between">

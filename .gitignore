@@ -5,3 +5,6 @@ dist
 data/usda-raw
 *.tsbuildinfo
 backups/
+dist-app
+dist-e2e
+e2e-failure.png
