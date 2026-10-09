@@ -211,7 +211,8 @@ async function main() {
 
   profile = mkdtempSync(join(tmpdir(), 'atlas-e2e-'))
   const cdpPort = 9400 + Math.floor(Math.random() * 400)
-  browser = spawn([exe, '--headless=new', '--disable-gpu', '--no-first-run', `--user-data-dir=${profile}`, `--remote-debugging-port=${cdpPort}`, '--window-size=1280,900', 'about:blank'], { stdout: 'ignore', stderr: 'ignore' })
+  // --disable-extensions: extensions installed for every profile (e.g. a crypto wallet) inject scripts that log warnings.
+  browser = spawn([exe, '--headless=new', '--disable-gpu', '--no-first-run', '--disable-extensions', `--user-data-dir=${profile}`, `--remote-debugging-port=${cdpPort}`, '--window-size=1280,900', 'about:blank'], { stdout: 'ignore', stderr: 'ignore' })
   let target: { webSocketDebuggerUrl: string } | undefined
   for (let i = 0; i < 100 && !target; i++) {
     target = await fetch(`http://127.0.0.1:${cdpPort}/json`).then((r) => r.json()).then((ts: any[]) => ts.find((t) => t.type === 'page')).catch(() => undefined)
