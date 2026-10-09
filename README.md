@@ -26,7 +26,7 @@ Double-click **`Nutrient Atlas.cmd`**. It builds the latest version, serves it i
 
 **Logging** (the + button)
 - **Search** USDA foods with real portions; **Quick add** repeats a meal, a saved meal or a recent food.
-- **Barcode:** type or paste the number in the search box (or use a USB scanner). It checks your foods, then the free **USDA Branded Foods** and **Open Food Facts** databases; found foods are saved so the next time is instant. A free USDA key in Settings → Food databases raises the lookup limit.
+- **Barcode:** type or paste the number in the search box, use a USB scanner, or tap **▥ Scan** (built in on Android Chrome; on iPhone, switch on the optional free scanner add-on in Settings → Food databases). It checks your foods, then the free **USDA Branded Foods** and **Open Food Facts** databases; found foods are saved so the next time is instant. A free USDA key in Settings → Food databases raises the lookup limit.
 - **AI estimate:** copy a prompt into any chatbot and paste its JSON reply ([docs/AI_INTEGRATION.md](docs/AI_INTEGRATION.md)).
 - **Recipes:** build a dish from ingredients (your foods or USDA), say how many portions it makes, see one portion's nutrients, log a portion at a time; edit it later.
 - **My foods:** paste a Nutrition Facts label to create a food; saved meals and recipes.
@@ -77,7 +77,7 @@ bun run e2e        # whole-app test in headless Edge/Chrome, ~20 s including its
   - setup, then logging a USDA food, building a recipe and the detail panel
   - Products (import and ranking), then History, the clinician report and Settings
   - switching theme, then a reload
-  - logging by barcode, with both food databases faked locally (no network)
+  - logging and scanning by barcode, with both food databases and the camera faked locally (no network)
   It fails on any console error and saves `e2e-failure.png`.
 - **Sanity scripts** print human-readable checks: `bun scripts/check-targets.ts`, `check-suggestions.ts`, `check-sample-foods.ts`, `check-label-parse.ts`.
 - Dev-only routes: `#/dev/sample` (load sample history and skip setup), `#/dev/crash` (test the crash screen).

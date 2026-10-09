@@ -34,14 +34,14 @@ export function QuickAdd({ meal, date, onLogged }: { meal: Meal; date: string; o
         <Group title={`Same ${meal} as ${formatDay(prev.date).toLowerCase()}`}>
           <button
             disabled={busy}
-            onClick={() => run(() => copyEntries(prev.entries, date, meal), `Copied ${prev.entries.length} items to ${meal}`)}
+            onClick={() => run(() => copyEntries(prev.entries, date, meal), `Copied ${prev.entries.length} item${prev.entries.length === 1 ? '' : 's'} to ${meal}`)}
             className="flex w-full items-center gap-3 rounded-lg bg-(--panel-2) p-3 text-left shadow-[inset_0_0_0_1px_var(--line)] transition hover:shadow-[inset_0_0_0_1px_var(--c-above)]"
           >
             <span className="grid size-8 shrink-0 place-items-center rounded-full bg-(--c-above)/15 text-(--c-above)">↻</span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm">{prev.entries.map((e) => foodLabel(e.name)).join(', ')}</span>
               <span className="font-mono text-[11px] text-(--muted)">
-                {prev.entries.length} items · {Math.round(itemsKcal(prev.entries))} kcal
+                {prev.entries.length} item{prev.entries.length === 1 ? '' : 's'} · {Math.round(itemsKcal(prev.entries))} kcal
               </span>
             </span>
             <span className="text-sm text-(--c-above)">Copy</span>

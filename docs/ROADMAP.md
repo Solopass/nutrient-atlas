@@ -88,7 +88,7 @@ The goal: make it good enough that you want to open it every day, and fix what d
 |---|---|---|
 | B1 | Push to a private GitHub repo; Cloudflare Pages builds each push. Needs your OK and two free accounts | S |
 | B2 | Install on your phone; one-week field test (offline, notch, keyboard, storage protection when installed) | – |
-| B3 | Camera barcode scanning everywhere, including iPhone (a small scanning library as a fallback) | M |
+| B3 ✅ (needs a real-phone check) | Camera scanning: built in on Android Chrome; on iPhone an opt-in add-on the browser downloads itself (nothing bundled). Done early, in phone prep | M |
 | B4 | "Export to Files/Drive" on phones (the in-app reminder is done, E6) | S |
 | B5 | Optional reminders: "log dinner?", "took your supplements?" (web push works for installed apps, iOS 16.4+) | M |
 
@@ -152,6 +152,10 @@ Details of how everything behaves are in [SPEC.md](../SPEC.md). This is the hist
 **Phase A (polish and trust):**
 - Shipped: light theme and colour-blind safe palette with shape markers, sun setting, What's new, the USDA Web Worker (main-thread blocking on a simulated slow phone halved), and the whole-app e2e test.
 - *Learned:* the daily app needed its own build folder, and headless browser tests must kill the whole process tree.
+
+**Phone prep (before hosting):**
+- Shipped: a phone pass over every screen at 375 px (no overflow anywhere); Back-to-Atlas buttons hidden where the tab bar does that job; iPhone tap-to-zoom prevented on form fields; the report table readable on phones; plural and wording fixes; a Scan button in the log sheet with an opt-in, never-bundled scanner add-on for iPhone; the e2e test scans with a fake camera.
+- *Learned:* the built-in browser pane's emulated screenshots can be misleading; real phone-size captures come from headless Edge with device metrics. A supplement-only upper limit (magnesium) shouldn't warn about a food target above it.
 
 **Barcode logging (F3):**
 - Shipped: barcodes in the log sheet from two free databases, USDA Branded Foods (manufacturer data, free key or demo key) and Open Food Facts, merged with USDA first; found foods are saved with the barcode for offline re-logging; an optional key in Settings → Food databases.

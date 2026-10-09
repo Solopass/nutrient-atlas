@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { db, FDC_KEY_SETTING } from '../../db/db'
 import { FDC_SIGNUP_URL } from '../../lib/barcode'
+import { SCANNER_ADDON, SCANNER_ADDON_SETTING, useScanSupport } from '../../lib/scanner'
 import { Section } from './Controls'
 
 /**
@@ -40,7 +41,7 @@ export function FoodDatabases() {
             value={value}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && save()}
-            placeholder="Paste the key from your email"
+            placeholder="Paste your key"
             autoComplete="off"
             spellCheck={false}
             className="min-w-0 flex-1 rounded-lg border border-(--line) bg-(--panel-2) px-3 py-2 font-mono text-sm focus:border-(--c-above) focus:outline-none"
@@ -61,6 +62,41 @@ export function FoodDatabases() {
           (name and email, arrives in a minute). It stays on this device and isn't put in backups.
         </p>
       </div>
+      <ScannerAddon />
     </Section>
+  )
+}
+
+/** Opt-in camera scanning for browsers without a built-in barcode reader. Nothing is bundled; the browser fetches it on first scan. */
+function ScannerAddon() {
+  const on = useLiveQuery(async () => (await db.settings.get(SCANNER_ADDON_SETTING))?.value === true, [])
+  const support = useScanSupport()
+  const toggle = () => (on ? db.settings.delete(SCANNER_ADDON_SETTING) : db.settings.put({ key: SCANNER_ADDON_SETTING, value: true }))
+
+  return (
+    <div className="border-t border-(--line) pt-4">
+      <div className="text-xs text-(--dim)">Camera scanning</div>
+      {support === 'native' ? (
+        <p className="mt-1 text-xs text-(--muted)">This browser has a built-in barcode reader, so the Scan button just works. Nothing to add.</p>
+      ) : (
+        <>
+          <label className="mt-2 flex cursor-pointer items-start gap-3">
+            <input type="checkbox" checked={!!on} onChange={toggle} className="mt-0.5 size-4 accent-(--c-above)" />
+            <span className="text-sm">
+              Use the free scanner add-on
+              <span className="mt-0.5 block text-xs leading-relaxed text-(--muted)">
+                For iPhone, Firefox and other browsers without a built-in reader. When on, your browser downloads{' '}
+                <a href={SCANNER_ADDON.homepage} target="_blank" rel="noreferrer" className="text-(--c-above) hover:underline">
+                  {SCANNER_ADDON.name} {SCANNER_ADDON.version}
+                </a>{' '}
+                (open source, {SCANNER_ADDON.license}, uses the {SCANNER_ADDON.engine} decoder) from the jsDelivr CDN the first time you tap Scan (about half a
+                megabyte), then keeps it cached. It isn't part of the app, and jsDelivr sees only that your browser fetched it. Barcodes are read on your device.
+              </span>
+            </span>
+          </label>
+          {support === 'insecure' && <p className="mt-2 text-xs text-(--c-attention)">Cameras need a secure (https) address, so scanning starts working once the app is hosted.</p>}
+        </>
+      )}
+    </div>
   )
 }

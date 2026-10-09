@@ -1,22 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { cleanBarcode, lookupBarcode, type OffProduct } from '../../lib/products/openFoodFacts'
+import { scanHint, useScanSupport } from '../../lib/scanner'
 import { useProfile } from '../../state/profile'
-
-// Not in TypeScript's DOM lib yet.
-interface DetectedBarcode {
-  rawValue: string
-}
-declare class BarcodeDetector {
-  constructor(opts?: { formats: string[] })
-  detect(source: CanvasImageSource): Promise<DetectedBarcode[]>
-}
-
-const canScan = () => typeof window !== 'undefined' && 'BarcodeDetector' in window && !!navigator.mediaDevices?.getUserMedia && window.isSecureContext
+import { CameraScanner } from '../CameraScanner'
 
 /**
- * Type the numbers under a barcode, or scan it with the camera where the
- * browser can (Chrome/Edge on Android and some desktops; needs HTTPS or
- * localhost). Looks the product up on Open Food Facts.
+ * Type the numbers under a barcode, or scan it with the camera (built in on
+ * Chrome for Android; elsewhere with the optional scanner add-on, see
+ * lib/scanner.ts; needs HTTPS or localhost). Looks the product up on Open Food Facts.
  */
 export function BarcodeLookup({ onFound, onCancel }: { onFound: (p: OffProduct) => void; onCancel: () => void }) {
   const [code, setCode] = useState('')
@@ -24,6 +15,9 @@ export function BarcodeLookup({ onFound, onCancel }: { onFound: (p: OffProduct) 
   const [state, setState] = useState<{ status: 'idle' | 'loading' | 'notfound' | 'error'; msg?: string }>({ status: 'idle' })
   const [found, setFound] = useState<OffProduct | null>(null)
   const abort = useRef<AbortController | null>(null)
+  const support = useScanSupport()
+  const canScan = support === 'native' || support === 'addon'
+  const hint = scanHint(support)
   useEffect(() => () => abort.current?.abort(), [])
 
   const look = async (raw: string) => {
@@ -53,8 +47,9 @@ export function BarcodeLookup({ onFound, onCancel }: { onFound: (p: OffProduct) 
         </button>
       </div>
 
-      {scanning ? (
-        <Scanner
+      {scanning && canScan ? (
+        <CameraScanner
+          support={support}
           onCode={(c) => {
             setScanning(false)
             setCode(c)
@@ -81,20 +76,14 @@ export function BarcodeLookup({ onFound, onCancel }: { onFound: (p: OffProduct) 
           <button type="submit" disabled={state.status === 'loading'} className="rounded-lg bg-(--c-above) px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
             {state.status === 'loading' ? 'Looking up…' : 'Look up'}
           </button>
-          {canScan() && (
+          {canScan && (
             <button type="button" onClick={() => setScanning(true)} className="rounded-lg border border-(--line) px-4 py-2 text-sm hover:border-(--c-above)">
               ▣ Scan with camera
             </button>
           )}
         </form>
       )}
-      {!canScan() && !scanning && (
-        <p className="text-xs text-(--muted)">
-          {window.isSecureContext
-            ? 'Camera scanning isn’t supported in this browser yet (it works in Chrome and Edge on Android). Typing the numbers works everywhere.'
-            : 'Camera scanning needs a secure (https) address, which comes with hosting. Typing the numbers works now.'}
-        </p>
-      )}
+      {hint && !scanning && <p className="text-xs text-(--muted)">{hint}</p>}
 
       {state.status === 'notfound' && (
         <p className="rounded-lg bg-(--c-attention)/10 px-3 py-2 text-sm text-(--c-attention)">
@@ -139,63 +128,6 @@ function FoundCard({ p, onUse }: { p: OffProduct; onUse: () => void }) {
       </div>
       <button onClick={onUse} className="self-center rounded-lg bg-(--c-good) px-3 py-2 text-sm font-semibold text-black hover:brightness-110">
         Review & add
-      </button>
-    </div>
-  )
-}
-
-/** Live camera preview that reports the first barcode it sees. */
-function Scanner({ onCode, onClose }: { onCode: (code: string) => void; onClose: () => void }) {
-  const video = useRef<HTMLVideoElement>(null)
-  const [error, setError] = useState<string | null>(null)
-  // Latest callback in a ref, so a parent re-render doesn't restart the camera.
-  const report = useRef(onCode)
-  report.current = onCode
-  useEffect(() => {
-    let stream: MediaStream | null = null
-    let stopped = false
-    let timer = 0
-    const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] })
-    ;(async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
-        if (stopped) return stream.getTracks().forEach((t) => t.stop())
-        video.current!.srcObject = stream
-        await video.current!.play()
-        const tick = async () => {
-          if (stopped) return
-          try {
-            const [hit] = await detector.detect(video.current!)
-            if (hit?.rawValue && cleanBarcode(hit.rawValue)) {
-              navigator.vibrate?.(60)
-              return report.current(hit.rawValue)
-            }
-          } catch {
-            /* frame not ready */
-          }
-          timer = window.setTimeout(tick, 200)
-        }
-        tick()
-      } catch (e) {
-        setError((e as Error).name === 'NotAllowedError' ? 'Camera permission was declined. Type the numbers instead.' : 'Couldn’t open the camera. Type the numbers instead.')
-      }
-    })()
-    return () => {
-      stopped = true
-      clearTimeout(timer)
-      stream?.getTracks().forEach((t) => t.stop())
-    }
-  }, [])
-
-  return (
-    <div className="space-y-2">
-      <div className="relative overflow-hidden rounded-lg bg-black">
-        <video ref={video} muted playsInline className="aspect-video w-full object-cover" />
-        <div className="pointer-events-none absolute inset-x-[12%] top-1/2 h-24 -translate-y-1/2 rounded-lg border-2 border-white/70 shadow-[0_0_0_999px_rgba(0,0,0,0.35)]" />
-      </div>
-      {error && <p className="text-sm text-(--c-deficient)">{error}</p>}
-      <button onClick={onClose} className="text-sm text-(--muted) hover:text-(--fg)">
-        Stop camera
       </button>
     </div>
   )

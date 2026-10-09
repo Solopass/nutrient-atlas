@@ -54,8 +54,9 @@ export function ReportPage() {
               </button>
             ))}
           </div>
-          <button onClick={() => window.print()} className="rounded-full bg-(--c-above) px-4 py-1.5 text-[13px] font-semibold text-white hover:brightness-110">
-            Print or save as PDF
+          <button onClick={() => window.print()} className="rounded-full bg-(--c-above) px-4 py-1.5 text-[13px] font-semibold whitespace-nowrap text-white hover:brightness-110">
+            <span className="sm:hidden">Print / PDF</span>
+            <span className="hidden sm:inline">Print or save as PDF</span>
           </button>
         </div>
       </div>
@@ -131,12 +132,13 @@ export function ReportPage() {
               </Section>
 
               <Section title={`Average daily intake vs target · ${report.loggedDays} logged days`}>
+                <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0 print:overflow-visible">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-left text-[10px] tracking-wider text-(--muted) uppercase">
                       <th className="py-1 font-medium">Nutrient</th>
                       <th className="py-1 text-right font-medium">Average</th>
-                      <th className="py-1 text-right font-medium">Target</th>
+                      <th className="hidden py-1 text-right font-medium sm:table-cell print:table-cell">Target</th>
                       <th className="py-1 text-right font-medium">% of target</th>
                       <th className="hidden py-1 text-right font-medium sm:table-cell print:table-cell">From suppl.</th>
                       <th className="py-1 text-right font-medium">Days &lt;{GAP_PCT}%</th>
@@ -155,6 +157,7 @@ export function ReportPage() {
                     </tbody>
                   ))}
                 </table>
+                </div>
                 <p className="mt-2 text-[11px] leading-relaxed text-(--muted)">
                   Targets are Dietary Reference Intakes for this age, sex and life stage (RDA, AI) or app goals; "–" means the foods logged don't report this nutrient.
                   {' '}* partial data: fewer than 60% of logged foods report it, so the true intake is likely higher.
@@ -274,12 +277,12 @@ function Row({ r }: { r: ReportRow }) {
         {n.name}
         {r.state.partial && <span className="text-(--muted)"> *</span>}
       </td>
-      <td className="py-1 text-right font-mono">{r.amount != null ? `${fmt(r.amount)} ${n.unit}` : '–'}</td>
-      <td className="py-1 text-right font-mono text-(--muted)">
+      <td className="py-1 pl-3 text-right font-mono whitespace-nowrap">{r.amount != null ? `${fmt(r.amount)} ${n.unit}` : '–'}</td>
+      <td className="hidden py-1 pl-3 text-right font-mono whitespace-nowrap text-(--muted) sm:table-cell print:table-cell">
         {n.target != null ? `${fmt(n.target)} ${n.unit}` : '–'}
         {(n.customTarget || n.targetKind) && <span className="ml-1 font-sans text-[10px]">{n.customTarget ? 'custom' : n.targetKind}</span>}
       </td>
-      <td className="py-1 text-right font-mono font-semibold" style={{ color }}>
+      <td className="py-1 pl-3 text-right font-mono font-semibold whitespace-nowrap" style={{ color }}>
         <span className="status-glyph" aria-hidden>
           {STATUS_META[r.state.status].glyph}{' '}
         </span>
@@ -287,7 +290,7 @@ function Row({ r }: { r: ReportRow }) {
         {r.overUL && <span title="At or above the upper limit"> ⚠ UL</span>}
       </td>
       <td className="hidden py-1 text-right font-mono text-(--muted) sm:table-cell print:table-cell">{r.fromSupplements >= 0.05 ? `${Math.round(r.fromSupplements * 100)}%` : ''}</td>
-      <td className="py-1 text-right font-mono">{r.dataDays ? `${r.flaggedDays}/${r.dataDays}` : '–'}</td>
+      <td className="py-1 pl-3 text-right font-mono whitespace-nowrap">{r.dataDays ? `${r.flaggedDays}/${r.dataDays}` : '–'}</td>
     </tr>
   )
 }

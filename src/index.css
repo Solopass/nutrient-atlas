@@ -242,3 +242,12 @@ button:focus-visible,
     break-inside: avoid;
   }
 }
+
+/* iPhone/iPad Safari zooms the whole page when a field smaller than 16px is focused. Only iOS matches this @supports. */
+@supports (-webkit-touch-callout: none) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+}

@@ -229,7 +229,7 @@ function CoverageCard({ score }: { score: DayScore }) {
         {DIST.filter((s) => score.counts[s] > 0).map((s) => (
           <span key={s} className="flex items-center gap-1">
             <span className="size-1.5 rounded-full" style={{ background: STATUS_META[s].color }} />
-            {score.counts[s]} {STATUS_META[s].label.split(' ')[0].toLowerCase()}
+            {score.counts[s]} {s === 'noData' ? 'no data' : STATUS_META[s].label.split(' ')[0].toLowerCase()}
           </span>
         ))}
         <span className="sr-only">of {total}</span>

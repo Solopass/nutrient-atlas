@@ -51,7 +51,7 @@ export function SettingsPage() {
             </p>
           </div>
         </div>
-        <a href="#/" className="rounded-full bg-(--c-above) px-4 py-1.5 text-[13px] font-semibold text-white hover:brightness-110">
+        <a href="#/" className="hidden rounded-full bg-(--c-above) px-4 py-1.5 text-[13px] font-semibold text-white hover:brightness-110 sm:inline-block">
           ← Back to Atlas
         </a>
       </header>
@@ -261,7 +261,7 @@ function TargetEditor({ n, onSave, onCancel }: { n: Nutrient; onSave: (v: number
       <button onClick={onCancel} className="rounded px-1 text-(--muted) hover:text-(--fg)" aria-label="Cancel">
         ×
       </button>
-      {valid && n.upperLimit != null && n.category !== 'limit' && value > n.upperLimit && (
+      {valid && n.upperLimit != null && n.category !== 'limit' && n.ulAppliesTo !== 'supplements' && value > n.upperLimit && (
         <span role="alert" className="block w-full text-right font-sans text-[10px] whitespace-normal text-(--c-over)">
           Above the upper limit ({fmt(n.upperLimit)} {n.unit}); only with a clinician's advice.
         </span>

@@ -176,7 +176,7 @@ const steps: [string, () => Promise<void>][] = [
     async () => {
       await js(`location.hash = '#/history'`)
       await waitFor('History', `/nutrient heatmap/i.test(document.body.innerText)`)
-      await click('Report for your clinician')
+      await js(`document.querySelector('a[href="#/report"]').click()`)
       // Today is in progress, so the report has no complete days yet; the supplement from setup is still listed.
       await waitFor('the clinician report', `/Nutrition summary/.test(document.body.innerText) && /Supplements taken/i.test(document.body.innerText) && /Vitamin D3/.test(document.querySelector('main').innerText)`)
       await js(`location.hash = '#/settings'`)
@@ -198,7 +198,7 @@ const steps: [string, () => Promise<void>][] = [
     },
   ],
   [
-    'log a packaged food by barcode (USDA and Open Food Facts answered locally)',
+    'log a packaged food by barcode, then scan it (databases and camera faked locally)',
     async () => {
       // Fake both databases: USDA returns a real Cheerios record (saved fixture), Open Food Facts doesn't know it.
       const usda = await Bun.file(join(ROOT, 'src/test/fixtures/fdc-cheerios.json')).text()
@@ -232,6 +232,16 @@ const steps: [string, () => Promise<void>][] = [
         await fill(box, '0016000348516')
         await waitFor('the saved food', `/In your foods/i.test(${LOG}.innerText)`)
         if (seen.length !== before) throw new Error('A saved barcode food was looked up online again')
+        // Scan: a stand-in BarcodeDetector "sees" the code on the fake camera's third frame.
+        await fill(box, '')
+        await js(`let n = 0; window.BarcodeDetector = class { static async getSupportedFormats() { return ['ean_13', 'upc_a'] } async detect() { return ++n >= 3 ? [{ rawValue: '016000348516' }] : [] } }; return 1`)
+        await click('Search', LOG)
+        await js(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
+        await click('+ Log food')
+        await click('▥ Scan', LOG)
+        await waitFor('the camera preview', `!!${LOG}.querySelector('video[aria-label="Camera preview"]')`)
+        await waitFor('the scanned food', `${LOG}.querySelector('input[placeholder*="barcode"]').value === '016000348516' && /In your foods/i.test(${LOG}.innerText)`)
+        if (await js<boolean>(`return !!${LOG}.querySelector('video')`)) throw new Error('The camera stayed open after a scan')
         await js(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
       } finally {
         await send('Fetch.disable')
@@ -256,7 +266,8 @@ async function main() {
   profile = mkdtempSync(join(tmpdir(), 'atlas-e2e-'))
   const cdpPort = 9400 + Math.floor(Math.random() * 400)
   // --disable-extensions: extensions installed for every profile (e.g. a crypto wallet) inject scripts that log warnings.
-  browser = spawn([exe, '--headless=new', '--disable-gpu', '--no-first-run', '--disable-extensions', `--user-data-dir=${profile}`, `--remote-debugging-port=${cdpPort}`, '--window-size=1280,900', 'about:blank'], { stdout: 'ignore', stderr: 'ignore' })
+  // Fake camera: lets the barcode step test scanning without hardware or a permission prompt.
+  browser = spawn([exe, '--headless=new', '--disable-gpu', '--no-first-run', '--disable-extensions', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--user-data-dir=${profile}`, `--remote-debugging-port=${cdpPort}`, '--window-size=1280,900', 'about:blank'], { stdout: 'ignore', stderr: 'ignore' })
   let target: { webSocketDebuggerUrl: string } | undefined
   for (let i = 0; i < 100 && !target; i++) {
     target = await fetch(`http://127.0.0.1:${cdpPort}/json`).then((r) => r.json()).then((ts: any[]) => ts.find((t) => t.type === 'page')).catch(() => undefined)

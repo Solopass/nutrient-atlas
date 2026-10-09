@@ -4,6 +4,8 @@ import { logNewFood } from '../../db/logging'
 import { nameParts, nutrientsForGrams, type UsdaFood } from '../../data/usda'
 import { initUsda, searchFoods } from '../../data/usdaClient'
 import { parseBarcodeQuery } from '../../lib/barcode'
+import { scanHint, useScanSupport } from '../../lib/scanner'
+import { CameraScanner } from '../CameraScanner'
 import { useGuard } from '../../lib/useGuard'
 import { BarcodeLog } from './BarcodeLog'
 import { NutrientChips } from './NutrientChips'
@@ -19,6 +21,11 @@ export function SearchTab({ meal, date, onLogged }: { meal: Meal; date: string; 
   const [openId, setOpenId] = useState<number | null>(null)
   const deferred = useDeferredValue(query)
   const barcode = parseBarcodeQuery(query)
+  const support = useScanSupport()
+  const canScan = support === 'native' || support === 'addon'
+  const [scanning, setScanning] = useState(false)
+  // On phones, say how to get scanning; desktop users rarely scan.
+  const hint = matchMedia('(pointer: coarse)').matches ? scanHint(support) : null
 
   useEffect(() => {
     initUsda().then(setCount, (e: Error) => setError(e.message))
@@ -45,11 +52,36 @@ export function SearchTab({ meal, date, onLogged }: { meal: Meal; date: string; 
             setQuery(e.target.value)
             setOpenId(null)
           }}
-          placeholder={count != null ? `Search ${count.toLocaleString()} USDA foods, or type a barcode` : 'Loading food database…'}
-          className="w-full rounded-lg border border-(--line) bg-(--panel-2) py-2.5 pr-3 pl-9 text-sm placeholder:text-(--muted) focus:border-(--c-above) focus:outline-none"
+          placeholder={count != null ? 'Search foods or type a barcode' : 'Loading food database…'}
+          inputMode="search"
+          className={`w-full rounded-lg border border-(--line) bg-(--panel-2) py-2.5 pl-9 text-sm ${canScan ? 'pr-20' : 'pr-3'} placeholder:text-(--muted) focus:border-(--c-above) focus:outline-none`}
         />
         <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-(--muted)">⌕</span>
+        {canScan && (
+          <button
+            onClick={() => setScanning((s) => !s)}
+            aria-pressed={scanning}
+            className={`absolute top-1/2 right-1.5 -translate-y-1/2 rounded-md px-2.5 py-1.5 text-xs font-medium ${scanning ? 'bg-(--c-above) text-white' : 'text-(--c-above) hover:bg-(--panel)'}`}
+          >
+            ▥ Scan
+          </button>
+        )}
       </div>
+
+      {scanning && support && (
+        <div className="mt-3">
+          <CameraScanner
+            support={support}
+            onCode={(code) => {
+              setScanning(false)
+              setQuery(code)
+              setOpenId(null)
+            }}
+            onClose={() => setScanning(false)}
+          />
+        </div>
+      )}
+      {!query.trim() && hint && <p className="mt-2 text-[11px] leading-relaxed text-(--muted)">{hint}</p>}
 
       {error && <p className="mt-3 text-sm text-(--c-deficient)">{error}</p>}
 

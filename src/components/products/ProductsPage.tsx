@@ -126,7 +126,7 @@ export function ProductsPage() {
             </p>
           </div>
         </div>
-        <a href="#/" className="rounded-full bg-(--c-above) px-4 py-1.5 text-[13px] font-semibold text-white hover:brightness-110">
+        <a href="#/" className="hidden rounded-full bg-(--c-above) px-4 py-1.5 text-[13px] font-semibold text-white hover:brightness-110 sm:inline-block">
           ← Back to Atlas
         </a>
       </header>

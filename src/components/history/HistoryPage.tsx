@@ -65,10 +65,11 @@ export function HistoryPage() {
           </div>
         </a>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <a href="#/report" className="rounded-full border border-(--line) px-4 py-1.5 text-[13px] text-(--dim) hover:border-(--c-above) hover:text-(--fg)">
-            Report for your clinician
+          <a href="#/report" className="rounded-full border border-(--line) px-4 py-1.5 text-[13px] whitespace-nowrap text-(--dim) hover:border-(--c-above) hover:text-(--fg)">
+            <span className="sm:hidden">Clinician report</span>
+            <span className="hidden sm:inline">Report for your clinician</span>
           </a>
-          <a href="#/" className="rounded-full bg-(--c-above) px-4 py-1.5 text-[13px] font-semibold text-white hover:brightness-110">
+          <a href="#/" className="hidden rounded-full bg-(--c-above) px-4 py-1.5 text-[13px] font-semibold text-white hover:brightness-110 sm:inline-block">
             ← Back to Atlas
           </a>
         </div>

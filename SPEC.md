@@ -95,7 +95,10 @@ A printable summary to take to a doctor or dietitian, for the last 30, 60 or 90 
 
 ### Phone
 - Installable PWA (standalone, maskable icons; the browser theme colour follows Appearance). Works offline after first load.
-- Below 640 px: bottom tab bar (Atlas, History, **+** log, Products, Settings), with safe-area padding. The header drops the buttons the tab bar replaces. Supplements are one tap away in the log sheet.
+- Below 640 px: bottom tab bar (Atlas, History, **+** log, Products, Settings), with safe-area padding. Headers drop the buttons the tab bar replaces (including "Back to Atlas" on History, Products and Settings). Supplements are one tap away in the log sheet.
+- On iPhone/iPad, form fields use at least 16 px text so Safari doesn't zoom the page when you tap one.
+- The clinician report hides its Target column below 640 px (% of target, low days and the average stay); printing always includes it.
+- **Camera scanning** ([src/lib/scanner.ts](src/lib/scanner.ts), shared [CameraScanner](src/components/CameraScanner.tsx)): a **▥ Scan** button in the log sheet's search box and in Products → Barcode. It uses the browser's built-in `BarcodeDetector` when it supports food barcodes (Chrome on Android). Elsewhere (iPhone Safari, Firefox, Windows) nothing is bundled: Settings → Food databases has an opt-in **free scanner add-on** (barcode-detector 3.2.2, MIT, ZXing in WebAssembly, pinned). When on, the browser imports it from jsDelivr the first time you scan (about half a megabyte, then cached); barcodes are decoded on the device. Without it, phones get a hint saying how to turn it on. Cameras need HTTPS (or localhost).
 - The Atlas draws its outer ring as a slim colour band, and dragging a footprint uses touch (the page doesn't scroll while you drag).
 
 ### Weekly insights ([src/lib/insights.ts](src/lib/insights.ts))
@@ -152,7 +155,7 @@ The meal defaults from time of day.
 ### Products (`#/products`)
 Rate the branded supplements and packaged foods you use or are considering. Stored in the `products` table (Dexie v5), separate from supplements you take and foods you log; included in backups.
 - **Adding:** paste a Supplement/Nutrition Facts label (nutrients, serving, servings per container, calories and ingredient forms such as “(as magnesium glycinate)” are read automatically), type it, import a JSON product pack or CSV (downloadable template; columns are nutrient names/ids with an optional unit, e.g. “Vitamin D (IU)”, plus “<Nutrient> form”), or copy an AI prompt, attach label photos in any AI chat and paste the JSON reply. Imports match existing products on kind + brand + name and update them, keeping your rating and notes. “Add to compare” pulls in supplements you already take.
-- **Barcode:** type the digits (works everywhere) or scan with the camera where the browser has BarcodeDetector (Chrome/Edge on Android; needs HTTPS or localhost). Looks up Open Food Facts (only the barcode is sent), maps its per-serving values (or per-100 g scaled by serving size) from grams into app units, detects supplements by category and testing seals in its labels, and opens the editor pre-filled with a check-against-your-label note.
+- **Barcode:** type the digits (works everywhere) or scan with the camera (see Camera scanning below). Looks up Open Food Facts (only the barcode is sent), maps its per-serving values (or per-100 g scaled by serving size) from grams into app units, detects supplements by category and testing seals in its labels, and opens the editor pre-filled with a check-against-your-label note.
 - **Third-party testing:** USP Verified, NSF (Contents / Certified for Sport), Informed Sport/Choice, BSCG, IFOS, ConsumerLab. Ticked in the editor, detected in pasted label text, imported from CSV/JSON/AI. Shown as badges; supplements get a *Tested* score part (weight 0.10) when sealed, and no penalty when not.
 - **Score (0–100, grade A–E)** from explainable parts, re-weighted when a part has no data:
   - *Your gaps:* how much it fills of what you are short on over the last 7 complete days. Supplements are judged against food alone. Relevance (share of what it offers that lands in a gap) and size (gap points closed).
@@ -173,7 +176,7 @@ Rate the branded supplements and packaged foods you use or are considering. Stor
 - **Goal:** general health / build muscle / lose fat / endurance → protein g/kg and calorie adjustment. Custom calorie and protein overrides.
 - **Diet style:** omnivore / pescatarian / vegetarian / vegan (filters suggestions).
 - **AI estimation:** manual (active) / automatic (planned).
-- **Food databases:** which free databases barcode lookups use, and an optional **USDA API key** (free from api.data.gov; about 1,000 lookups an hour instead of the demo key's few). Stored in settings as `fdcApiKey`, left out of backup files and kept when restoring one.
+- **Food databases:** which free databases barcode lookups use, the opt-in **camera scanner add-on** (shown only where the browser has no built-in reader), and an optional **USDA API key** (free from api.data.gov; about 1,000 lookups an hour instead of the demo key's few). Stored in settings as `fdcApiKey`, left out of backup files and kept when restoring one.
 - **Sun:** “Little sun” / “Regular sun”. With regular sun, vitamin D keeps its target and is shown (with ☀), but isn't counted in the score, category coverage, gaps, suggestions, insights or product gap scores. A low vitamin D blood test switches it off automatically.
 - **Blood tests (optional):** vitamin D 25(OH)D (ng/mL or nmol/L), ferritin (ng/mL = µg/L), B12 (pg/mL or pmol/L), serum folate (ng/mL or nmol/L; <3 deficient, 3–6 borderline), serum magnesium (mg/dL, mmol/L or mEq/L; <1.6 low, 1.6–1.8 borderline, >2.6 high; noted as a poor marker of stores) and the omega-3 index (% EPA+DHA in red cells; <4 low, 4–8 intermediate, ≥8 desirable), each with test date. **History:** every result is kept (`labHistory`, oldest first; older profiles' single result counts as one); edit the latest in place or “+ Newer result”; a trend chart (band stripes, dots coloured by band, change since the first result in your units) shows in Settings and the detail panel, and the weekly report mentions the previous value. Banded deficient / low / normal / high (IOM 2011 for vitamin D: <12, 12–20, 20–50, >50 ng/mL; WHO 2020 for ferritin: <15, 15–30, up to 150 women / 200 men; NIH ODS for B12: <200, 200–300 pg/mL). Shown on a gauge (square-root scale so narrow low bands stay visible; linear from 1.0 for magnesium), with the unit on the marker. The detail panels for vitamin D, iron, B12, folate (B9), magnesium and EPA/DHA read the latest result against intake (e.g. "low even though intake is on target" → absorption, sun or losses; for magnesium, a normal blood level can hide a shortfall). Results over 12 months old are flagged. Stored in the profile, so they travel with backups. Never changes targets. See [src/lib/labs.ts](src/lib/labs.ts).
 - **Run setup again** link.
@@ -265,6 +268,7 @@ settings     key → value
              'lastBackup'    → date of the last Export backup
              'backupSnoozedUntil' → backup reminder hidden until this date
              'fdcApiKey'     → your USDA API key (this device only; not in backups)
+             'scannerAddon'  → true when the optional camera scanner add-on is switched on
              'dayComplete'   → date marked "Done for today"
              'whatsNewSeen'  → version of the What's new strip dismissed
 foods        ++id, name, lastUsedAt, favorite                                        (v1)
@@ -286,7 +290,7 @@ Also in localStorage: `atlas-appearance` (resolved theme and palette, applied be
 
 ## Quality
 - **Unit tests** (`bun test`, ~185): barcode numbers, USDA Branded and Open Food Facts lookups (network mocked) and merging, targets, custom targets and limits, statuses and scoring, intake and history math, the AI-reply, label-text and Open Food Facts readers, USDA search and suggestions against the real table, insights, labs, product scoring and import/export, recipes, the clinician report, the backup reminder, CSV, backups, and database flows.
-- **Whole-app test** (`bun run e2e`): setup → dashboard (including the deferred sections) → USDA logging → building a recipe → detail panel → Products import and ranking → History, the clinician report and Settings → theme switching → reload → logging by barcode (both databases answered locally through the DevTools protocol, then the same barcode again from your foods with no lookup), in a fresh headless browser without extensions; fails on any console error.
+- **Whole-app test** (`bun run e2e`): setup → dashboard (including the deferred sections) → USDA logging → building a recipe → detail panel → Products import and ranking → History, the clinician report and Settings → theme switching → reload → logging by barcode (both databases answered locally through the DevTools protocol, then the same barcode again from your foods with no lookup, then the Scan button with a fake camera and a stand-in barcode reader), in a fresh headless browser without extensions; fails on any console error.
 - `bun run typecheck` covers the app and the tests.
 - **Pre-commit hook** (`.githooks/pre-commit`, enabled by `bun install`): typecheck and unit tests on every commit.
 
