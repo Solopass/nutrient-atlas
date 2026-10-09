@@ -218,6 +218,9 @@ export function SettingsPage() {
           <DataSection />
 
           <p className="px-1 text-xs leading-relaxed text-(--muted)">
+            Version {new Date(__APP_BUILT__).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} · {__APP_COMMIT__}. Updates install by themselves the next time the app opens.
+          </p>
+          <p className="px-1 text-xs leading-relaxed text-(--muted)">
             Targets are the Dietary Reference Intakes (RDA/AI and Tolerable Upper Intake Levels) from the US National Academies, for healthy people. Calorie estimate uses the Mifflin–St Jeor equation. This app is not medical advice. Talk to a clinician about supplements, medical conditions or medications.
           </p>
         </div>

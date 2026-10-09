@@ -1,13 +1,14 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { localDate, mealForTime, type Meal, MEALS } from '../../db/db'
 import { formatDay } from '../../lib/history'
+import { lazyPage } from '../../lib/lazyPage'
 
 // Tabs load the first time the sheet opens, keeping them out of the dashboard's startup code.
-const SearchTab = lazy(() => import('./SearchTab').then((m) => ({ default: m.SearchTab })))
-const AiTab = lazy(() => import('./AiTab').then((m) => ({ default: m.AiTab })))
-const FoodsTab = lazy(() => import('./FoodsTab').then((m) => ({ default: m.FoodsTab })))
-const SupplementsTab = lazy(() => import('./SupplementsTab').then((m) => ({ default: m.SupplementsTab })))
-const TodayTab = lazy(() => import('./TodayTab').then((m) => ({ default: m.TodayTab })))
+const SearchTab = lazyPage(() => import('./SearchTab'), 'SearchTab')
+const AiTab = lazyPage(() => import('./AiTab'), 'AiTab')
+const FoodsTab = lazyPage(() => import('./FoodsTab'), 'FoodsTab')
+const SupplementsTab = lazyPage(() => import('./SupplementsTab'), 'SupplementsTab')
+const TodayTab = lazyPage(() => import('./TodayTab'), 'TodayTab')
 
 export type LogTab = 'search' | 'ai' | 'foods' | 'supplements' | 'today'
 type Tab = LogTab

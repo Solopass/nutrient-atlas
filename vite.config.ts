@@ -2,8 +2,23 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'node:child_process'
+
+/** Short git commit of the build, with "+" when there were uncommitted changes. */
+function commit() {
+  try {
+    const hash = execSync('git rev-parse --short HEAD').toString().trim()
+    return execSync('git status --porcelain').toString().trim() ? `${hash}+` : hash
+  } catch {
+    return 'unknown'
+  }
+}
 
 export default defineConfig({
+  define: {
+    __APP_BUILT__: JSON.stringify(new Date().toISOString()),
+    __APP_COMMIT__: JSON.stringify(commit()),
+  },
   // Relative base so the build works from any host path (root domain, GitHub Pages subfolder, etc.).
   base: './',
   plugins: [

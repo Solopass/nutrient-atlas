@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { AtlasChart, snapServings, type AtlasOverlay } from './components/AtlasChart'
 import { AtlasToolbar, ReplayBar } from './components/AtlasToolbar'
 import { FoodStrip, type FoodSummary } from './components/FoodStrip'
@@ -32,6 +32,7 @@ import { foodStreak } from './lib/streak'
 import { dayScore, nutrientState, scoreColor } from './lib/status'
 import { atlasPng, shareOrDownload } from './lib/atlasImage'
 import { itemsKcal } from './lib/quickLog'
+import { lazyPage } from './lib/lazyPage'
 import { useProfile } from './state/profile'
 import { setTodayComplete, useDayComplete } from './state/dayComplete'
 import type { Category, Intake } from './types'
@@ -141,11 +142,12 @@ export default function App() {
 }
 
 // Pages other than the dashboard load on demand, so the Atlas opens with less code.
-const HistoryPage = lazy(() => import('./components/history/HistoryPage').then((m) => ({ default: m.HistoryPage })))
-const ProductsPage = lazy(() => import('./components/products/ProductsPage').then((m) => ({ default: m.ProductsPage })))
-const SettingsPage = lazy(() => import('./components/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })))
-const ReportPage = lazy(() => import('./components/report/ReportPage').then((m) => ({ default: m.ReportPage })))
-const Onboarding = lazy(() => import('./components/onboarding/Onboarding').then((m) => ({ default: m.Onboarding })))
+// (lazyPage reloads once if a newer deploy replaced these files while the app was open.)
+const HistoryPage = lazyPage(() => import('./components/history/HistoryPage'), 'HistoryPage')
+const ProductsPage = lazyPage(() => import('./components/products/ProductsPage'), 'ProductsPage')
+const SettingsPage = lazyPage(() => import('./components/settings/SettingsPage'), 'SettingsPage')
+const ReportPage = lazyPage(() => import('./components/report/ReportPage'), 'ReportPage')
+const Onboarding = lazyPage(() => import('./components/onboarding/Onboarding'), 'Onboarding')
 
 function PageLoading() {
   return <div role="status" aria-label="Loading" className="min-h-dvh" />
