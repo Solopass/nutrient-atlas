@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useMemo, useState } from 'react'
 import { CATEGORY_LABEL } from '../../data/nutrients'
-import { loadUsda, type UsdaDb } from '../../data/usda'
+import { weeklyReportWithFoods } from '../../data/usdaClient'
 import { db, type LogEntry } from '../../db/db'
 import { formatDay } from '../../lib/history'
 import { weeklyReport, type Insight, type InsightKind, type WeeklyReport } from '../../lib/insights'
@@ -13,14 +13,25 @@ import type { Category } from '../../types'
 export function useWeeklyReport(logs: LogEntry[] | undefined, end: string): WeeklyReport | null {
   const { nutrients, profile } = useProfile()
   const supplements = useLiveQuery(() => db.supplements.toArray(), [])
-  const [usda, setUsda] = useState<UsdaDb | null>(null)
-  useEffect(() => {
-    loadUsda().then(setUsda, () => {})
-  }, [])
-  return useMemo(
-    () => (logs && supplements ? weeklyReport({ nutrients, logs, end, profile, supplements, usda }) : null),
-    [logs, supplements, nutrients, end, profile, usda],
+  // Everything but the food ideas is quick, so show that at once…
+  const quick = useMemo(
+    () => (logs && supplements ? weeklyReport({ nutrients, logs, end, profile, supplements, usda: null }) : null),
+    [logs, supplements, nutrients, end, profile],
   )
+  // …then swap in the full report once the worker has found food ideas.
+  const [full, setFull] = useState<{ for: WeeklyReport; report: WeeklyReport } | null>(null)
+  useEffect(() => {
+    if (!quick || !logs || !supplements) return
+    let current = true
+    weeklyReportWithFoods({ nutrients, logs, end, profile, supplements }).then(
+      (report) => current && setFull({ for: quick, report }),
+      () => {},
+    )
+    return () => {
+      current = false
+    }
+  }, [quick]) // eslint-disable-line react-hooks/exhaustive-deps -- quick changes exactly when its inputs do
+  return full?.for === quick ? full.report : quick
 }
 
 const KIND: Record<InsightKind, { icon: string; color: string; label: string }> = {

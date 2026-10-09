@@ -227,11 +227,16 @@ try {
 } catch (e) {
   console.error(`E2E setup failed: ${(e as Error).message}`)
 } finally {
+  // Close the whole browser (it spawns many child processes; killing only the parent leaves them running).
+  await Promise.race([send('Browser.close').catch(() => {}), sleep(1500)])
   try {
     ws?.close()
   } catch {}
-  browser?.kill()
-  server?.kill()
+  for (const p of [browser, server]) {
+    if (!p?.pid) continue
+    if (process.platform === 'win32') Bun.spawnSync(['taskkill', '/PID', String(p.pid), '/T', '/F'], { stdout: 'ignore', stderr: 'ignore' })
+    else p.kill()
+  }
   await sleep(500)
   // Windows can hold the browser profile for a moment after exit.
   for (let i = 0; i < 10 && profile && !keep; i++) {

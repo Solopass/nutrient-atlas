@@ -1,4 +1,4 @@
-# Nutrient Atlas: Product Specification v1.18
+# Nutrient Atlas: Product Specification v1.19
 
 What the app is and how it behaves today. For what's next, see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -213,6 +213,9 @@ USDA data: sodium, saturated fat and cholesterol are near-complete. Added sugar 
 - Also reported: core met (x/14) and all tracked met.
 
 ## Data
+
+### Performance
+The USDA table (2.8 MB) is loaded, indexed and queried in a Web Worker (`src/workers/usda.worker.ts`, client `src/data/usdaClient.ts`): search, Best next food and the weekly report's food ideas. The weekly report renders at once without food ideas and fills them in when the worker answers. If workers are unavailable the same code runs on the main thread.
 
 ### Food sources
 - **USDA FoodData Central:** Foundation Foods (2025-12) + SR Legacy (2018-04), ~8,000 whole foods. See [README](README.md#food-data) for the build pipeline, unit conversions and merge rules.

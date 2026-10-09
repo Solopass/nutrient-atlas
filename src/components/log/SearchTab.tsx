@@ -1,7 +1,8 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import type { Meal } from '../../db/db'
 import { logNewFood } from '../../db/logging'
-import { loadUsda, nameParts, nutrientsForGrams, searchUsda, type UsdaDb, type UsdaFood } from '../../data/usda'
+import { nameParts, nutrientsForGrams, type UsdaFood } from '../../data/usda'
+import { initUsda, searchFoods } from '../../data/usdaClient'
 import { useGuard } from '../../lib/useGuard'
 import { NutrientChips } from './NutrientChips'
 import { QuickAdd } from './QuickAdd'
@@ -9,17 +10,26 @@ import { QuickAdd } from './QuickAdd'
 const SUGGESTIONS = ['egg', 'banana', 'oats', 'salmon', 'spinach', 'greek yogurt', 'almonds', 'lentils']
 
 export function SearchTab({ meal, date, onLogged }: { meal: Meal; date: string; onLogged: (msg: string) => void }) {
-  const [db, setDb] = useState<UsdaDb | null>(null)
+  const [count, setCount] = useState<number | null>(null)
+  const [results, setResults] = useState<UsdaFood[]>([])
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [openId, setOpenId] = useState<number | null>(null)
   const deferred = useDeferredValue(query)
 
   useEffect(() => {
-    loadUsda().then(setDb, (e: Error) => setError(e.message))
+    initUsda().then(setCount, (e: Error) => setError(e.message))
   }, [])
 
-  const results = useMemo(() => (db ? searchUsda(db, deferred) : []), [db, deferred])
+  // Searching runs in the background worker; ignore answers to queries that have since changed.
+  useEffect(() => {
+    if (count == null || !deferred.trim()) return setResults([])
+    let current = true
+    searchFoods(deferred).then((r) => current && setResults(r), (e: Error) => current && setError(e.message))
+    return () => {
+      current = false
+    }
+  }, [deferred, count])
 
   return (
     <div>
@@ -32,7 +42,7 @@ export function SearchTab({ meal, date, onLogged }: { meal: Meal; date: string; 
             setQuery(e.target.value)
             setOpenId(null)
           }}
-          placeholder={db ? `Search ${db.foods.length.toLocaleString()} USDA foods` : 'Loading food database…'}
+          placeholder={count != null ? `Search ${count.toLocaleString()} USDA foods` : 'Loading food database…'}
           className="w-full rounded-lg border border-(--line) bg-(--panel-2) py-2.5 pr-3 pl-9 text-sm placeholder:text-(--muted) focus:border-(--c-above) focus:outline-none"
         />
         <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-(--muted)">⌕</span>
@@ -59,7 +69,7 @@ export function SearchTab({ meal, date, onLogged }: { meal: Meal; date: string; 
         </div>
       )}
 
-      {query.trim() && db && results.length === 0 && (
+      {query.trim() && count != null && deferred === query && results.length === 0 && (
         <p className="mt-6 text-center text-sm text-(--muted)">No matches. Try fewer or simpler words. For packaged foods, use My foods → Create a food from its label, or the AI estimate tab.</p>
       )}
 

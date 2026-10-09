@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { loadUsda, nameParts, nutrientsForGrams, type UsdaDb } from '../data/usda'
+import { nameParts, nutrientsForGrams } from '../data/usda'
+import { suggestNextFoods } from '../data/usdaClient'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, localDate, mealForTime } from '../db/db'
 import { logNewFood, logSavedFood } from '../db/logging'
 import { useProfile } from '../state/profile'
 import { STATUS_META, fmt, scoreColor, type DayScore } from '../lib/status'
-import { suggestFoods, type FoodSuggestion, type OwnCandidate } from '../lib/suggestUsda'
+import type { FoodSuggestion, OwnCandidate } from '../lib/suggestUsda'
 import { itemsKcal, logSavedMeal } from '../lib/quickLog'
 import type { NutrientState, Status } from '../types'
 
@@ -253,12 +254,8 @@ function NextFoodCard({
   pinnedPreview: string | null
 }) {
   const { profile } = useProfile()
-  const [usda, setUsda] = useState<UsdaDb | null>(null)
   const [logged, setLogged] = useState<string | null>(null)
   const logging = useRef(new Set<string>())
-  useEffect(() => {
-    loadUsda().then(setUsda, () => {})
-  }, [])
   // Your saved foods and meals compete with USDA foods (with a small nudge, since you already eat them).
   const myFoods = useLiveQuery(() => db.foods.toArray(), [])
   const myMeals = useLiveQuery(() => db.meals.toArray(), [])
@@ -280,7 +277,18 @@ function NextFoodCard({
     ],
     [myFoods, myMeals, myProducts],
   )
-  const picks = useMemo(() => (usda ? suggestFoods(states, usda, profile.diet, eatenNames, 3, own) : null), [usda, states, profile.diet, eatenNames, own])
+  // Ranking ~8,000 foods runs in the background worker, so the dashboard never stalls.
+  const [picks, setPicks] = useState<FoodSuggestion[] | null>(null)
+  useEffect(() => {
+    let current = true
+    suggestNextFoods(states, profile.diet, eatenNames, 3, own).then(
+      (p) => current && setPicks(p),
+      () => current && setPicks([]),
+    )
+    return () => {
+      current = false
+    }
+  }, [states, profile.diet, eatenNames, own])
 
   const log = async (s: FoodSuggestion) => {
     // Ref, not state: two taps before the next render would both see stale state.
