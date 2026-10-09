@@ -24,6 +24,8 @@ export interface Nutrient {
   /** Daily target for the active profile; null when no official target exists. */
   target: number | null
   targetKind?: TargetKind
+  /** Set when the person entered their own target (e.g. on a clinician's advice); `target` is then theirs. */
+  customTarget?: { standard: number | null }
   /** Tolerable Upper Intake Level, same unit as target. */
   upperLimit?: number
   ulNote?: string

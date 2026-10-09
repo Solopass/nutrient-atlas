@@ -159,6 +159,11 @@ export function ReportPage() {
                   Targets are Dietary Reference Intakes for this age, sex and life stage (RDA, AI) or app goals; "–" means the foods logged don't report this nutrient.
                   {' '}* partial data: fewer than 60% of logged foods report it, so the true intake is likely higher.
                   {nutrients.some((n) => n.sunCovered) && ' Vitamin D: the person reports regular sun exposure, so food intake is shown but not counted as a gap.'}
+                  {nutrients.some((n) => n.customTarget) &&
+                    ` Custom targets set by the person (standard in brackets): ${nutrients
+                      .filter((n) => n.customTarget)
+                      .map((n) => `${n.name} ${fmt(n.target!)} ${n.unit} (${n.customTarget!.standard != null ? `${fmt(n.customTarget!.standard)} ${n.unit}` : 'none'})`)
+                      .join(', ')}.`}
                 </p>
               </Section>
 
@@ -272,7 +277,7 @@ function Row({ r }: { r: ReportRow }) {
       <td className="py-1 text-right font-mono">{r.amount != null ? `${fmt(r.amount)} ${n.unit}` : '–'}</td>
       <td className="py-1 text-right font-mono text-(--muted)">
         {n.target != null ? `${fmt(n.target)} ${n.unit}` : '–'}
-        {n.targetKind && <span className="ml-1 font-sans text-[10px]">{n.targetKind}</span>}
+        {(n.customTarget || n.targetKind) && <span className="ml-1 font-sans text-[10px]">{n.customTarget ? 'custom' : n.targetKind}</span>}
       </td>
       <td className="py-1 text-right font-mono font-semibold" style={{ color }}>
         <span className="status-glyph" aria-hidden>

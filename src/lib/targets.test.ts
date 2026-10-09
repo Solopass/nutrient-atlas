@@ -121,3 +121,28 @@ describe('vitamin D sun setting', () => {
     expect(dayScore(full(on)).tracked.total).toBe(dayScore(full(off)).tracked.total - 1)
   })
 })
+
+describe('custom targets', () => {
+  test('replace the DRI and remember it, for any life stage', () => {
+    const t = targets({ sex: 'female', lifeStage: 'pregnant', targetOverrides: { iron: 60 } })
+    expect(t.iron.target).toBe(60)
+    expect(t.iron.customTarget).toEqual({ standard: 27 })
+    expect(t.iron.targetKind).toBe('RDA') // the kind of the standard it replaces
+    expect(t.vitC.customTarget).toBeUndefined()
+  })
+
+  test('a lower sodium limit stays a limit; 0 is only valid for limits', () => {
+    const t = targets({ targetOverrides: { sodium: 1500, alcohol: 0, iron: 0, zinc: -3 } })
+    expect(t.sodium.target).toBe(1500)
+    expect(t.sodium.category).toBe('limit')
+    expect(nutrientState(t.sodium, { amount: 2000, coverage: 1 }).status).toBe('overLimit')
+    expect(t.alcohol.target).toBe(0)
+    expect(t.iron.target).toBe(8)
+    expect(t.zinc.target).toBe(11)
+  })
+
+  test('drive the score like any target', () => {
+    const t = targets({ targetOverrides: { vitD: 50 } })
+    expect(nutrientState(t.vitD, { amount: 25, coverage: 1 }).pct).toBe(50)
+  })
+})

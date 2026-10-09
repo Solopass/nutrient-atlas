@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { CATEGORY_LABEL } from '../../data/nutrients'
 import {
   ACTIVITY,
@@ -18,9 +19,9 @@ import {
   type Profile,
 } from '../../lib/profile'
 import { fmt } from '../../lib/status'
-import { sunCoversVitaminD } from '../../lib/targets'
+import { sunCoversVitaminD, validCustomTarget } from '../../lib/targets'
 import { useProfile } from '../../state/profile'
-import type { Category } from '../../types'
+import type { Category, Nutrient } from '../../types'
 import { Logo } from '../Logo'
 import { ChoiceCards, Field, NumberField, Section, Segmented } from './Controls'
 import { DataSection } from './DataSection'
@@ -224,11 +225,62 @@ export function SettingsPage() {
   )
 }
 
+/** Inline editor for one target: Enter saves, Escape cancels, Standard removes the custom value. */
+function TargetEditor({ n, onSave, onCancel }: { n: Nutrient; onSave: (v: number | null) => void; onCancel: () => void }) {
+  const [text, setText] = useState(n.target != null ? String(n.target) : '')
+  const value = text.trim() === '' ? null : Number(text)
+  const valid = value != null && validCustomTarget(n, value)
+  const save = () => valid && onSave(value)
+  return (
+    <span className="inline-flex flex-wrap items-center justify-end gap-1">
+      <input
+        autoFocus
+        type="number"
+        min={0}
+        value={text}
+        aria-label={`Your ${n.name} target in ${n.unit}`}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') save()
+          if (e.key === 'Escape') onCancel()
+        }}
+        className={`w-20 rounded border bg-(--bg) px-1.5 py-0.5 text-right text-xs ${valid || text === '' ? 'border-(--line)' : 'border-(--c-deficient)'}`}
+      />
+      <span className="text-(--muted)">{n.unit}</span>
+      <button onClick={save} disabled={!valid} className="rounded px-1 text-(--c-good) disabled:opacity-40" aria-label="Save target">
+        ✓
+      </button>
+      {n.customTarget && (
+        <button onClick={() => onSave(null)} className="rounded px-1 text-[10px] text-(--muted) hover:text-(--fg)" title="Back to the standard target">
+          Standard
+        </button>
+      )}
+      <button onClick={onCancel} className="rounded px-1 text-(--muted) hover:text-(--fg)" aria-label="Cancel">
+        ×
+      </button>
+      {valid && n.upperLimit != null && n.category !== 'limit' && value > n.upperLimit && (
+        <span role="alert" className="block w-full text-right font-sans text-[10px] whitespace-normal text-(--c-over)">
+          Above the upper limit ({fmt(n.upperLimit)} {n.unit}); only with a clinician's advice.
+        </span>
+      )}
+    </span>
+  )
+}
+
 const PREVIEW_ORDER: Category[] = ['macro', 'vitamin', 'mineral', 'bvitamin', 'trace', 'fatty', 'amino', 'advanced', 'limit']
 
 function TargetsPreview() {
-  const { profile: p, nutrients } = useProfile()
+  const { profile: p, nutrients, update } = useProfile()
   const e = energyTarget(p)
+  const [editing, setEditing] = useState<string | null>(null)
+  const customCount = nutrients.filter((n) => n.customTarget).length
+  const setCustom = (id: string, value: number | null) => {
+    const next = { ...p.targetOverrides }
+    if (value == null) delete next[id]
+    else next[id] = value
+    update({ targetOverrides: next })
+    setEditing(null)
+  }
 
   return (
     <aside className="card p-5 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
@@ -247,6 +299,17 @@ function TargetsPreview() {
         ))}
       </div>
       <p className="mt-2 font-mono text-[11px] text-(--muted)">protein {proteinPerKg(p)} g/kg · fat 30% of kcal</p>
+      <p className="mt-3 text-xs leading-relaxed text-(--muted)">
+        Tap a target to set your own, e.g. on your clinician's advice. Custom targets show in <span className="text-(--c-above)">blue</span> and replace the DRI everywhere.
+        {customCount > 0 && (
+          <>
+            {' '}
+            <button onClick={() => confirm(`Reset all ${customCount} custom targets to the standard DRI?`) && update({ targetOverrides: {} })} className="text-(--c-above) hover:underline">
+              Reset all {customCount}
+            </button>
+          </>
+        )}
+      </p>
 
       <div className="mt-4 space-y-4">
         {PREVIEW_ORDER.map((cat) => {
@@ -262,15 +325,25 @@ function TargetsPreview() {
                     <tr key={n.id} className="border-t border-(--line)/60">
                       <td className="py-1 pr-2 text-(--dim)">{n.name}</td>
                       <td className="py-1 text-right font-mono whitespace-nowrap">
-                        {n.target != null ? (
-                          <>
-                            {fmt(n.target)} <span className="text-(--muted)">{n.unit}</span>
-                          </>
+                        {editing === n.id ? (
+                          <TargetEditor n={n} onSave={(v) => setCustom(n.id, v)} onCancel={() => setEditing(null)} />
                         ) : (
-                          <span className="text-(--muted)">no target</span>
+                          <button
+                            onClick={() => setEditing(n.id)}
+                            title={n.customTarget ? `Your target. Standard: ${n.customTarget.standard != null ? `${fmt(n.customTarget.standard)} ${n.unit}` : 'none'}` : 'Set your own target'}
+                            className={`rounded px-1 hover:bg-(--panel-2) ${n.customTarget ? 'text-(--c-above)' : ''}`}
+                          >
+                            {n.target != null ? (
+                              <>
+                                {fmt(n.target)} <span className="text-(--muted)">{n.unit}</span>
+                              </>
+                            ) : (
+                              <span className="text-(--muted)">no target</span>
+                            )}
+                          </button>
                         )}
                       </td>
-                      <td className="w-12 py-1 pl-2 text-right font-mono text-[10px] text-(--muted)">{n.targetKind ?? ''}</td>
+                      <td className="w-12 py-1 pl-2 text-right font-mono text-[10px] text-(--muted)">{n.customTarget ? <span className="text-(--c-above)">custom</span> : (n.targetKind ?? '')}</td>
                       <td className="w-20 py-1 pl-2 text-right font-mono text-[10px] whitespace-nowrap text-(--c-over)/80">
                         {n.upperLimit != null ? `≤ ${fmt(n.upperLimit)}${n.ulAppliesTo === 'supplements' ? ' supp' : ''}` : ''}
                       </td>

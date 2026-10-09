@@ -105,8 +105,22 @@ export function sunCoversVitaminD(p: Profile) {
   return band === 'ok' || band === 'high'
 }
 
-/** Nutrient definitions with this profile's targets and upper limits applied. */
+/** Nutrient definitions with this profile's targets and upper limits applied, then any targets the person set. */
 export function personalize(p: Profile): Nutrient[] {
+  const custom = p.targetOverrides ?? {}
+  return standardTargets(p).map((n) => {
+    const v = custom[n.id]
+    return validCustomTarget(n, v) ? { ...n, target: v, customTarget: { standard: n.target } } : n
+  })
+}
+
+/** A custom target must be a number; zero is allowed only for "stay under" limits (e.g. no alcohol). */
+export function validCustomTarget(n: Pick<Nutrient, 'category'>, v: number | undefined | null): v is number {
+  return typeof v === 'number' && Number.isFinite(v) && (v > 0 || (v === 0 && n.category === 'limit'))
+}
+
+/** DRI targets for this profile (age, sex, life stage, goals, sun), before custom targets. */
+export function standardTargets(p: Profile): Nutrient[] {
   const o = driOverrides(p)
   const sun = sunCoversVitaminD(p)
   return NUTRIENTS.map((n) => {

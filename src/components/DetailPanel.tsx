@@ -110,7 +110,8 @@ function PanelBody({ state, onClose, history }: { state: NutrientState; onClose:
         )}
         <dt className="text-(--muted)">{isLimit ? 'Daily limit' : 'Target'}</dt>
         <dd className="tabular-nums">
-          {n.target != null ? (isLimit ? `${fmt(n.target)} ${n.unit}${n.target === 0 ? ' (avoid)' : ''}` : `${fmt(n.target)} ${n.unit} (${n.targetKind})`) : 'No official target'}
+          {n.target != null ? (isLimit ? `${fmt(n.target)} ${n.unit}${n.target === 0 ? ' (avoid)' : ''}` : `${fmt(n.target)} ${n.unit} (${n.customTarget ? 'custom' : n.targetKind})`) : 'No official target'}
+          {n.customTarget && <span className="text-(--muted)"> · yours; standard {n.customTarget.standard != null ? `${fmt(n.customTarget.standard)} ${n.unit}` : 'none'}</span>}
         </dd>
         {(n.upperLimit != null || n.ulNote) && (
           <>
