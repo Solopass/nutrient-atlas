@@ -64,9 +64,14 @@ export function HistoryPage() {
             <p className="text-[13px] text-(--muted)">Scores and nutrients from your logged days</p>
           </div>
         </a>
-        <a href="#/" className="rounded-full bg-(--c-above) px-4 py-1.5 text-[13px] font-semibold text-white hover:brightness-110">
-          ← Back to Atlas
-        </a>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <a href="#/report" className="rounded-full border border-(--line) px-4 py-1.5 text-[13px] text-(--dim) hover:border-(--c-above) hover:text-(--fg)">
+            Report for your clinician
+          </a>
+          <a href="#/" className="rounded-full bg-(--c-above) px-4 py-1.5 text-[13px] font-semibold text-white hover:brightness-110">
+            ← Back to Atlas
+          </a>
+        </div>
       </header>
 
       <main className="mx-auto max-w-[1400px] space-y-5 px-4 pb-28 sm:px-6 sm:pb-16">

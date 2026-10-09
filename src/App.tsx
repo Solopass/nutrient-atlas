@@ -74,7 +74,7 @@ function useHashRoute() {
   )
 }
 
-/** Routes: #/  ·  #/day/YYYY-MM-DD  ·  #/history  ·  #/settings  ·  #/welcome (setup) */
+/** Routes: #/  ·  #/day/YYYY-MM-DD  ·  #/history  ·  #/products  ·  #/report  ·  #/settings  ·  #/welcome (setup) */
 export default function App() {
   const route = useHashRoute()
   const [log, setLog] = useState<{ open: boolean; tab: LogTab }>({ open: false, tab: 'search' })
@@ -119,11 +119,12 @@ export default function App() {
   else if (route === 'settings') page = <SettingsPage />
   else if (route === 'history') page = <HistoryPage />
   else if (route === 'products') page = <ProductsPage />
+  else if (route === 'report') page = <ReportPage />
   else if (import.meta.env.DEV && route === 'dev/sample') page = <DevLoadSample />
   else if (import.meta.env.DEV && route === 'dev/crash') page = <DevCrash />
   else page = <Dashboard date={date} openLog={openLog} />
 
-  const title = route === 'welcome' || needsSetup ? 'Setup' : route === 'settings' ? 'Settings' : route === 'history' ? 'History' : route === 'products' ? 'Products' : date === today ? '' : formatDay(date)
+  const title = route === 'welcome' || needsSetup ? 'Setup' : route === 'settings' ? 'Settings' : route === 'history' ? 'History' : route === 'products' ? 'Products' : route === 'report' ? 'Nutrition summary' : date === today ? '' : formatDay(date)
   useEffect(() => {
     document.title = title ? `${title} · Nutrient Atlas` : 'Nutrient Atlas'
   }, [title])
@@ -143,6 +144,7 @@ export default function App() {
 const HistoryPage = lazy(() => import('./components/history/HistoryPage').then((m) => ({ default: m.HistoryPage })))
 const ProductsPage = lazy(() => import('./components/products/ProductsPage').then((m) => ({ default: m.ProductsPage })))
 const SettingsPage = lazy(() => import('./components/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })))
+const ReportPage = lazy(() => import('./components/report/ReportPage').then((m) => ({ default: m.ReportPage })))
 const Onboarding = lazy(() => import('./components/onboarding/Onboarding').then((m) => ({ default: m.Onboarding })))
 
 function PageLoading() {

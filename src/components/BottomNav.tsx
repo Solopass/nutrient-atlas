@@ -7,7 +7,7 @@ export function BottomNav({ route, openLog }: { route: string; openLog: (tab?: L
   const atlas = route === '' || route.startsWith('day/')
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-(--line) bg-(--bg)/90 backdrop-blur-md sm:hidden"
+      className="no-print fixed inset-x-0 bottom-0 z-30 border-t border-(--line) bg-(--bg)/90 backdrop-blur-md sm:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Main"
     >

@@ -222,3 +222,23 @@ button:focus-visible,
   content-visibility: auto;
   contain-intrinsic-size: auto 900px;
 }
+
+/* Printing (the clinician report): paper is white, app chrome is hidden. */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  body {
+    background: #fff;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .report .card {
+    background: none;
+    box-shadow: none;
+  }
+  .report tr {
+    break-inside: avoid;
+  }
+}

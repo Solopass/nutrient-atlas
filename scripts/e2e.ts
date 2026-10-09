@@ -170,10 +170,13 @@ const steps: [string, () => Promise<void>][] = [
     },
   ],
   [
-    'history and settings render',
+    'history, clinician report and settings render',
     async () => {
       await js(`location.hash = '#/history'`)
       await waitFor('History', `/nutrient heatmap/i.test(document.body.innerText)`)
+      await click('Report for your clinician')
+      // Today is in progress, so the report has no complete days yet; the supplement from setup is still listed.
+      await waitFor('the clinician report', `/Nutrition summary/.test(document.body.innerText) && /Supplements taken/i.test(document.body.innerText) && /Vitamin D3/.test(document.querySelector('main').innerText)`)
       await js(`location.hash = '#/settings'`)
       await waitFor('Settings', `/your data/i.test(document.body.innerText)`)
     },
