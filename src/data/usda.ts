@@ -138,6 +138,12 @@ export function nutrientsForGrams(food: UsdaFood, grams: number) {
 }
 
 /** Split a USDA name into [prefix, head, rest] so the UI can emphasise the real food ("Fish, **salmon**, sockeye, raw"). */
+/** Short display label: the head noun of a USDA-style name, capitalised. */
+export function foodLabel(name: string) {
+  const head = nameParts(name)[1]
+  return head.charAt(0).toUpperCase() + head.slice(1)
+}
+
 export function nameParts(name: string): [string, string, string] {
   const parts = name.split(', ')
   if (parts.length > 1 && GROUP_PREFIX.has(parts[0].toLowerCase())) return [parts[0] + ', ', parts[1], parts.length > 2 ? ', ' + parts.slice(2).join(', ') : '']

@@ -1,12 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { AtlasChart, snapServings, type AtlasOverlay } from './components/AtlasChart'
 import { AtlasToolbar, ReplayBar } from './components/AtlasToolbar'
 import { FoodStrip, type FoodSummary } from './components/FoodStrip'
-import { foodLabel } from './components/log/QuickAdd'
+import { foodLabel } from './data/usda'
 import { DetailPanel, type NutrientHistory } from './components/DetailPanel'
-import { HistoryPage } from './components/history/HistoryPage'
-import { ProductsPage } from './components/products/ProductsPage'
 import { CalendarIcon, GearIcon, ShelfIcon } from './components/icons'
 import { Legend } from './components/Legend'
 import { WhatsNew } from './components/WhatsNew'
@@ -17,8 +15,7 @@ import { CategoryPanel, GapsPanel } from './components/SidePanels'
 import { StatCards, type FoodPreview } from './components/StatCards'
 import { LogSheet, type LogTab } from './components/log/LogSheet'
 import { BottomNav } from './components/BottomNav'
-import { SettingsPage } from './components/settings/SettingsPage'
-import { Onboarding, type OnboardingExit } from './components/onboarding/Onboarding'
+import type { OnboardingExit } from './components/onboarding/Onboarding'
 import { InsightsCard, useWeeklyReport } from './components/insights/Insights'
 import { MOCK_INTAKE } from './data/mockIntake'
 import { SCORE_HISTORY } from './data/mockHistory'
@@ -120,11 +117,21 @@ export default function App() {
 
   return (
     <>
-      {page}
+      <Suspense fallback={<PageLoading />}>{page}</Suspense>
       {route !== 'welcome' && !needsSetup && <BottomNav route={route} openLog={openLog} />}
       <LogSheet open={log.open} initialTab={log.tab} onClose={closeLog} todayCount={dayCount} date={date} />
     </>
   )
+}
+
+// Pages other than the dashboard load on demand, so the Atlas opens with less code.
+const HistoryPage = lazy(() => import('./components/history/HistoryPage').then((m) => ({ default: m.HistoryPage })))
+const ProductsPage = lazy(() => import('./components/products/ProductsPage').then((m) => ({ default: m.ProductsPage })))
+const SettingsPage = lazy(() => import('./components/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })))
+const Onboarding = lazy(() => import('./components/onboarding/Onboarding').then((m) => ({ default: m.Onboarding })))
+
+function PageLoading() {
+  return <div role="status" aria-label="Loading" className="min-h-dvh" />
 }
 
 /**

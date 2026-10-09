@@ -58,7 +58,12 @@ async function waitFor(what: string, expression: string, timeout = 10_000) {
 const text = () => js<string>('return document.body.innerText')
 /** Click the first button/link whose text starts with `label`. */
 async function click(label: string, scope = 'document') {
-  const ok = await js<boolean>(`const b = [...${scope}.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(${JSON.stringify(label)}) && !b.disabled); if (b) b.click(); return !!b`)
+  // Retries briefly: pages and log tabs load on demand, so a button can appear a moment after navigation.
+  let ok = false
+  for (let i = 0; i < 30 && !ok; i++) {
+    ok = await js<boolean>(`const b = [...${scope}.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(${JSON.stringify(label)}) && !b.disabled); if (b) b.click(); return !!b`)
+    if (!ok) await sleep(100)
+  }
   if (!ok) throw new Error(`No enabled button "${label}"`)
   await sleep(250)
 }

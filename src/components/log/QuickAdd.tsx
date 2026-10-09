@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState, type ReactNode } from 'react'
-import { nameParts } from '../../data/usda'
+import { foodLabel } from '../../data/usda'
 import { db, type Meal } from '../../db/db'
 import { logSavedFood } from '../../db/logging'
 import { formatDay } from '../../lib/history'
@@ -90,10 +90,6 @@ export function QuickAdd({ meal, date, onLogged }: { meal: Meal; date: string; o
 }
 
 /** Short display name: the real food, not USDA's group prefix ("Nuts, almonds, …" → "Almonds"). */
-export function foodLabel(name: string) {
-  const head = nameParts(name)[1]
-  return head.charAt(0).toUpperCase() + head.slice(1)
-}
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (

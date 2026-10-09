@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { localDate, mealForTime, type Meal, MEALS } from '../../db/db'
 import { formatDay } from '../../lib/history'
-import { AiTab } from './AiTab'
-import { FoodsTab } from './FoodsTab'
-import { SearchTab } from './SearchTab'
-import { SupplementsTab } from './SupplementsTab'
-import { TodayTab } from './TodayTab'
+
+// Tabs load the first time the sheet opens, keeping them out of the dashboard's startup code.
+const SearchTab = lazy(() => import('./SearchTab').then((m) => ({ default: m.SearchTab })))
+const AiTab = lazy(() => import('./AiTab').then((m) => ({ default: m.AiTab })))
+const FoodsTab = lazy(() => import('./FoodsTab').then((m) => ({ default: m.FoodsTab })))
+const SupplementsTab = lazy(() => import('./SupplementsTab').then((m) => ({ default: m.SupplementsTab })))
+const TodayTab = lazy(() => import('./TodayTab').then((m) => ({ default: m.TodayTab })))
 
 export type LogTab = 'search' | 'ai' | 'foods' | 'supplements' | 'today'
 type Tab = LogTab
@@ -111,13 +113,13 @@ export function LogSheet({ open, onClose, todayCount, date, initialTab }: Props)
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
           {open && (
-          <>
+          <Suspense fallback={<p role="status" className="text-sm text-(--muted)">Loading…</p>}>
           {tab === 'search' && <SearchTab meal={meal} date={date} onLogged={onLogged} />}
           {tab === 'ai' && <AiTab meal={meal} date={date} onLogged={onLogged} />}
           {tab === 'foods' && <FoodsTab meal={meal} date={date} onLogged={onLogged} />}
           {tab === 'supplements' && <SupplementsTab date={date} />}
           {tab === 'today' && <TodayTab date={date} />}
-          </>
+          </Suspense>
           )}
         </div>
 

@@ -1,4 +1,4 @@
-import { foodLabel } from './log/QuickAdd'
+import { foodLabel } from '../data/usda'
 
 export interface FoodSummary {
   name: string

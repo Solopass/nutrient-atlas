@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Meal } from '../../db/db'
 import { itemsKcal, logSavedMeal } from '../../lib/quickLog'
 import { useGuard } from '../../lib/useGuard'
-import { foodLabel } from './QuickAdd'
+import { foodLabel } from '../../data/usda'
 
 /** Saved meals and recipes: log one portion, or delete. */
 export function SavedMealsList({ meal, date, onLogged }: { meal: Meal; date: string; onLogged: (msg: string) => void }) {
