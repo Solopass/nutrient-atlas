@@ -1,6 +1,6 @@
-# Nutrient Atlas: Product Specification v1.20
+# Nutrient Atlas: Product Specification v2.0
 
-What the app is and how it behaves today. For what's next, see [docs/ROADMAP.md](docs/ROADMAP.md).
+What the app is and how it behaves today (October 2026). For what's next, see [docs/ROADMAP.md](docs/ROADMAP.md); for running and developing it, the [README](README.md).
 
 ## Vision
 
@@ -15,27 +15,30 @@ Main question: **"Did I nourish myself today?"**, not "Did I hit my calorie goal
 | UI | React 19 + TypeScript + Vite + Tailwind CSS v4 |
 | Runtime / package manager | Bun |
 | Local database | Dexie (IndexedDB), local-first |
-| Routing | Hash routes (`#/`, `#/day/…`, `#/history`, `#/settings`) |
+| Routing | Hash routes (`#/`, `#/day/YYYY-MM-DD`, `#/history`, `#/products`, `#/settings`, `#/welcome`) |
 | Charts | Hand-built SVG (Atlas, sparklines, trends) |
 | Fonts | Inter + JetBrains Mono, bundled locally (offline-safe) |
 | Food data | USDA FoodData Central, preprocessed to `public/usda/foods.json` |
-| PWA | vite-plugin-pwa: installable, offline (app shell + USDA table precached), auto-update |
-| Later | Capacitor (stores), serverless AI proxy |
+| PWA | vite-plugin-pwa: installable, offline (app shell, USDA table and worker precached), auto-update |
+| Background work | A Web Worker owns the USDA table: search, Best next food, weekly food ideas |
+| Theming | CSS tokens; dark, light, colour-blind safe palette |
+| Testing | `bun test` (unit, fake-indexeddb) and `scripts/e2e.ts` (whole app in headless Edge/Chrome over CDP) |
+| Later | Serverless AI proxy (Phase C), sync (Phase D), Capacitor for app stores |
 
 ## Screens
 
 ### First-run setup (`#/welcome`)
 Shown automatically the first time the app opens (no profile saved and setup not yet finished or skipped); re-run from Settings or the dashboard banner.
-1. **Welcome:** what the app does; *Get started* or *Just explore with sample data*.
+1. **Welcome:** what the app does; *Get started*, *Explore with sample data*, or *Restore a backup…* (for a new browser or device).
 2. **About you:** sex, age, units, weight, height, pregnant / breastfeeding.
 3. **Activity, goal and diet.**
 4. **Supplements:** tap presets you take daily (with diet-aware "common" hints); they're created and auto-logged.
 5. **Ready:** calorie target, protein g/kg, supplement count and key personal targets; then *Log my first meal*, *Explore with sample data* or *Go to the Atlas*.
 
-Answers save as you go. Setup stays open until finished or skipped.
+Answers save as you go, and finishing saves the profile even if every default was kept. Setup stays open until finished or skipped, and only covers the dashboard: Settings, History and Products stay reachable (e.g. to import a backup).
 
 ### Dashboard (`#/`, `#/day/YYYY-MM-DD`)
-- **Header:** data source (demo / items logged / 7-day average with days logged), profile summary (links to Settings), **date navigation** (‹ ›, date picker, Today), **Day / 7 days** switch, **+ Log food**, Advanced toggle, History and Settings icons. A setup banner shows until a profile is saved.
+- **Header:** data source (demo / items logged / 7-day average with days logged), profile summary (links to Settings), **date navigation** (‹ ›, date picker, Today), **Day / 7 days** switch, **+ Log food**, Advanced toggle, History, Products and Settings icons. A setup banner shows until a profile is saved.
 - **Day vs 7 days:** the 7-day view averages the *logged* days (unlogged days are skipped, not zeros). When viewing today, it uses the 7 complete days before today, because today is still in progress. Default is automatic: 7 days once 3+ of the last 7 days are logged; choosing Day or 7 days is remembered.
 - **Empty and demo states:** with no logs at all the dashboard shows demo data and offers **Load sample history** (3 weeks of meals from real USDA foods, flagged and removable). A day with nothing logged shows every nutrient as "no data" plus a log prompt.
 - **Done for today:** a header button when viewing today marks the day complete, so it counts in the 7-day view, History averages, the weekly report and Product scores before midnight. Stored as the date, so it resets itself the next day.
@@ -68,28 +71,29 @@ Answers save as you go. Setup stays open until finished or skipped.
 - rejects foods that would push a limit or upper limit over (or charges them if already over)
 - lightly penalises calories and obscure long-named variants, and skips foods already eaten that day
 
-Your own saved foods (label and AI) and saved meals compete too, with a 15% nudge because you already eat them; they still respect limits and "already eaten today". They carry a *your food* / *your meal* badge.
+Your own saved foods (label and AI), saved meals and packaged foods rated in Products (except 1–2 stars) compete too, with a 15% nudge because you already eat them; they still respect limits and "already eaten today". They carry a *your food* / *your meal* / *rated* badge. Vitamin D isn't treated as a gap when the Sun setting covers it.
 
-It shows the best pick plus two alternatives (one per food family), each with **+ Log**. Runs in < 20 ms.
+It shows the best pick plus two alternatives (one per food family), each with **+ Log** and **◎ Preview**. The ranking runs in the USDA Web Worker, so even on a slow phone (about a second of work) it never blocks the screen.
 
 ### History (`#/history`)
-- 30-day stats: days logged, average score, days ≥ 80%, current streak, best streak (90 days). Today is counted as logged but kept out of averages while it's in progress.
+- 30-day stats: days logged, average score, days ≥ 80%, current streak, best streak (90 days). Today is counted as logged but kept out of averages while it's in progress (until marked *Done for today*).
 - **Month calendar** coloured by daily score, with item counts; click a day to open it on the dashboard.
 - **Persistent gaps:** nutrients averaging under 80% over the last 28 complete days, with how many days they were low and foods to try.
 - **Nutrient heatmap:** every nutrient × the last 28 days, coloured by % of target; outlined cells = logged day with no data; click a cell to open that day. **Limits** rows at the bottom use reversed colours (green under, yellow near, orange over; a 0 limit shows any amount as over).
 
 ### Phone
-- Installable PWA (standalone, dark theme colour, maskable icons). Works offline after first load.
-- Below 640 px: bottom tab bar (Atlas, History, **+** log, Supplements, Settings), with safe-area padding. The header drops the buttons the tab bar replaces.
+- Installable PWA (standalone, maskable icons; the browser theme colour follows Appearance). Works offline after first load.
+- Below 640 px: bottom tab bar (Atlas, History, **+** log, Products, Settings), with safe-area padding. The header drops the buttons the tab bar replaces. Supplements are one tap away in the log sheet.
+- The Atlas draws its outer ring as a slim colour band, and dragging a footprint uses touch (the page doesn't scroll while you drag).
 
 ### Weekly insights ([src/lib/insights.ts](src/lib/insights.ts))
-Computed on-device for the 7 complete days before the viewed day, vs the 7 before that:
+Computed on-device for the 7 complete days up to the viewed day (today counts once marked *Done for today*), vs the 7 before that. Everything except the food ideas renders at once; the food ideas come from the USDA worker a moment later.
 - **Score change** (±5 points or more) and **wins** (nutrients that crossed into 80%+).
 - **Persistent gaps:** up to 3 nutrients averaging under 70% and under 80% on at least 60% of logged days (excluding partial-data ones), each with 3 food ideas for your diet at realistic portions.
 - **Limits over** on average, naming the biggest sources.
 - **Diet / life-stage risks:** vegan, vegetarian, pregnancy and breastfeeding lists (e.g. B12, iodine, EPA+DHA, iron, zinc, choline, folate), skipped when a supplement already covers them.
 - **Interaction tips:** plant iron without vitamin C (with a concrete meal example), calcium and iron in the same meals, coffee/tea with iron-rich meals, vitamin A/K-rich meals with almost no fat.
-- **Blood tests:** a vitamin D, ferritin or B12 result outside the usual range, read against this week's intake (it replaces the plain gap insight for that nutrient; food ideas only when intake is also low).
+- **Blood tests:** any result outside the usual range (vitamin D, ferritin, B12, folate, magnesium, omega-3 index), read against this week's intake and mentioning the previous result when there is one. It replaces the plain gap insight for that nutrient; food ideas only when intake is also low.
 - **Data tips:** fewer than 4 logged days; several nutrients with incomplete data.
 
 Worded as food guidance, not medical advice. The History page shows the full **weekly report**: score vs last week, category coverage this week vs last, and every insight.
@@ -151,7 +155,7 @@ Rate the branded supplements and packaged foods you use or are considering. Stor
 - **Diet style:** omnivore / pescatarian / vegetarian / vegan (filters suggestions).
 - **AI estimation:** manual (active) / automatic (planned).
 - **Sun:** “Little sun” / “Regular sun”. With regular sun, vitamin D keeps its target and is shown (with ☀), but isn't counted in the score, category coverage, gaps, suggestions, insights or product gap scores. A low vitamin D blood test switches it off automatically.
-- **Blood tests (optional):** vitamin D 25(OH)D (ng/mL or nmol/L), ferritin (ng/mL = µg/L), B12 (pg/mL or pmol/L), serum folate (ng/mL or nmol/L; <3 deficient, 3–6 borderline), serum magnesium (mg/dL, mmol/L or mEq/L; <1.6 low, 1.6–1.8 borderline, >2.6 high; noted as a poor marker of stores) and the omega-3 index (% EPA+DHA in red cells; <4 low, 4–8 intermediate, ≥8 desirable), each with test date. **History:** every result is kept (`labHistory`, oldest first; older profiles' single result counts as one); edit the latest in place or “+ Newer result”; a trend chart (band stripes, dots coloured by band, change since the first result in your units) shows in Settings and the detail panel, and the weekly report mentions the previous value. Banded deficient / low / normal / high (IOM 2011 for vitamin D: <12, 12–20, 20–50, >50 ng/mL; WHO 2020 for ferritin: <15, 15–30, up to 150 women / 200 men; NIH ODS for B12: <200, 200–300 pg/mL). Shown on a square-root gauge. The detail panel for vitamin D, iron and B12 reads the lab against intake (e.g. "low even though intake is on target" → absorption, sun or losses). Results over 12 months old are flagged. Stored in the profile, so they travel with backups. Never changes targets. See [src/lib/labs.ts](src/lib/labs.ts).
+- **Blood tests (optional):** vitamin D 25(OH)D (ng/mL or nmol/L), ferritin (ng/mL = µg/L), B12 (pg/mL or pmol/L), serum folate (ng/mL or nmol/L; <3 deficient, 3–6 borderline), serum magnesium (mg/dL, mmol/L or mEq/L; <1.6 low, 1.6–1.8 borderline, >2.6 high; noted as a poor marker of stores) and the omega-3 index (% EPA+DHA in red cells; <4 low, 4–8 intermediate, ≥8 desirable), each with test date. **History:** every result is kept (`labHistory`, oldest first; older profiles' single result counts as one); edit the latest in place or “+ Newer result”; a trend chart (band stripes, dots coloured by band, change since the first result in your units) shows in Settings and the detail panel, and the weekly report mentions the previous value. Banded deficient / low / normal / high (IOM 2011 for vitamin D: <12, 12–20, 20–50, >50 ng/mL; WHO 2020 for ferritin: <15, 15–30, up to 150 women / 200 men; NIH ODS for B12: <200, 200–300 pg/mL). Shown on a gauge (square-root scale so narrow low bands stay visible; linear from 1.0 for magnesium), with the unit on the marker. The detail panels for vitamin D, iron, B12, folate (B9), magnesium and EPA/DHA read the latest result against intake (e.g. "low even though intake is on target" → absorption, sun or losses; for magnesium, a normal blood level can hide a shortfall). Results over 12 months old are flagged. Stored in the profile, so they travel with backups. Never changes targets. See [src/lib/labs.ts](src/lib/labs.ts).
 - **Run setup again** link.
 - **Appearance:** theme System / Dark / Light, and status colours Standard / Colour-blind safe (Okabe–Ito blue/orange set plus a shape on every status: ▼ deficient, ▽ needs attention, ● good, ▲ above, ⚠ over the limit, on Atlas wedges, periodic tiles, gaps, limits and the detail panel; low category cells are hatched). Every colour is a CSS token; the chosen theme is applied before first paint from localStorage, so there is no flash.
 - **Your data:** counts, storage protection status (the app requests persistent storage once set up, with a Protect button if not granted), last backup date, MB used, export JSON backup, import (replace), load / remove sample history, delete all.
@@ -196,17 +200,19 @@ Status: green ≤ 80% of the limit, yellow 80–100%, orange over; limit 0 means
 
 USDA data: sodium, saturated fat and cholesterol are near-complete. Added sugar is almost never reported, so the build records 0 for unprocessed whole foods (fruit, vegetables, meat, fish, plain dairy, grains, nuts, legumes) and leaves processed or sweetened foods as "no data". Caffeine and alcohol are treated the same way outside beverages and sweets.
 
-### Status colours
-| Colour | Range | Meaning |
-|---|---|---|
-| Red | 0–49% | Deficient |
-| Yellow | 50–79% | Needs attention |
-| Green | 80–120% | Good |
-| Blue | >120% | Above target (not bad by itself) |
-| Orange ⚠ | > UL | Over upper limit |
-| Grey hatched | n/a | No data: logged foods don't report it, so it's never shown as red |
-| Neutral | n/a | No official target |
-| ◐ | n/a | Partial data: <60% of logged foods report it |
+### Status colours and shapes
+| Colour (standard) | Shape | Range | Meaning |
+|---|---|---|---|
+| Red | ▼ | 0–49% | Deficient |
+| Yellow | ▽ | 50–79% | Needs attention |
+| Green | ● | 80–120% | Good |
+| Blue | ▲ | >120% | Above target (not bad by itself) |
+| Orange | ⚠ | > UL | Over upper limit |
+| Grey hatched | ○ | n/a | No data: logged foods don't report it, so it's never shown as red |
+| Neutral | · | n/a | No official target |
+| ◐ marker | | n/a | Partial data: <60% of logged foods report it |
+
+Shapes always appear in the legend. With *Colour-blind safe* on (Settings → Appearance) the colours switch to the Okabe–Ito set (vermillion, yellow, bluish green, sky blue, reddish purple) and the shapes appear next to every status on the Atlas, periodic tiles, gaps, limits and the detail panel; low category cells are also hatched.
 
 ### Scoring
 - Per category: share of scorable nutrients (have target and data) at ≥ 80%.
@@ -220,19 +226,42 @@ The USDA table (2.8 MB) is loaded, indexed and queried in a Web Worker (`src/wor
 
 ### Food sources
 - **USDA FoodData Central:** Foundation Foods (2025-12) + SR Legacy (2018-04), ~8,000 whole foods. See [README](README.md#food-data) for the build pipeline, unit conversions and merge rules.
-- **AI estimates:** see [docs/AI_INTEGRATION.md](docs/AI_INTEGRATION.md).
-- Later: OpenFoodFacts (barcodes), user recipes, supplements.
+- **Labels:** pasted Nutrition / Supplement Facts text (custom foods, supplements, Products).
+- **AI estimates:** meals and label photos, via copy/paste; see [docs/AI_INTEGRATION.md](docs/AI_INTEGRATION.md).
+- **Open Food Facts:** barcode lookup into Products (crowd-sourced; the editor asks you to check it against the label).
+- Later: a recipe builder (ingredients → per-serving nutrients; roadmap E3).
 
 ### Local database (Dexie, `nutrition-app`)
+Schema changes are additive `db.version(n)` upgrades only (current: 5), so installed copies upgrade in place.
 ```
-settings  key → value                    ('profile' → Profile)
-foods     ++id, name, lastUsedAt, favorite
-          { name, serving, grams?, nutrients (per serving), source: usda|ai|custom, favorite, useCount, createdAt, lastUsedAt }
-logs      ++id, date, loggedAt, meal, foodId, supplementId
-meals     ++id, lastUsedAt   { name, items[{ name, serving, multiplier, nutrients, foodId? }], servings, useCount, createdAt, lastUsedAt }
-          { date YYYY-MM-DD, loggedAt, meal, foodId?, name, serving, multiplier, nutrients (snapshot per serving), sample? }
+settings     key → value
+             'profile'       → Profile (body, goals, diet, units, currency, sunExposure, theme, palette,
+                                labs (latest per test), labHistory (all results per test), overrides…)
+             'onboarded'     → ISO time setup was finished or skipped
+             'lastBackup'    → date of the last Export backup
+             'dayComplete'   → date marked "Done for today"
+             'whatsNewSeen'  → version of the What's new strip dismissed
+foods        ++id, name, lastUsedAt, favorite                                        (v1)
+             { name, serving, grams?, nutrients (per serving), source: usda|ai|custom, favorite, useCount, createdAt, lastUsedAt }
+logs         ++id, date, loggedAt, meal, foodId, supplementId                         (v1; supplementId v3)
+             { date YYYY-MM-DD, loggedAt, meal (breakfast|lunch|dinner|snack|supplement), foodId?, supplementId?,
+               name, serving, multiplier, nutrients (snapshot per serving), sample? }
+supplements  ++id, active                                                             (v3)
+             { name, dose, dosesPerDay, schedule: daily|asNeeded, nutrients (per dose), active, startDate, lastApplied?, createdAt }
+meals        ++id, lastUsedAt                                                         (v4)
+             { name, items[{ name, serving, multiplier, nutrients, foodId? }], servings, useCount, createdAt, lastUsedAt }
+products     ++id, kind, updatedAt                                                    (v5)
+             { kind: supplement|food, brand, name, serving, grams?, kcal?, nutrients (per serving), forms?, certifications?,
+               barcode?, servingsPerContainer?, servingsPerDay?, price?, rating?, notes?, tags?, source, createdAt, updatedAt }
 ```
-Log entries snapshot nutrients so editing a food never rewrites history. Intake for a day = Σ nutrients × multiplier; coverage = share of entries that report each nutrient.
+Log entries snapshot nutrients so editing a food never rewrites history. Intake for a day = Σ nutrients × multiplier; coverage = share of food entries that report each nutrient.
+
+Also in localStorage: `atlas-appearance` (resolved theme and palette, applied before first paint) and `ai-log-draft` (an unsent AI estimate). Backups (Settings → Export) are JSON with every table; the crash screen can download the same file.
+
+## Quality
+- **Unit tests** (`bun test`, ~150): targets and limits, statuses and scoring, intake and history math, the AI-reply, label-text and Open Food Facts readers, USDA search and suggestions against the real table, insights, labs, product scoring and import/export, CSV, backups, and database flows.
+- **Whole-app test** (`bun run e2e`): setup → USDA logging → detail panel → Products import and ranking → History and Settings → theme switching → reload, in a fresh headless browser; fails on any console error.
+- `bun run typecheck` covers the app and the tests.
 
 ## Design principles
 1. Nutrients first, calories second.

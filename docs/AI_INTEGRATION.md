@@ -1,28 +1,42 @@
-# AI meal estimation: plan
+# AI in Nutrient Atlas
 
-## Now: manual copy/paste (shipped, Milestone 2)
+The app uses AI in two places today, both by **copy/paste**: free, private, and working with any chatbot. Automating them is Phase C of the [roadmap](ROADMAP.md), and it waits on one decision: an API key with a monthly budget cap.
 
-1. User describes a meal in **Log food → AI estimate**.
-2. The app builds a prompt ([src/lib/ai/prompt.ts](../src/lib/ai/prompt.ts)). It contains the nutrient table (ids, names, units) and asks for **JSON only**.
-3. User pastes the prompt into any chatbot and pastes the reply back.
+## Now (shipped): copy / paste
+
+### Meals (Log food → AI estimate)
+1. Describe a meal.
+2. The app builds a prompt ([src/lib/ai/prompt.ts](../src/lib/ai/prompt.ts)) with the nutrient table (ids, names, units) and asks for **JSON only**: items with quantity, grams, confidence and nutrients.
+3. Paste the prompt into any chatbot (Claude, ChatGPT, Gemini…) and paste the reply back. The draft survives switching tabs or closing the sheet.
 4. [src/lib/ai/parse.ts](../src/lib/ai/parse.ts) extracts and validates the JSON:
    - tolerates code fences, surrounding prose and trailing commas
    - maps ids case-insensitively and drops unknown ids, with a warning
    - rejects negative or non-numeric values
-   - flags likely unit mix-ups (value > 20× the upper limit or target)
-5. The review step lets the user untick items and set servings. Logged items are saved as reusable foods (`source: 'ai'`) plus log entries.
+   - flags likely unit mix-ups (a value more than 20× the upper limit or target)
+5. Review: untick items, set servings (an item at 0 servings is skipped), then log. Items are saved as reusable foods (`source: 'ai'`) plus log entries.
 
-**Missing ≠ zero.** The prompt tells the model to *omit* nutrients it can't estimate. Omitted keys lower that nutrient's data coverage, so the Atlas shows "no data" or "partial data" instead of a false deficiency.
+### Product labels (Products → Import · AI · CSV)
+- **Copy AI prompt** builds a prompt ([src/lib/products/io.ts](../src/lib/products/io.ts), `buildProductPrompt`) for reading **label photos or product pages**: brand, name, serving, servings per container, price, nutrients per serving in the app's units, ingredient forms ("magnesium glycinate"), testing seals and tags.
+- Attach photos in the chatbot (several products at once is fine) and paste the reply. It goes through the same importer as JSON and CSV files: units in column names convert (e.g. "Vitamin D (IU)"), and unknown nutrients are reported. Products that match an existing one (same barcode, or same kind + brand + name) are updated rather than duplicated.
 
-## Next: automated (Milestone 6)
+**Missing ≠ zero.** Both prompts tell the model to *omit* what it can't see or estimate. Omitted nutrients lower data coverage, so the Atlas shows "no data" or "partial data" instead of a false deficiency.
 
-The contract is `MealEstimator` in [src/lib/ai/types.ts](../src/lib/ai/types.ts). An automated provider implements `estimate(description) → ParseResult`, and the review UI stays the same.
+## Next: automated (Phase C)
 
-1. **Backend proxy.** A small serverless function (`POST /api/estimate`) holds the API key. The key must never ship to the browser.
-2. **Structured output.** Send the same prompt, with the JSON shape enforced through the provider's structured-output / tool-use feature. Keep `parseMealResponse` as a second line of validation.
-3. **Photo input (Milestone 6).** Same endpoint with an image attached. Only the prompt preamble changes.
-4. **Settings.** Choose the estimator: Manual (default, free, private) or Automatic.
-5. **Grounding (later).** Have the model return food names + grams only, then look up nutrients from the USDA data (Milestone 1). This is more accurate and cheaper than asking the model for 50 nutrient values. The current "model gives nutrients" path stays as a fallback for foods not in the database.
+The contract is `MealEstimator` in [src/lib/ai/types.ts](../src/lib/ai/types.ts): the manual estimator has no `estimate`; an automated one implements `estimate(description) → Promise<ParseResult>`, and the review screen stays the same. The same pattern applies to label reading.
+
+| Step | What | Notes |
+|---|---|---|
+| C1 | **Proxy** (Cloudflare Worker / Pages Function, `POST /api/estimate`) holds the API key and enforces a monthly budget cap and per-device rate limit | The key never ships to the browser. Needs hosting (Phase B). |
+| C2 | **One-tap meal estimate** | Same prompt with the JSON shape enforced by the provider's structured output / tool use; `parseMealResponse` stays as a second check. Copy/paste remains as the free option. |
+| C3 | **Photo logging** | Same endpoint with an image; only the prompt preamble changes. |
+| C4 | **USDA grounding** | The model returns food names and grams only; nutrients come from the USDA table (more accurate, consistent and cheaper than asking for 50 values). Model-estimated nutrients stay as the fallback for foods not in the table. |
+| C5 | **Label photo → Products** | The product prompt over the proxy; lands in the same import review. |
+| C6 | **AI coach** | Questions like "why am I always low on magnesium?", answered from your own logs (summaries are sent, not the raw database), with the same hedged, not-medical-advice tone as the weekly report. |
+
+**Settings:** the AI estimation choice already exists (Copy & paste / Automatic, the latter marked "coming soon"). Manual stays the default and keeps working offline and with no account.
+
+**Model choice:** a current Claude model, picked for cost per call (estimates are short JSON). Check prices and the budget cap before turning it on.
 
 ## Prompt versioning
 

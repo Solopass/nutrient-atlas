@@ -31,13 +31,13 @@ Nutrient Atlas wins by being:
 | 3 | Real history and weekly view | ✅ Done |
 | 4 | Supplements and "limit" nutrients | ✅ Done |
 | 5 | Daily driver: PWA, quick add, copy meals, saved meals/recipes, USDA suggestions, label foods, first-run setup, typed-barcode lookup ✅ · phone camera scanning (needs hosting) | Mostly done |
-| 6 | AI automation: API proxy, photo logging, USDA grounding | Planned |
-| 7 | Sync across devices, native wrappers, health-app export · CSV export ✅ | Started |
-| 8 | Insights and coaching: weekly report, diet risks, interaction tips, lab values ✅ · AI coach | Mostly done |
+| 6 | AI automation: API proxy, photo logging, USDA grounding (now Phase C) | Planned |
+| 7 | Sync across devices, native wrappers, health-app export (now Phase D) · CSV export ✅ | Started |
+| 8 | Insights and coaching: weekly report, diet risks, interaction tips, lab values and trends ✅ · AI coach (Phase C) | Mostly done |
 | 9 | Atlas+: by-meal colouring, 7-day whiskers, replay, what-if preview, food footprint, image export ✅ | Done |
 | 10 | Products: rate brands (labels, CSV, AI, barcode), testing badges, compare ✅ · community ratings | Mostly done |
 
-## The plan from here (September 2026)
+## The plan from here (updated October 2026)
 
 Four phases, ordered by what each one unlocks. **Phase A needs nothing from you.** Each later phase starts with a decision only you can make (hosting, an AI budget, accounts), so they wait until you say go.
 
@@ -115,79 +115,45 @@ What Phase A taught us:
 
 **Biggest unlock still waiting:** hosting (Phase B). It gets the app onto your phone and enables camera scanning everywhere. It's also the base for sync (D1) and AI photo logging (C3).
 
-## Milestone 3: Real history and weekly view ✅
+## What's shipped (and what each round taught us)
 
-Shipped:
-- Daily scores computed from logs (no stored summaries needed yet: ~44 days aggregate in a few ms).
-- **Day / 7-day switch.** The week view averages logged days only and excludes today while it's in progress. It turns on automatically once 3 of the last 7 days are logged.
-- Date navigation (‹ ›, picker, Today) with `#/day/YYYY-MM-DD` routes. Logging goes to the viewed day, so past days can be back-filled.
-- Real score sparkline, streak squares, and prior-day / prior-week deltas.
-- Detail panel: 30-day bar trend and top contributing foods.
-- **History screen:** 30-day stats, score calendar, persistent gaps, 28-day nutrient heatmap.
-- **Sample history** (3 weeks, real USDA foods, flagged and removable) for demos and testing.
+Details of how everything behaves are in [SPEC.md](../SPEC.md). This is the history, kept short.
 
-Learned:
-- Partial days distort averages, so "in progress" needs to be a first-class concept (done for today). A "day complete" toggle would let users close a day early.
-- USDA-only diets show persistent gaps in biotin, iodine, chromium and molybdenum that are really missing data. Supplements (M4) and label data (M5 barcodes) are how those get filled honestly.
+**Foundation (M0–M2.5):**
+- Shipped: the radial Atlas, periodic table and detail panel; the Vite/React/Dexie/USDA pipeline; USDA search with real portions; AI copy/paste estimates; My foods; Settings with DRI targets by age, sex and life stage.
 
-## Milestone 4: Supplements and limits ✅
+**History and the 7-day view (M3):**
+- Shipped: daily scores computed from logs, Day / 7-day switch, date navigation and back-filling, 30-day trends, a History page with calendar, persistent gaps and heatmap, removable sample history.
+- *Learned:* partial days distort averages. "In progress" became first-class, and later got *Done for today*. USDA-only diets show gaps that are really missing data, so labels and supplements matter.
 
-**Supplements ✅ shipped:** label-based definitions with presets and IU conversion; daily doses auto-logged (14-day back-fill, pause/resume, untick to skip); supplement-only ULs checked against supplement intake; food-vs-supplement share in the detail panel. Supplements never lower data coverage and don't make a day "logged".
+**Supplements and limits (M4):**
+- Shipped: label-based supplements, auto-logged daily, supplement-only upper limits, and seven "stay under" limits outside the score.
 
-**Limits ✅ shipped:** sodium, saturated fat, trans fat, added sugar, cholesterol, caffeine and alcohol with personalised limits, a "stay under" gauge strip, flags, reversed detail-panel scale, and USDA coverage (safe zeros for whole foods). Not in the score.
+**Daily driver (M5):**
+- Shipped: PWA (offline), Quick add, saved meals and recipes, label foods, first-run setup, Best next food, one-click launcher and installable app on this PC, typed barcode lookup.
 
-Still open:
-- Vitamin D from sunlight: optional "sun exposure" note so vitamin D isn't always red for people who get sun.
+**Insights (M8):**
+- Shipped: the weekly report (wins, gaps with food ideas, limits, diet and life-stage risks, food-pairing tips) and blood tests with history and trends (vitamin D, ferritin, B12, folate, magnesium, omega-3 index).
+- *Learned:* the vitamin A upper limit needed a retinol column (beta-carotene isn't capped). A normal blood magnesium can hide a shortfall.
 
-## Milestone 5: Daily driver
+**Atlas+:**
+- Shipped: colour by meal, supplement share, previous-period ticks, 7-day whiskers, replay, what-if preview, food footprint, drag-to-resize portions, image export, slim phone ring, keyboard navigation and a screen-reader summary.
 
-- **PWA ✅ shipped:** installable, offline (app shell + USDA table precached), auto-update; phone tab bar with a big log button. Needs HTTPS hosting to install on a phone. See [HOSTING.md](HOSTING.md).
-- **Recipes / meals ✅:** save any logged meal (optionally "makes N portions"); one tap to log a portion.
-- **Copy ✅:** "same breakfast as yesterday" and recent foods in Quick add.
-- **Custom foods from labels ✅:** paste or type Nutrition Facts; the text reader handles %DV-only and one-line labels. Covers packaged foods until barcode scanning.
-- **First-run setup ✅:** profile → goals → supplements → personal targets.
-- **Barcode ✅ (typed digits; camera where supported):** Open Food Facts lookup into Products. Phone camera scanning everywhere comes with hosting (B3).
-- **Best next food ✅** from the full USDA database plus your own saved foods and meals, diet-filtered, limit-aware, one tap to log.
-- Quick edit of portion by dragging on the Atlas wedge (stretch goal).
+**Products:**
+- Shipped: rating brands from labels, CSV, shared lists, AI-read photos or barcodes; personal A–E scores (gaps, dose and upper limits, forms, density, value, third-party testing); compare; rated foods in Best next food.
+- *Learned:* value has to compare like with like (magnesium with magnesium), or multivitamins always win. Supplements are judged against food alone.
 
-## Milestone 6: AI automation
+**Phase A (polish and trust):**
+- Shipped: light theme and colour-blind safe palette with shape markers, sun setting, What's new, the USDA Web Worker (main-thread blocking on a simulated slow phone halved), and the whole-app e2e test.
+- *Learned:* the daily app needed its own build folder, and headless browser tests must kill the whole process tree.
 
-See [AI_INTEGRATION.md](AI_INTEGRATION.md).
-- Serverless proxy (`POST /api/estimate`) holding the API key; structured JSON output; the same parser/review UI.
-- Photo logging: image → foods + grams.
-- **Grounding:** the model identifies foods and grams, and nutrients are looked up in USDA. This is more accurate, cheaper and consistent. Model-estimated nutrients remain the fallback.
-- Settings toggle between manual (free, private) and automatic.
-
-## Milestone 7: Platform
-
-- Optional sync: account + end-to-end encrypted sync of the Dexie tables.
-- **CSV export ✅:** daily totals or every entry. Next: Apple Health / Google Fit export of nutrients.
-- Capacitor wrapper for app stores once the PWA is solid.
-
-## Milestone 8: Insights and coaching
-
-**Shipped ✅:** weekly report (score and category change vs last week, wins, persistent gaps with diet-aware food ideas, limits with sources), diet/life-stage risk flags, and meal-level interaction tips (plant iron + vitamin C, calcium vs iron, caffeine vs iron, fat for vitamins A/K). Dashboard card plus full report in History.
-
-Still to do:
-
-- **Lab values ✅:** vitamin D, ferritin and B12 with reference bands, read against intake in the detail panel and weekly report. Next: more tests (folate, magnesium, omega-3 index, HbA1c for context) and a history of results over time.
-- AI coach: ask "why am I always low on magnesium?" against your own logs.
-
-## Products and brands
-
-**Shipped ✅:** Products page: add branded supplements and foods from labels, CSV, shared JSON packs or AI-read photos; personal A–E scores (gaps, dose/UL, forms, density, value); star ratings and notes; compare up to 4.
-
-**Also shipped ✅:** barcode lookup via Open Food Facts (typed digits everywhere; camera where supported), rated foods in Best next food, third-party testing badges with a Tested score, share sheet for product lists.
-
-Next:
-- Camera scanning on iPhone (needs a barcode library, since Safari lacks BarcodeDetector) and on phones generally once hosted over HTTPS.
-- Shared community lists and ratings (needs hosting + sync).
+**Bug sweeps:** after every round; each fix has a test where it can.
 
 ## Engineering backlog
 
-- **Tests ✅:** `bun test` (~140 tests). Next: component tests for the Atlas and log sheet, and a Playwright smoke test of the first-run → log → dashboard flow.
-- Mock data now only powers the demo dashboard (`mockIntake`, `mockHistory`).
-- Accessibility pass: keyboard navigation of the Atlas ✅, screen-reader summary ✅. Still to do: colour-blind safe status palette (add shape/pattern cues).
-- Light theme.
-- Performance: move USDA parsing to a Web Worker if load time on low-end phones is noticeable.
-- **Error boundary ✅:** crash screen with Reload, Back to Atlas and Download backup (reads the database directly). Test with `#/dev/crash` in dev.
+- **Tests ✅:** `bun test` (~150 unit tests) and `bun run e2e` (whole app, headless). Next: e2e steps for the log sheet's AI and label flows, and Products compare; a pre-commit check (E7).
+- **Bundle:** the main JavaScript chunk is 640 KB because every page loads up front. Split pages and log tabs (E1).
+- **Rendering:** most remaining slow-phone time is drawing the dashboard. Defer below-the-fold sections (E2).
+- **Accessibility ✅:** keyboard Atlas, screen-reader summary, colour-blind palette and shapes, inert hidden panels, focus moves into dialogs. Next: an audit with a real screen reader.
+- **Error boundary ✅:** crash screen with Reload, Back to Atlas and Download backup. Test with `#/dev/crash` in dev.
+- **Data refresh:** rebuild the USDA table when a new Foundation Foods release lands (`bun run build:usda`); review DRI and limit sources yearly.
