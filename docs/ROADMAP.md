@@ -30,16 +30,16 @@ Nutrient Atlas wins by being:
 | 2.5 | Settings: profile, DRI personal targets (14+, pregnancy/lactation), goals, energy, diet, backup | ✅ Done |
 | 3 | Real history and weekly view | ✅ Done |
 | 4 | Supplements and "limit" nutrients | ✅ Done |
-| 5 | Daily driver: PWA, quick add, copy meals, saved meals/recipes, USDA suggestions, label foods, first-run setup, typed-barcode lookup ✅ · phone camera scanning (needs hosting) | Mostly done |
+| 5 | Daily driver: PWA, quick add, copy meals, saved meals, recipe builder, USDA suggestions, label foods, first-run setup, typed-barcode lookup, backup reminder ✅ · phone camera scanning (needs hosting) | Mostly done |
 | 6 | AI automation: API proxy, photo logging, USDA grounding (now Phase C) | Planned |
 | 7 | Sync across devices, native wrappers, health-app export (now Phase D) · CSV export ✅ | Started |
-| 8 | Insights and coaching: weekly report, diet risks, interaction tips, lab values and trends ✅ · AI coach (Phase C) | Mostly done |
+| 8 | Insights and coaching: weekly report, diet risks, interaction tips, lab values and trends, clinician report, custom targets ✅ · AI coach (Phase C) | Mostly done |
 | 9 | Atlas+: by-meal colouring, 7-day whiskers, replay, what-if preview, food footprint, image export ✅ | Done |
 | 10 | Products: rate brands (labels, CSV, AI, barcode), testing badges, compare ✅ · community ratings | Mostly done |
 
 ## The plan from here (updated October 2026)
 
-Four phases, ordered by what each one unlocks. **Phase A needs nothing from you.** Each later phase starts with a decision only you can make (hosting, an AI budget, accounts), so they wait until you say go.
+Phases ordered by what each one unlocks. **Phases A, E and F need nothing from you.** B, C and D each start with a decision only you can make (hosting, an AI budget, accounts), so they wait until you say go.
 
 Every session, whatever the phase, ends the same way: a bug sweep (code review plus a click-through on a separate test port, so your data is never touched), a test for each fix, updated SPEC/ROADMAP, and a local commit.
 
@@ -59,22 +59,28 @@ The goal: make it good enough that you want to open it every day, and fix what d
 | A8 ✅ | **End-to-end smoke test** (setup → log → dashboard → products) using the headless Edge script we already have | Catches regressions across the whole app | M |
 | A9 ✅ | *Stretch:* drag a wedge on the Atlas to adjust a portion | Makes the chart itself the logging tool | M |
 
-### Phase E: depth and speed. No hosting, no cost. Next 2–3 sessions
+### Phase E: depth and speed ✅ (October 2026)
 
-What Phase A taught us:
-- **Rendering:** with the food table moved to a worker, most of what's left on a slow phone is drawing the dashboard.
-- **Bundle size:** the main JavaScript bundle is 640 KB, because every page loads up front.
-- **Features:** useful ones remain that need no server.
+| # | Item | Result |
+|---|---|---|
+| E1 ✅ | **Load pages on demand** | History, Products, Settings, setup, the report and the log-sheet tabs are separate chunks. Main chunk 627 → 478 KB; the rest is mostly React DOM and Dexie, which the dashboard needs |
+| E2 ✅ | **Lighter dashboard draw** | A CPU profile showed the 7-day whiskers recomputing each day's intake once per nutrient; now cached per day. Limits, periodic table and legend draw right after the Atlas. Slow phone (6× CPU, production build): the Atlas appears after ~1.2–1.6 s instead of ~2.2–3.0 s |
+| E3 ✅ | **Recipe builder** | My foods → Build a recipe: ingredients from your foods or USDA, portions, live per-portion nutrients; edit any saved meal |
+| E4 ✅ | **Report for your clinician** | History → Report: 30/60/90 days, key findings, every nutrient vs target with data quality, limits, supplements against upper limits, blood tests; prints cleanly or saves as PDF |
+| E5 ✅ | **Your own targets** | Tap any target in Settings; applied everywhere, shown as "custom", standard kept for reference, warning above the upper limit |
+| E6 ✅ | **Backup reminder** | Dashboard banner after 14 days without a backup (or a week of logs and none yet); one-tap export or snooze a week |
+| E7 ✅ | **Pre-commit check** | Typecheck + unit tests on every commit (`.githooks`, enabled by `bun install`) |
+
+### Phase F: make the data work harder. No hosting, no cost. Next 2–3 sessions
 
 | # | Item | Why | Size |
 |---|---|---|---|
-| E1 | **Load pages on demand** (Products, History, Settings and the log sheet tabs split from the main bundle) | The dashboard opens with about half the code | S |
-| E2 | **Lighter dashboard draw** (periodic table and limits render after the Atlas; measured with the production build at 6× throttle) | The remaining ~1 s of blocking on slow phones | S–M |
-| E3 | **Recipe builder** (search ingredients, set quantities and number of servings → a saved recipe with per-serving nutrients) | Home cooking is the hardest thing to log today | M |
-| E4 | **Report for your clinician** (one page: 30-day averages, persistent gaps, supplements and doses, lab trends; print or save as PDF) | Turns the data into a conversation with a doctor or dietitian | M |
-| E5 | **Your own targets** (override a nutrient's target, e.g. on clinician advice, shown as "custom") | DRIs are for healthy people; some people have different needs | S–M |
-| E6 | **Backup reminder** in the app (no backup in 14 days → a gentle banner with one-tap export) | Local-first data needs backups; this doesn't need hosting | S |
-| E7 | **Pre-commit check** (typecheck + tests on every commit; e2e before larger changes) | Keeps regressions out automatically | S |
+| F1 | **Plan tomorrow:** pick 2–4 foods that close today's gaps together (not one at a time), preview them on the Atlas, log them in one tap tomorrow | Best next food finds one food; a plan fixes the week | M |
+| F2 | **Paste a recipe:** paste an ingredient list (from a website or notes), match each line to USDA foods and grams, review in the recipe builder | Building recipes by hand is still slow | M |
+| F3 | **Barcode in the log sheet:** typed barcode → Open Food Facts → log it (today barcodes only go to Products) | Packaged foods are the other hard-to-log group | S |
+| F4 | **Long-term view per nutrient:** 90-day trend in the detail panel with blood-test results on the same timeline | Shows whether diet changes moved the lab numbers | S–M |
+| F5 | **Report extras:** compare two periods (e.g. before and after a change); include custom-target notes and a short "what I changed" field | Makes the clinician visit a before/after conversation | S |
+| F6 | **Accessibility pass:** NVDA screen-reader run through setup, logging, recipes and the report; fix what it finds | New screens since the last audit | S |
 
 ### Phase B: live on your phone. **Decision: hosting** (free: private GitHub repo + Cloudflare Pages, see [HOSTING.md](HOSTING.md))
 
@@ -83,7 +89,7 @@ What Phase A taught us:
 | B1 | Push to a private GitHub repo; Cloudflare Pages builds each push. Needs your OK and two free accounts | S |
 | B2 | Install on your phone; one-week field test (offline, notch, keyboard, storage protection when installed) | – |
 | B3 | Camera barcode scanning everywhere, including iPhone (a small scanning library as a fallback) | M |
-| B4 | Weekly backup reminder, plus "export to Files/Drive" on phones | S |
+| B4 | "Export to Files/Drive" on phones (the in-app reminder is done, E6) | S |
 | B5 | Optional reminders: "log dinner?", "took your supplements?" (web push works for installed apps, iOS 16.4+) | M |
 
 ### Phase C: AI that just works. **Decision: API key and a monthly budget cap** (typical use is cents a day)
@@ -107,11 +113,11 @@ What Phase A taught us:
 
 ### Decisions waiting on you
 
-1. **Now:** use it for a few days and tell me what bugs you. That drives Phase A.
+1. **Now:** use it for a few days and tell me what bugs you (A1). Run `Nutrient Atlas.cmd` once to get the Phase E features into your daily app.
 2. **When ready:** hosting go-ahead (Phase B). This unlocks phone install and camera scanning.
 3. **Later:** AI budget (Phase C) and accounts (Phase D).
 
-**Recommended next session:** E1 + E2 + E6 (faster and safer, all small), then E3 (recipe builder), with a bug sweep and the e2e test.
+**Recommended next session:** F3 + F1 (log packaged foods fast, then plan around your gaps), with a bug sweep and the e2e test. Anything from your week of use (A1) goes first.
 
 **Biggest unlock still waiting:** hosting (Phase B). It gets the app onto your phone and enables camera scanning everywhere. It's also the base for sync (D1) and AI photo logging (C3).
 
@@ -147,13 +153,17 @@ Details of how everything behaves are in [SPEC.md](../SPEC.md). This is the hist
 - Shipped: light theme and colour-blind safe palette with shape markers, sun setting, What's new, the USDA Web Worker (main-thread blocking on a simulated slow phone halved), and the whole-app e2e test.
 - *Learned:* the daily app needed its own build folder, and headless browser tests must kill the whole process tree.
 
+**Phase E (depth and speed):**
+- Shipped: pages and log tabs loaded on demand, a lighter dashboard draw, the recipe builder, the clinician report, your own targets, the backup reminder and a pre-commit check.
+- *Learned:* profile before optimising. The biggest slow-phone cost was repeated math, not drawing. Browser extensions installed for every profile inject scripts into test runs, so the e2e browser runs without them. A printed report needs absolute dates and a light theme, and fixed overlays repeat on every printed page.
+
 **Bug sweeps:** after every round; each fix has a test where it can.
 
 ## Engineering backlog
 
-- **Tests ✅:** `bun test` (~150 unit tests) and `bun run e2e` (whole app, headless). Next: e2e steps for the log sheet's AI and label flows, and Products compare; a pre-commit check (E7).
-- **Bundle:** the main JavaScript chunk is 640 KB because every page loads up front. Split pages and log tabs (E1).
-- **Rendering:** most remaining slow-phone time is drawing the dashboard. Defer below-the-fold sections (E2).
+- **Tests ✅:** `bun test` (~170 unit tests), `bun run e2e` (whole app, headless, including recipes and the report) and a pre-commit hook. Next: e2e steps for the log sheet's AI and label flows, Products compare and custom targets.
+- **Bundle ✅:** main chunk 478 KB after splitting (E1). Further cuts would mean replacing React DOM or Dexie; not worth it.
+- **Rendering ✅:** intake cached per day, below-the-fold sections deferred (E2). Remaining cost is React building the dashboard's DOM (~0.5 s at 6× CPU); memoising the Atlas against unrelated re-renders is the next step if phones feel slow.
 - **Accessibility ✅:** keyboard Atlas, screen-reader summary, colour-blind palette and shapes, inert hidden panels, focus moves into dialogs. Next: an audit with a real screen reader.
 - **Error boundary ✅:** crash screen with Reload, Back to Atlas and Download backup. Test with `#/dev/crash` in dev.
 - **Data refresh:** rebuild the USDA table when a new Foundation Foods release lands (`bun run build:usda`); review DRI and limit sources yearly.

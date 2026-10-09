@@ -42,7 +42,8 @@ Answers save as you go, and finishing saves the profile even if every default wa
 - **Day vs 7 days:** the 7-day view averages the *logged* days (unlogged days are skipped, not zeros). When viewing today, it uses the 7 complete days before today, because today is still in progress. Default is automatic: 7 days once 3+ of the last 7 days are logged; choosing Day or 7 days is remembered.
 - **Empty and demo states:** with no logs at all the dashboard shows demo data and offers **Load sample history** (3 weeks of meals from real USDA foods, flagged and removable). A day with nothing logged shows every nutrient as "no data" plus a log prompt.
 - **Done for today:** a header button when viewing today marks the day complete, so it counts in the 7-day view, History averages, the weekly report and Product scores before midnight. Stored as the date, so it resets itself the next day.
-- **What's new:** a dismissible strip of recent features, each with a button that shows it (starts Replay, switches to By meal, opens Products or Settings).
+- **Backup reminder:** when the last Export backup is 14+ days old, or after 7 days of real (non-sample) food logs with no backup, a banner offers **Export backup** (one tap) or **Remind me in a week**. See [src/lib/backupReminder.ts](src/lib/backupReminder.ts).
+- **What's new:** a dismissible strip of recent features, each with a button that shows it (recipes, the clinician report, your own targets, Products, Replay, By meal, Preview, footprint). It returns when `WHATS_NEW_VERSION` changes.
 - **Stat cards:** nourishment score with real 14-day sparkline and change vs yesterday / prior week (hidden for today until the day is over; today is drawn hollow and dashed as "so far"; the footer averages complete days only), streak with 14-day squares, energy vs personal calorie target (daily average in 7-day view), nutrient coverage distribution, **best next food** (see below).
 - **This week · insights:** the top 3 insights for the last 7 complete days (see Weekly insights), linking to the full report.
 - **Nutrient Atlas** (hero), a radial chart:
@@ -79,7 +80,18 @@ It shows the best pick plus two alternatives (one per food family), each with **
 - 30-day stats: days logged, average score, days ≥ 80%, current streak, best streak (90 days). Today is counted as logged but kept out of averages while it's in progress (until marked *Done for today*).
 - **Month calendar** coloured by daily score, with item counts; click a day to open it on the dashboard.
 - **Persistent gaps:** nutrients averaging under 80% over the last 28 complete days, with how many days they were low and foods to try.
+- **Report for your clinician** button (see below).
 - **Nutrient heatmap:** every nutrient × the last 28 days, coloured by % of target; outlined cells = logged day with no data; click a cell to open that day. **Limits** rows at the bottom use reversed colours (green under, yellow near, orange over; a 0 limit shows any amount as over).
+
+### Clinician report (`#/report`)
+A printable summary to take to a doctor or dietitian, for the last 30, 60 or 90 days ending at the last complete day ([src/lib/report.ts](src/lib/report.ts)):
+- **Header:** period with absolute dates, days logged, sex / age / weight / life stage / diet, date generated.
+- **Key findings:** nutrients averaging under 80% (good data only), anything at or above an upper limit from food plus supplements, any supplement dose that reaches an upper limit on its own, "stay under" limits exceeded, blood tests outside the usual range.
+- **Average daily intake vs target:** every nutrient by group: average, target and its kind (RDA / AI / AMDR / custom), % with status colour (and shape in colour-blind mode), share from supplements, days under 80% out of days with data; "–" for no data and * for partial data. Notes list sun-covered vitamin D and custom targets with the standard alongside.
+- **Limits:** average vs limit and days over.
+- **Supplements taken** (active): dose, schedule, start date, and per-day amount of each nutrient as % of target and of the upper limit.
+- **Blood tests:** every result, newest first, with its band.
+- **Print or save as PDF** prints in the light theme with the app's navigation and log sheet hidden, and keeps short sections on one page.
 
 ### Phone
 - Installable PWA (standalone, maskable icons; the browser theme colour follows Appearance). Works offline after first load.
@@ -101,11 +113,13 @@ Worded as food guidance, not medical advice. The History page shows the full **w
 ### Log food (sheet)
 1. **Search:** above the search box, **Quick add**: *Same [meal] as [last time]* copies that meal's items (looks back 14 days); **Saved meals** chips log one portion; **Recent** foods log one serving. Below, USDA foods ranked for everyday use (head-word match, whole/raw preference, nutrient completeness). Pick amount × USDA portion or custom grams, with a live nutrient preview.
 2. **AI estimate:** describe a meal → copy prompt → paste any chatbot's JSON reply → review (untick items, servings) → log.
-3. **My foods:** **Create a food from its label**, saved meals (log / delete), and every logged food for one-tap re-logging (source badge USDA / AI / Label; label and AI foods are editable); favorites.
+3. **My foods:** **Build a recipe** (below), **Create a food from its label**, saved meals and recipes (log one portion / edit / delete), and every logged food for one-tap re-logging (source badge USDA / AI / Label; label and AI foods are editable); favorites.
 4. **Supplements:** see below.
 5. **Today** (or the viewed day): entries by meal with kcal; edit servings; delete; **Save as meal** per meal (name + "makes N portions" for recipes; logging adds one portion).
 
-The sheet logs to the day being viewed, so past days can be back-filled. A badge shows when that is not today.
+**Recipe builder** ([src/components/log/RecipeBuilder.tsx](src/components/log/RecipeBuilder.tsx), [src/lib/recipe.ts](src/lib/recipe.ts)): a name, how many portions it makes, and ingredients searched from your own label / AI foods and the USDA table (amount × USDA portion, or custom grams). A live panel shows one portion's calories, weight (when every ingredient's grams are known) and % of targets. **Save**, or **Save and log 1 portion**. Saved as a saved meal (`servings` = portions), so logging adds every ingredient scaled by 1/portions. Editing a saved meal or recipe opens the same builder.
+
+The tabs load on first open. The sheet logs to the day being viewed, so past days can be back-filled. A badge shows when that is not today.
 
 The meal defaults from time of day.
 
@@ -160,7 +174,7 @@ Rate the branded supplements and packaged foods you use or are considering. Stor
 - **Appearance:** theme System / Dark / Light, and status colours Standard / Colour-blind safe (Okabe–Ito blue/orange set plus a shape on every status: ▼ deficient, ▽ needs attention, ● good, ▲ above, ⚠ over the limit, on Atlas wedges, periodic tiles, gaps, limits and the detail panel; low category cells are hatched). Every colour is a CSS token; the chosen theme is applied before first paint from localStorage, so there is no flash.
 - **Your data:** counts, storage protection status (the app requests persistent storage once set up, with a Protect button if not granted), last backup date, MB used, export JSON backup, import (replace), load / remove sample history, delete all.
 - **Spreadsheet export (CSV):** daily totals (one row per day, a daily-target row, entry counts, kcal, score, one column per nutrient) or every entry (time, meal, food, servings, type, amounts eaten). Missing data is an empty cell, never 0; UTF-8 BOM for Excel; text that starts with = + - @ is defused. See [src/lib/csv.ts](src/lib/csv.ts).
-- **Live targets preview:** BMR, burn, target kcal, and every nutrient's target, kind and UL.
+- **Your daily targets:** BMR, burn, target kcal, and every nutrient's target, kind and UL. **Tap a target to set your own** (e.g. on a clinician's advice; Enter saves, Escape cancels, *Standard* goes back); a warning shows above the upper limit, and *Reset all* clears them. Custom targets show in blue as "custom".
 
 ## Nutrient model
 
@@ -182,6 +196,7 @@ Protein, Carbohydrates, Fat, Fiber · Vitamins A, C, D, E, K · Calcium, Magnesi
 - Energy: Mifflin–St Jeor BMR × activity × (1 + goal adjustment) + pregnancy 340 / lactation 400 kcal.
 - No official target (EPA, DHA, boron, sulfur, lutein, zeaxanthin, CoQ10, creatine): amount only.
 - ULs that apply to supplements only (magnesium, niacin, folic acid, vitamin E) carry a note.
+- **Custom targets** (`profile.targetOverrides`, by nutrient id) are applied last, so they win over DRIs, goals and life stage everywhere: score, gaps, suggestions, insights, Products and the report. The nutrient keeps its kind (a lower sodium limit is still a limit) and remembers the standard value (`customTarget.standard`) for the detail panel and the report. Must be > 0, or ≥ 0 for limits.
 
 **Vitamin A upper limit:** the UL (3,000 mcg adults) covers preformed vitamin A only. The USDA table carries a hidden `retinol` value per food; the UL is checked against retinol from foods plus all vitamin A from supplements (labels rarely give the form). Foods without retinol data (labels, AI estimates) are treated as plant form. Best-next-food uses the same rule, so carrots are never rejected for vitamin A.
 
@@ -224,21 +239,24 @@ Shapes always appear in the legend. With *Colour-blind safe* on (Settings → Ap
 ### Performance
 The USDA table (2.8 MB) is loaded, indexed and queried in a Web Worker (`src/workers/usda.worker.ts`, client `src/data/usdaClient.ts`): search, Best next food and the weekly report's food ideas. The weekly report renders at once without food ideas and fills them in when the worker answers. If workers are unavailable the same code runs on the main thread.
 
+The dashboard ships in the main chunk (~480 KB, mostly React DOM and Dexie); History, Products, Settings, setup, the report and the five log-sheet tabs load on demand. A day's intake is computed once per log array and cached (the 7-day whiskers and trends ask for it once per nutrient), and the limits, periodic table and legend render just after the Atlas's first paint with `content-visibility: auto`. On a simulated slow phone (production build, 6× CPU) the Atlas appears after ~1.2–1.6 s instead of ~2.2–3.0 s.
+
 ### Food sources
 - **USDA FoodData Central:** Foundation Foods (2025-12) + SR Legacy (2018-04), ~8,000 whole foods. See [README](README.md#food-data) for the build pipeline, unit conversions and merge rules.
 - **Labels:** pasted Nutrition / Supplement Facts text (custom foods, supplements, Products).
 - **AI estimates:** meals and label photos, via copy/paste; see [docs/AI_INTEGRATION.md](docs/AI_INTEGRATION.md).
 - **Open Food Facts:** barcode lookup into Products (crowd-sourced; the editor asks you to check it against the label).
-- Later: a recipe builder (ingredients → per-serving nutrients; roadmap E3).
+- **Recipes:** built from the above (ingredients → per-portion nutrients).
 
 ### Local database (Dexie, `nutrition-app`)
 Schema changes are additive `db.version(n)` upgrades only (current: 5), so installed copies upgrade in place.
 ```
 settings     key → value
              'profile'       → Profile (body, goals, diet, units, currency, sunExposure, theme, palette,
-                                labs (latest per test), labHistory (all results per test), overrides…)
+                                labs (latest per test), labHistory (all results per test), targetOverrides, energy/protein overrides…)
              'onboarded'     → ISO time setup was finished or skipped
              'lastBackup'    → date of the last Export backup
+             'backupSnoozedUntil' → backup reminder hidden until this date
              'dayComplete'   → date marked "Done for today"
              'whatsNewSeen'  → version of the What's new strip dismissed
 foods        ++id, name, lastUsedAt, favorite                                        (v1)
@@ -259,9 +277,10 @@ Log entries snapshot nutrients so editing a food never rewrites history. Intake 
 Also in localStorage: `atlas-appearance` (resolved theme and palette, applied before first paint) and `ai-log-draft` (an unsent AI estimate). Backups (Settings → Export) are JSON with every table; the crash screen can download the same file.
 
 ## Quality
-- **Unit tests** (`bun test`, ~150): targets and limits, statuses and scoring, intake and history math, the AI-reply, label-text and Open Food Facts readers, USDA search and suggestions against the real table, insights, labs, product scoring and import/export, CSV, backups, and database flows.
-- **Whole-app test** (`bun run e2e`): setup → USDA logging → detail panel → Products import and ranking → History and Settings → theme switching → reload, in a fresh headless browser; fails on any console error.
+- **Unit tests** (`bun test`, ~170): targets, custom targets and limits, statuses and scoring, intake and history math, the AI-reply, label-text and Open Food Facts readers, USDA search and suggestions against the real table, insights, labs, product scoring and import/export, recipes, the clinician report, the backup reminder, CSV, backups, and database flows.
+- **Whole-app test** (`bun run e2e`): setup → dashboard (including the deferred sections) → USDA logging → building a recipe → detail panel → Products import and ranking → History, the clinician report and Settings → theme switching → reload, in a fresh headless browser without extensions; fails on any console error.
 - `bun run typecheck` covers the app and the tests.
+- **Pre-commit hook** (`.githooks/pre-commit`, enabled by `bun install`): typecheck and unit tests on every commit.
 
 ## Design principles
 1. Nutrients first, calories second.

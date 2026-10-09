@@ -12,7 +12,7 @@ Double-click **`Nutrient Atlas.cmd`**. It builds the latest version, serves it i
 - **Install it once:** in that window, Edge menu → *Apps → Install Nutrient Atlas*. You get a Start menu / taskbar app that **works even when the server isn't running** (it's cached for offline use), and installed apps get protected storage.
 - **After updates:** run `Nutrient Atlas.cmd` again; the installed app picks up the new version on its next launch.
 - **Your data lives with `localhost:4173` in that browser.** Development uses other ports (5173 dev, 5174 test, 4199 automated test), so work in progress never touches it.
-- **Back up now and then:** Settings → Your data → Export backup. To move to another browser or device, use **Restore a backup…** on the setup screen (or Settings → Import backup).
+- **Back up now and then:** Settings → Your data → Export backup (the dashboard reminds you every two weeks). To move to another browser or device, use **Restore a backup…** on the setup screen (or Settings → Import backup).
 
 ## What's in it
 
@@ -27,7 +27,8 @@ Double-click **`Nutrient Atlas.cmd`**. It builds the latest version, serves it i
 **Logging** (the + button)
 - **Search** USDA foods with real portions; **Quick add** repeats a meal, a saved meal or a recent food.
 - **AI estimate:** copy a prompt into any chatbot and paste its JSON reply ([docs/AI_INTEGRATION.md](docs/AI_INTEGRATION.md)).
-- **My foods:** paste a Nutrition Facts label to create a food; saved meals and recipes ("makes N portions").
+- **Recipes:** build a dish from ingredients (your foods or USDA), say how many portions it makes, see one portion's nutrients, log a portion at a time; edit it later.
+- **My foods:** paste a Nutrition Facts label to create a food; saved meals and recipes.
 - **Supplements** from their label, logged automatically each day.
 - **Today:** edit servings, remove (with Undo), save a meal.
 
@@ -39,13 +40,15 @@ Double-click **`Nutrient Atlas.cmd`**. It builds the latest version, serves it i
 **Insights and history**
 - **Weekly report:** score change, wins, persistent gaps with food ideas, limits, diet and life-stage risks, food-pairing tips, blood tests.
 - **History:** score calendar, persistent gaps, a 28-day nutrient heatmap.
+- **Report for your clinician:** 30/60/90-day averages vs targets, key findings, limits, supplements and blood tests on one printable page (or PDF).
 
 **Your targets and health context** (Settings)
 - DRI targets by age, sex, pregnancy and lactation; goals (protein g/kg, calories); diet style; limits (sodium, sugar, saturated fat…).
+- **Your own targets:** tap any target to replace the DRI (e.g. on a clinician's advice); shown as "custom".
 - **Sun** setting for vitamin D.
 - **Blood tests** over time: vitamin D, ferritin, B12, folate, magnesium, omega-3 index, each with a trend.
 - **Appearance:** System / Dark / Light, and colour-blind safe status colours with shape markers.
-- **Your data:** backup, import, CSV export (daily totals or every entry), sample history, storage protection.
+- **Your data:** backup, import, CSV export (daily totals or every entry), sample history, storage protection. The dashboard reminds you when the last backup is two weeks old.
 
 ## Develop
 
@@ -62,14 +65,16 @@ bun run build      # production build into dist/ (for hosting)
 
 ```bash
 bun run typecheck  # app + tests
-bun test           # ~150 unit tests, about 1 s
-bun run e2e        # whole-app test in headless Edge/Chrome, ~15 s including its build
+bun test           # ~170 unit tests, about 1 s
+bun run e2e        # whole-app test in headless Edge/Chrome, ~20 s including its build
 ```
 
-- **Unit tests** live next to the code (`src/lib/*.test.ts`): targets and limits, scoring, intake and history math, the AI-reply, label-text and Open Food Facts readers, product scoring and import, labs, backups, and the database flows (in-memory IndexedDB via `fake-indexeddb`).
+`bun install` turns on a **pre-commit hook** (`.githooks/pre-commit`) that runs the typecheck and unit tests on every commit. Run `bun run e2e` before larger changes.
+
+- **Unit tests** live next to the code (`src/lib/*.test.ts`): targets (including custom ones) and limits, scoring, intake and history math, the AI-reply, label-text and Open Food Facts readers, product scoring and import, labs, recipes, the clinician report, backups and the reminder, and the database flows (in-memory IndexedDB via `fake-indexeddb`).
 - **`bun run e2e`** ([scripts/e2e.ts](scripts/e2e.ts)) builds into `dist-e2e/`, serves it on :4199, and drives a fresh browser profile through:
-  - setup, then logging a USDA food and the detail panel
-  - Products (import and ranking), then History and Settings
+  - setup, then logging a USDA food, building a recipe and the detail panel
+  - Products (import and ranking), then History, the clinician report and Settings
   - switching theme, then a reload
   It fails on any console error and saves `e2e-failure.png`.
 - **Sanity scripts** print human-readable checks: `bun scripts/check-targets.ts`, `check-suggestions.ts`, `check-sample-foods.ts`, `check-label-parse.ts`.

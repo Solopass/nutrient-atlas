@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 
 /** Bump when there are new tips worth showing again. */
-export const WHATS_NEW_VERSION = '2026-09-22'
+export const WHATS_NEW_VERSION = '2026-10-09'
 
 interface Tip {
   icon: string
@@ -16,19 +16,20 @@ interface Tip {
  * A dismissible strip of recent features, each with a button that shows it.
  * Hidden once dismissed until WHATS_NEW_VERSION changes.
  */
-export function WhatsNew({ onReplay, onByMeal, onShowAtlas }: { onReplay: () => void; onByMeal: () => void; onShowAtlas: () => void }) {
+export function WhatsNew({ onReplay, onByMeal, onShowAtlas, onRecipes }: { onReplay: () => void; onByMeal: () => void; onShowAtlas: () => void; onRecipes: () => void }) {
   const seen = useLiveQuery(async () => (await db.settings.get('whatsNewSeen'))?.value ?? null, [], 'loading')
   if (seen === 'loading' || seen === WHATS_NEW_VERSION) return null
   const dismiss = () => db.settings.put({ key: 'whatsNewSeen', value: WHATS_NEW_VERSION })
 
   const tips: Tip[] = [
+    { icon: '⚗', title: 'Recipes', body: 'Build a dish from ingredients, say how many portions it makes, log one at a time.', action: 'Build one', run: onRecipes },
+    { icon: '⎙', title: 'Report for your clinician', body: '30–90 day averages, gaps, supplements and blood tests on one printable page.', action: 'Open report', run: () => (location.hash = '#/report') },
+    { icon: '✎', title: 'Your own targets', body: 'Tap any target in Settings to set your own, e.g. on a clinician’s advice.', action: 'Settings', run: () => (location.hash = '#/settings') },
     { icon: '★', title: 'Rate brands', body: 'Paste a label, scan a barcode or import a list; get an A–E score for you.', action: 'Open Products', run: () => (location.hash = '#/products') },
     { icon: '▶', title: 'Replay 30 days', body: 'Watch the Atlas change day by day.', action: 'Play', run: onReplay },
     { icon: '◑', title: 'Colour by meal', body: 'See which meal supplies each nutrient.', action: 'Try it', run: onByMeal },
     { icon: '◎', title: 'Preview a food', body: 'Hover a Best next food pick (or tap ◎ Preview) to see what it would add.', action: 'Show Atlas', run: onShowAtlas },
     { icon: '◉', title: 'Food footprint', body: 'Tap a food under the Atlas to see everything it gave you.', action: 'Show Atlas', run: onShowAtlas },
-    { icon: '✓', title: 'Done for today', body: 'Mark the day complete to count it in weekly views before midnight.', action: 'Show me', run: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
-    { icon: '☀', title: 'Sun setting', body: 'Get regular sun? Stop vitamin D from food counting as a gap.', action: 'Settings', run: () => (location.hash = '#/settings') },
   ]
 
   return (
