@@ -1,14 +1,31 @@
-# Hosting plan
+# Hosting
 
-**Not deployed yet. This is the plan; nothing is pushed or published until you say "go hosting".** Today the app runs on this PC (`Nutrient Atlas.cmd`, see the [README](../README.md)). Hosting is Phase B of the [roadmap](ROADMAP.md) and the biggest unlock left:
+**Live at https://nutrient-atlas.pages.dev** since 2026-10-09: Cloudflare Pages (classic), project `nutrient-atlas`, deployed straight from this PC with Wrangler. No GitHub; the code stays on this PC and only the built site is uploaded.
+
+## Deploying an update
+
+```bash
+bun run deploy
+```
+
+This runs the typecheck and unit tests, builds `dist/`, and uploads it to the production branch (`main`). Installed apps pick it up the next time they open. Before bigger releases also run `bun run e2e`, and afterwards `bun scripts/e2e.ts --url https://nutrient-atlas.pages.dev/`, which runs the whole-app test against the live site in a throwaway browser profile.
+
+- **Sign-in:** Wrangler is signed in to your Cloudflare account on this PC (OAuth, stored in `%APPDATA%\xdg.config\.wrangler`). `bun x wrangler whoami` shows it; `bun x wrangler logout` or Cloudflare → My Profile → API Tokens revokes it.
+- **Rollback:** Cloudflare dashboard → Workers & Pages → nutrient-atlas → Deployments → pick an earlier one → *Rollback*.
+- **Classic Pages, on purpose:** Cloudflare is folding Pages into Workers, and Wrangler's `pages` commands try the new route first. This project was created with `--force` on classic Pages to get the short `pages.dev` address (the same setup as the `polymatica` site). Later Wrangler commands for it go to classic Pages directly; don't pass `--force` again.
+- **Checked at launch:** right headers on every path (service worker and HTML not cached, hashed assets cached for a year, nosniff, camera limited to this site); the whole-app test passes against the live site; after one visit it reloads and searches USDA foods with the network off.
+
+## Why it was worth doing
+
+The rest of this page is the plan it was built from, kept for reference. Hosting was Phase B of the [roadmap](ROADMAP.md):
 
 - **On your phone:** install it like an app, and it works offline.
 - **Camera scanning:** phones only allow the camera on a secure (https) site. The Scan button is already built; it just needs this.
 - **The base for later phases:** the AI proxy (Phase C) and sync (Phase D).
 
-**Cost: $0.** Time on go day: about 30–45 minutes together, most of it creating two free accounts.
+**Cost: $0.**
 
-## Choice: private GitHub repo + Cloudflare Pages
+## Choice: Cloudflare Pages (a private GitHub repo turned out to be optional)
 
 | Option | Static app | Server code for the AI proxy (Phase C) | Data / sync later (Phase D) | Cost | Verdict |
 |---|---|---|---|---|---|

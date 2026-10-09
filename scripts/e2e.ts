@@ -4,6 +4,7 @@
  * takes. Fails on any broken step or any console error.
  *
  *   bun run e2e            (add --keep to leave the browser profile for inspection)
+ *   bun run e2e --url https://nutrient-atlas.pages.dev/   (test a deployed site; no build, no local server)
  *
  * Uses the Chrome DevTools Protocol directly, so there is nothing to install.
  * It never touches your real data: its own build folder, port and browser profile.
@@ -15,7 +16,9 @@ import { join } from 'node:path'
 
 const ROOT = join(import.meta.dir, '..')
 const PORT = 4199
-const BASE = `http://localhost:${PORT}/`
+const urlArg = process.argv.indexOf('--url')
+const REMOTE = urlArg > 0 ? process.argv[urlArg + 1] : null
+const BASE = REMOTE ? (REMOTE.endsWith('/') ? REMOTE : REMOTE + '/') : `http://localhost:${PORT}/`
 const BROWSERS = [process.env.BROWSER_PATH, 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Google/Chrome/Application/chrome.exe'].filter(Boolean) as string[]
 const keep = process.argv.includes('--keep')
 
@@ -256,12 +259,17 @@ async function main() {
   const exe = BROWSERS.find((p) => existsSync(p))
   if (!exe) throw new Error('Edge or Chrome not found; set BROWSER_PATH')
 
-  console.log('Building…')
-  const build = Bun.spawnSync(['bun', 'x', 'vite', 'build', '--outDir', 'dist-e2e', '--emptyOutDir', '--logLevel', 'warn'], { cwd: ROOT, stdout: 'inherit', stderr: 'inherit' })
-  if (build.exitCode !== 0) throw new Error('Build failed')
+  if (REMOTE) {
+    console.log(`Testing ${BASE} (deployed; nothing built or served locally)`)
+    if (!(await fetch(BASE).then((r) => r.ok).catch(() => false))) throw new Error(`${BASE} didn't answer`)
+  } else {
+    console.log('Building…')
+    const build = Bun.spawnSync(['bun', 'x', 'vite', 'build', '--outDir', 'dist-e2e', '--emptyOutDir', '--logLevel', 'warn'], { cwd: ROOT, stdout: 'inherit', stderr: 'inherit' })
+    if (build.exitCode !== 0) throw new Error('Build failed')
 
-  server = spawn(['bun', 'x', 'vite', 'preview', '--outDir', 'dist-e2e', '--port', String(PORT), '--strictPort'], { cwd: ROOT, stdout: 'ignore', stderr: 'pipe' })
-  for (let i = 0; i < 100 && !(await fetch(BASE).then((r) => r.ok).catch(() => false)); i++) await sleep(100)
+    server = spawn(['bun', 'x', 'vite', 'preview', '--outDir', 'dist-e2e', '--port', String(PORT), '--strictPort'], { cwd: ROOT, stdout: 'ignore', stderr: 'pipe' })
+    for (let i = 0; i < 100 && !(await fetch(BASE).then((r) => r.ok).catch(() => false)); i++) await sleep(100)
+  }
 
   profile = mkdtempSync(join(tmpdir(), 'atlas-e2e-'))
   const cdpPort = 9400 + Math.floor(Math.random() * 400)

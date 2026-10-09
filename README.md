@@ -59,7 +59,8 @@ Needs [Bun](https://bun.sh) (no Node required).
 bun install
 bun run dev        # http://localhost:5173 with hot reload
 bun run app        # production build served on http://localhost:4173 (what the launcher runs)
-bun run build      # production build into dist/ (for hosting)
+bun run build      # production build into dist/
+bun run deploy     # checks + build + upload to https://nutrient-atlas.pages.dev
 ```
 
 **Checks before committing**
@@ -103,7 +104,11 @@ USDA rarely reports biotin, chromium, molybdenum, iodine, boron or sulfur, so th
 
 ## On a phone
 
-It's a PWA: installable and fully usable offline once loaded. Phones only allow installing over **HTTPS**, so it needs hosting first; the plan (free, GitHub + Cloudflare Pages) is in [docs/HOSTING.md](docs/HOSTING.md).
+It's a PWA: installable and fully usable offline once loaded. **It's live at https://nutrient-atlas.pages.dev** (free Cloudflare Pages; updates go out with `bun run deploy`, see [docs/HOSTING.md](docs/HOSTING.md)).
+
+- **Android (Chrome):** open it → menu ⋮ → *Install app*. Scan works out of the box.
+- **iPhone (Safari):** open it → Share → *Add to Home Screen*, and always start it from that icon (Safari can clear data from websites you rarely visit, but not from home-screen apps). For Scan, switch on the free scanner add-on in Settings → Food databases.
+- **Move your data:** Export backup on the PC, send the file to the phone, then *Restore a backup…* on the setup screen. The phone and PC then keep separate logs until sync exists.
 
 For a quick look on the same Wi-Fi (no install, no camera):
 

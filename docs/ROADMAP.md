@@ -86,7 +86,7 @@ The goal: make it good enough that you want to open it every day, and fix what d
 
 | # | Item | Size |
 |---|---|---|
-| B1 | Push to a private GitHub repo; Cloudflare Pages builds each push. Needs your OK and two free accounts. **Step-by-step plan, decisions and go-day checklist: [HOSTING.md](HOSTING.md)** | S |
+| B1 ✅ | **Live at https://nutrient-atlas.pages.dev** (2026-10-09): Cloudflare Pages, deployed from this PC with `bun run deploy` (Wrangler); no GitHub needed. See [HOSTING.md](HOSTING.md) | S |
 | B2 | Install on your phone; one-week field test (offline, notch, keyboard, storage protection when installed) | – |
 | B3 ✅ (needs a real-phone check) | Camera scanning: built in on Android Chrome; on iPhone an opt-in add-on the browser downloads itself (nothing bundled). Done early, in phone prep | M |
 | B4 | "Export to Files/Drive" on phones (the in-app reminder is done, E6) | S |
@@ -114,12 +114,12 @@ The goal: make it good enough that you want to open it every day, and fix what d
 ### Decisions waiting on you
 
 1. **Now:** use it for a few days and tell me what bugs you (A1). Run `Nutrient Atlas.cmd` once to get the Phase E features into your daily app.
-2. **When ready:** hosting go-ahead (Phase B). This unlocks phone install and camera scanning.
+2. **Now:** install it on your phone (B2) and move your data over; a week of real use is the field test.
 3. **Later:** AI budget (Phase C) and accounts (Phase D).
 
 **Recommended next session:** F1 (plan tomorrow around your gaps), with a bug sweep and the e2e test. Anything from your week of use (A1) goes first.
 
-**Biggest unlock still waiting:** hosting (Phase B). It gets the app onto your phone and enables camera scanning everywhere. It's also the base for sync (D1) and AI photo logging (C3).
+**Hosting is done (B1).** Next unlocks: the phone field test (B2), then sync (D1) and AI photo logging (C3), which build on the same Cloudflare account.
 
 ## What's shipped (and what each round taught us)
 
