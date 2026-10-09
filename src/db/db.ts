@@ -3,7 +3,10 @@ import Dexie, { type EntityTable } from 'dexie'
 /** Eating occasions the user picks from. Supplements get their own group in the log. */
 export type Meal = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 export type LogGroup = Meal | 'supplement'
-export type FoodSource = 'ai' | 'custom' | 'usda'
+export type FoodSource = 'ai' | 'custom' | 'usda' | 'barcode'
+
+/** Settings key for your free USDA FoodData Central API key (barcode lookups). Belongs to the device, not your data. */
+export const FDC_KEY_SETTING = 'fdcApiKey'
 
 /** A reusable food. Nutrients are totals for one `serving`, keyed by nutrient id. */
 export interface Food {
@@ -13,6 +16,9 @@ export interface Food {
   grams?: number
   nutrients: Record<string, number>
   source: FoodSource
+  /** Set for packaged foods found or saved by barcode, so the next scan is instant and offline. */
+  barcode?: string
+  brand?: string
   favorite: 0 | 1
   useCount: number
   createdAt: number

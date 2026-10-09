@@ -106,8 +106,11 @@ export function cleanBarcode(input: string) {
   return [8, 12, 13, 14].includes(d.length) ? d : null
 }
 
+/** The product endpoint for one barcode, asking only for the fields we read. */
+export const offProductUrl = (code: string) => `${API}${encodeURIComponent(code)}.json?fields=${FIELDS}`
+
 export async function lookupBarcode(code: string, signal?: AbortSignal): Promise<OffProduct | null> {
-  const r = await fetch(`${API}${encodeURIComponent(code)}.json?fields=${FIELDS}`, { signal, headers: { Accept: 'application/json' } })
+  const r = await fetch(offProductUrl(code), { signal, headers: { Accept: 'application/json' } })
   if (r.status === 404) return null
   if (!r.ok) throw new Error(`Open Food Facts didn't answer (${r.status}). Try again in a moment.`)
   return fromOpenFoodFacts((await r.json()) as OffJson, code)

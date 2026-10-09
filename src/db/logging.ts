@@ -8,6 +8,8 @@ export interface NewFood {
   grams?: number
   nutrients: Record<string, number>
   source: FoodSource
+  barcode?: string
+  brand?: string
 }
 
 /** Save a food (or reuse an identical-name one) and log it. */
@@ -18,7 +20,7 @@ export async function logNewFood(food: NewFood, meal: Meal, multiplier = 1, date
     let foodId: number
     if (existing && existing.serving === food.serving) {
       foodId = existing.id
-      await db.foods.update(foodId, { nutrients: food.nutrients, grams: food.grams, lastUsedAt: now, useCount: existing.useCount + 1 })
+      await db.foods.update(foodId, { nutrients: food.nutrients, grams: food.grams, ...(food.barcode && { barcode: food.barcode, brand: food.brand }), lastUsedAt: now, useCount: existing.useCount + 1 })
     } else {
       foodId = await db.foods.add({ ...food, favorite: 0, useCount: 1, createdAt: now, lastUsedAt: now } as Food)
     }

@@ -112,6 +112,11 @@ Worded as food guidance, not medical advice. The History page shows the full **w
 
 ### Log food (sheet)
 1. **Search:** above the search box, **Quick add**: *Same [meal] as [last time]* copies that meal's items (looks back 14 days); **Saved meals** chips log one portion; **Recent** foods log one serving. Below, USDA foods ranked for everyday use (head-word match, whole/raw preference, nutrient completeness). Pick amount × USDA portion or custom grams, with a live nutrient preview.
+   **Barcodes:** typing or pasting 8, 12, 13 or 14 digits (spaces and dashes allowed; a USB scanner works too) switches the tab to a barcode lookup ([src/lib/barcode.ts](src/lib/barcode.ts), [BarcodeLog.tsx](src/components/log/BarcodeLog.tsx)), after a short pause so a half-typed number isn't looked up. In order:
+   1. **Your foods and rated products**, matching any length of the same number (UPC-A 12 = EAN-13 with a leading 0 = GTIN-14). Instant and offline.
+   2. **USDA FoodData Central, Branded Foods** (US packaged foods, manufacturer data): one search request covers every length of the number; values per 100 g are scaled to the label serving, with the same nutrient mapping as the USDA table (vitamin A in IU is left as unknown, since converting needs its form). Uses your free API key from Settings, or USDA's shared `DEMO_KEY` (a few lookups an hour).
+   3. **Open Food Facts** (worldwide, community data), asked at the same time. When both know the product, USDA's values win and Open Food Facts only adds nutrients USDA lacks, scaled to USDA's serving by weight.
+   The result card shows the source, serving and kcal, and logs servings or grams. A found food is saved to My foods with its barcode and brand (source "Barcode"), so the next scan is local. Not found → **Create it from the label**, saved with the barcode. A wrong check digit gets a "typo?" hint; a rate limit or network problem with one source is shown while the other's answer is still used. Only the number is sent, and online answers are cached for the session.
 2. **AI estimate:** describe a meal → copy prompt → paste any chatbot's JSON reply → review (untick items, servings) → log.
 3. **My foods:** **Build a recipe** (below), **Create a food from its label**, saved meals and recipes (log one portion / edit / delete), and every logged food for one-tap re-logging (source badge USDA / AI / Label; label and AI foods are editable); favorites.
 4. **Supplements:** see below.
@@ -168,6 +173,7 @@ Rate the branded supplements and packaged foods you use or are considering. Stor
 - **Goal:** general health / build muscle / lose fat / endurance → protein g/kg and calorie adjustment. Custom calorie and protein overrides.
 - **Diet style:** omnivore / pescatarian / vegetarian / vegan (filters suggestions).
 - **AI estimation:** manual (active) / automatic (planned).
+- **Food databases:** which free databases barcode lookups use, and an optional **USDA API key** (free from api.data.gov; about 1,000 lookups an hour instead of the demo key's few). Stored in settings as `fdcApiKey`, left out of backup files and kept when restoring one.
 - **Sun:** “Little sun” / “Regular sun”. With regular sun, vitamin D keeps its target and is shown (with ☀), but isn't counted in the score, category coverage, gaps, suggestions, insights or product gap scores. A low vitamin D blood test switches it off automatically.
 - **Blood tests (optional):** vitamin D 25(OH)D (ng/mL or nmol/L), ferritin (ng/mL = µg/L), B12 (pg/mL or pmol/L), serum folate (ng/mL or nmol/L; <3 deficient, 3–6 borderline), serum magnesium (mg/dL, mmol/L or mEq/L; <1.6 low, 1.6–1.8 borderline, >2.6 high; noted as a poor marker of stores) and the omega-3 index (% EPA+DHA in red cells; <4 low, 4–8 intermediate, ≥8 desirable), each with test date. **History:** every result is kept (`labHistory`, oldest first; older profiles' single result counts as one); edit the latest in place or “+ Newer result”; a trend chart (band stripes, dots coloured by band, change since the first result in your units) shows in Settings and the detail panel, and the weekly report mentions the previous value. Banded deficient / low / normal / high (IOM 2011 for vitamin D: <12, 12–20, 20–50, >50 ng/mL; WHO 2020 for ferritin: <15, 15–30, up to 150 women / 200 men; NIH ODS for B12: <200, 200–300 pg/mL). Shown on a gauge (square-root scale so narrow low bands stay visible; linear from 1.0 for magnesium), with the unit on the marker. The detail panels for vitamin D, iron, B12, folate (B9), magnesium and EPA/DHA read the latest result against intake (e.g. "low even though intake is on target" → absorption, sun or losses; for magnesium, a normal blood level can hide a shortfall). Results over 12 months old are flagged. Stored in the profile, so they travel with backups. Never changes targets. See [src/lib/labs.ts](src/lib/labs.ts).
 - **Run setup again** link.
@@ -245,7 +251,8 @@ The dashboard ships in the main chunk (~480 KB, mostly React DOM and Dexie); His
 - **USDA FoodData Central:** Foundation Foods (2025-12) + SR Legacy (2018-04), ~8,000 whole foods. See [README](README.md#food-data) for the build pipeline, unit conversions and merge rules.
 - **Labels:** pasted Nutrition / Supplement Facts text (custom foods, supplements, Products).
 - **AI estimates:** meals and label photos, via copy/paste; see [docs/AI_INTEGRATION.md](docs/AI_INTEGRATION.md).
-- **Open Food Facts:** barcode lookup into Products (crowd-sourced; the editor asks you to check it against the label).
+- **USDA Branded Foods:** barcode lookups when logging (free API key or the shared demo key).
+- **Open Food Facts:** barcode lookups when logging and in Products (crowd-sourced; Products asks you to check it against the label).
 - **Recipes:** built from the above (ingredients → per-portion nutrients).
 
 ### Local database (Dexie, `nutrition-app`)
@@ -257,10 +264,11 @@ settings     key → value
              'onboarded'     → ISO time setup was finished or skipped
              'lastBackup'    → date of the last Export backup
              'backupSnoozedUntil' → backup reminder hidden until this date
+             'fdcApiKey'     → your USDA API key (this device only; not in backups)
              'dayComplete'   → date marked "Done for today"
              'whatsNewSeen'  → version of the What's new strip dismissed
 foods        ++id, name, lastUsedAt, favorite                                        (v1)
-             { name, serving, grams?, nutrients (per serving), source: usda|ai|custom, favorite, useCount, createdAt, lastUsedAt }
+             { name, serving, grams?, nutrients (per serving), source: usda|ai|custom|barcode, barcode?, brand?, favorite, useCount, createdAt, lastUsedAt }
 logs         ++id, date, loggedAt, meal, foodId, supplementId                         (v1; supplementId v3)
              { date YYYY-MM-DD, loggedAt, meal (breakfast|lunch|dinner|snack|supplement), foodId?, supplementId?,
                name, serving, multiplier, nutrients (snapshot per serving), sample? }
@@ -277,8 +285,8 @@ Log entries snapshot nutrients so editing a food never rewrites history. Intake 
 Also in localStorage: `atlas-appearance` (resolved theme and palette, applied before first paint) and `ai-log-draft` (an unsent AI estimate). Backups (Settings → Export) are JSON with every table; the crash screen can download the same file.
 
 ## Quality
-- **Unit tests** (`bun test`, ~170): targets, custom targets and limits, statuses and scoring, intake and history math, the AI-reply, label-text and Open Food Facts readers, USDA search and suggestions against the real table, insights, labs, product scoring and import/export, recipes, the clinician report, the backup reminder, CSV, backups, and database flows.
-- **Whole-app test** (`bun run e2e`): setup → dashboard (including the deferred sections) → USDA logging → building a recipe → detail panel → Products import and ranking → History, the clinician report and Settings → theme switching → reload, in a fresh headless browser without extensions; fails on any console error.
+- **Unit tests** (`bun test`, ~185): barcode numbers, USDA Branded and Open Food Facts lookups (network mocked) and merging, targets, custom targets and limits, statuses and scoring, intake and history math, the AI-reply, label-text and Open Food Facts readers, USDA search and suggestions against the real table, insights, labs, product scoring and import/export, recipes, the clinician report, the backup reminder, CSV, backups, and database flows.
+- **Whole-app test** (`bun run e2e`): setup → dashboard (including the deferred sections) → USDA logging → building a recipe → detail panel → Products import and ranking → History, the clinician report and Settings → theme switching → reload → logging by barcode (both databases answered locally through the DevTools protocol, then the same barcode again from your foods with no lookup), in a fresh headless browser without extensions; fails on any console error.
 - `bun run typecheck` covers the app and the tests.
 - **Pre-commit hook** (`.githooks/pre-commit`, enabled by `bun install`): typecheck and unit tests on every commit.
 

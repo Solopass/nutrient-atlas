@@ -16,12 +16,13 @@ interface Tip {
  * A dismissible strip of recent features, each with a button that shows it.
  * Hidden once dismissed until WHATS_NEW_VERSION changes.
  */
-export function WhatsNew({ onReplay, onByMeal, onShowAtlas, onRecipes }: { onReplay: () => void; onByMeal: () => void; onShowAtlas: () => void; onRecipes: () => void }) {
+export function WhatsNew({ onReplay, onByMeal, onShowAtlas, onRecipes, onSearch }: { onReplay: () => void; onByMeal: () => void; onShowAtlas: () => void; onRecipes: () => void; onSearch: () => void }) {
   const seen = useLiveQuery(async () => (await db.settings.get('whatsNewSeen'))?.value ?? null, [], 'loading')
   if (seen === 'loading' || seen === WHATS_NEW_VERSION) return null
   const dismiss = () => db.settings.put({ key: 'whatsNewSeen', value: WHATS_NEW_VERSION })
 
   const tips: Tip[] = [
+    { icon: '▥', title: 'Log by barcode', body: 'Type or paste the number under the bars in Search; USDA and Open Food Facts fill in the rest.', action: 'Try it', run: onSearch },
     { icon: '⚗', title: 'Recipes', body: 'Build a dish from ingredients, say how many portions it makes, log one at a time.', action: 'Build one', run: onRecipes },
     { icon: '⎙', title: 'Report for your clinician', body: '30–90 day averages, gaps, supplements and blood tests on one printable page.', action: 'Open report', run: () => (location.hash = '#/report') },
     { icon: '✎', title: 'Your own targets', body: 'Tap any target in Settings to set your own, e.g. on a clinician’s advice.', action: 'Settings', run: () => (location.hash = '#/settings') },

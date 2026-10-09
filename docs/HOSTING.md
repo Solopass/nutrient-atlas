@@ -54,7 +54,7 @@ After that, **every push to `main` deploys**, and every other branch gets its ow
 - `sw.js` must never be cached long, or phones won't pick up updates. Hashed `/assets/*` (including the USDA worker) can be cached forever.
 - `camera=(self)` allows barcode scanning in Products.
 - Hash routing (`#/history`, `#/report`) means no single-page redirect rules are needed. Pages load as separate hashed chunks, all precached by the service worker, so they work offline.
-- The app calls one outside service: Open Food Facts, for barcode lookups (only the barcode number is sent).
+- The app calls two outside services, both free, both only for barcode lookups, and only the barcode number is sent: **USDA FoodData Central** (`api.nal.usda.gov`, with your own free key or the shared demo key) and **Open Food Facts**. Both allow calls straight from the browser (CORS), so no proxy is needed.
 
 ## Updates and data safety
 

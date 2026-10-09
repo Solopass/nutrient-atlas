@@ -30,6 +30,8 @@ let ws: WebSocket
 let nextId = 0
 const pending = new Map<number, (v: { result?: any; error?: any }) => void>()
 const consoleErrors: string[] = []
+/** Answers intercepted requests (CDP Fetch domain) so steps never depend on outside services. */
+let onRequestPaused: ((p: { requestId: string; request: { url: string } }) => void) | null = null
 
 function send(method: string, params: object = {}): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -195,6 +197,48 @@ const steps: [string, () => Promise<void>][] = [
       await waitFor('the dashboard after reload', `/1 item logged/.test(document.querySelector('header p')?.innerText ?? '')`, 20_000)
     },
   ],
+  [
+    'log a packaged food by barcode (USDA and Open Food Facts answered locally)',
+    async () => {
+      // Fake both databases: USDA returns a real Cheerios record (saved fixture), Open Food Facts doesn't know it.
+      const usda = await Bun.file(join(ROOT, 'src/test/fixtures/fdc-cheerios.json')).text()
+      const seen: string[] = []
+      onRequestPaused = ({ requestId, request }) => {
+        seen.push(request.url)
+        const isUsda = request.url.includes('api.nal.usda.gov')
+        send('Fetch.fulfillRequest', {
+          requestId,
+          responseCode: isUsda ? 200 : 404,
+          responseHeaders: [
+            { name: 'Content-Type', value: 'application/json' },
+            { name: 'Access-Control-Allow-Origin', value: '*' },
+          ],
+          body: Buffer.from(isUsda ? usda : '{"status":0}').toString('base64'),
+        }).catch(() => {})
+      }
+      await send('Fetch.enable', { patterns: [{ urlPattern: '*api.nal.usda.gov*' }, { urlPattern: '*openfoodfacts.org*' }] })
+      try {
+        const box = '[aria-label="Log food"] input[placeholder*="barcode"]'
+        await click('+ Log food')
+        await waitFor('the search box', `document.querySelector('${box}') && !document.querySelector('${box}').placeholder.includes('Loading')`, 20_000)
+        await fill(box, '0 16000 34851 6')
+        await waitFor('the USDA result', `/Cheerios, Oat Cereal/.test(${LOG}.innerText) && /USDA Branded Foods/i.test(${LOG}.innerText)`)
+        if (!seen.some((u) => u.includes('api.nal.usda.gov') && decodeURIComponent(u).includes('016000348516'))) throw new Error(`USDA wasn't asked for the barcode: ${seen.join(', ')}`)
+        await click('Log to', LOG)
+        await waitFor('the Today list', `[...document.querySelectorAll('[aria-label="Log food"] li')].some((li) => /Cheerios/.test(li.textContent))`)
+        // Second time: from your foods, no lookup.
+        const before = seen.length
+        await click('Search', LOG)
+        await fill(box, '0016000348516')
+        await waitFor('the saved food', `/In your foods/i.test(${LOG}.innerText)`)
+        if (seen.length !== before) throw new Error('A saved barcode food was looked up online again')
+        await js(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
+      } finally {
+        await send('Fetch.disable')
+        onRequestPaused = null
+      }
+    },
+  ],
 ]
 
 // ── Run ───────────────────────────────────────────────────────────────────────
@@ -224,6 +268,7 @@ async function main() {
   ws.onmessage = (e) => {
     const m = JSON.parse(String(e.data))
     if (m.id) pending.get(m.id)?.(m)
+    else if (m.method === 'Fetch.requestPaused') onRequestPaused?.(m.params)
     else if (m.method === 'Runtime.exceptionThrown') consoleErrors.push(m.params.exceptionDetails.exception?.description ?? m.params.exceptionDetails.text)
     else if (m.method === 'Runtime.consoleAPICalled' && ['error', 'warning'].includes(m.params.type))
       consoleErrors.push(`${m.params.type}: ${m.params.args.map((a: any) => a.value ?? a.description ?? '').join(' ').slice(0, 300)}`)

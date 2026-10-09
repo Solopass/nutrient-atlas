@@ -1,0 +1,188 @@
+{
+ "totalHits": 1,
+ "foods": [
+  {
+   "fdcId": 1629952,
+   "description": "GENERAL MILLS, CHEERIOS, OAT CEREAL",
+   "dataType": "Branded",
+   "gtinUpc": "016000348516",
+   "brandOwner": "General Mills, Inc.",
+   "brandName": "GENERAL MILLS",
+   "servingSize": 28,
+   "servingSizeUnit": "g",
+   "householdServingFullText": "1 cup",
+   "publishedDate": "2021-03-19",
+   "modifiedDate": "2017-10-13",
+   "foodNutrients": [
+    {
+     "nutrientId": 1003,
+     "nutrientName": "Protein",
+     "unitName": "G",
+     "value": 10.7
+    },
+    {
+     "nutrientId": 1004,
+     "nutrientName": "Total lipid (fat)",
+     "unitName": "G",
+     "value": 7.14
+    },
+    {
+     "nutrientId": 1005,
+     "nutrientName": "Carbohydrate, by difference",
+     "unitName": "G",
+     "value": 71.4
+    },
+    {
+     "nutrientId": 1008,
+     "nutrientName": "Energy",
+     "unitName": "KCAL",
+     "value": 357
+    },
+    {
+     "nutrientId": 2000,
+     "nutrientName": "Total Sugars",
+     "unitName": "G",
+     "value": 3.57
+    },
+    {
+     "nutrientId": 1072,
+     "nutrientName": "Carbohydrate, other",
+     "unitName": "G",
+     "value": 57
+    },
+    {
+     "nutrientId": 1079,
+     "nutrientName": "Fiber, total dietary",
+     "unitName": "G",
+     "value": 10.7
+    },
+    {
+     "nutrientId": 1082,
+     "nutrientName": "Fiber, soluble",
+     "unitName": "G",
+     "value": 4
+    },
+    {
+     "nutrientId": 1087,
+     "nutrientName": "Calcium, Ca",
+     "unitName": "MG",
+     "value": 357
+    },
+    {
+     "nutrientId": 1089,
+     "nutrientName": "Iron, Fe",
+     "unitName": "MG",
+     "value": 28.9
+    },
+    {
+     "nutrientId": 1090,
+     "nutrientName": "Magnesium, Mg",
+     "unitName": "MG",
+     "value": 114
+    },
+    {
+     "nutrientId": 1091,
+     "nutrientName": "Phosphorus, P",
+     "unitName": "MG",
+     "value": 357
+    },
+    {
+     "nutrientId": 1092,
+     "nutrientName": "Potassium, K",
+     "unitName": "MG",
+     "value": 643
+    },
+    {
+     "nutrientId": 1093,
+     "nutrientName": "Sodium, Na",
+     "unitName": "MG",
+     "value": 500
+    },
+    {
+     "nutrientId": 1095,
+     "nutrientName": "Zinc, Zn",
+     "unitName": "MG",
+     "value": 13.4
+    },
+    {
+     "nutrientId": 1104,
+     "nutrientName": "Vitamin A, IU",
+     "unitName": "IU",
+     "value": 1790
+    },
+    {
+     "nutrientId": 1110,
+     "nutrientName": "Vitamin D (D2 + D3), International Units",
+     "unitName": "IU",
+     "value": 143
+    },
+    {
+     "nutrientId": 1162,
+     "nutrientName": "Vitamin C, total ascorbic acid",
+     "unitName": "MG",
+     "value": 21.4
+    },
+    {
+     "nutrientId": 1165,
+     "nutrientName": "Thiamin",
+     "unitName": "MG",
+     "value": 1
+    },
+    {
+     "nutrientId": 1166,
+     "nutrientName": "Riboflavin",
+     "unitName": "MG",
+     "value": 0.121
+    },
+    {
+     "nutrientId": 1167,
+     "nutrientName": "Niacin",
+     "unitName": "MG",
+     "value": 17.9
+    },
+    {
+     "nutrientId": 1175,
+     "nutrientName": "Vitamin B-6",
+     "unitName": "MG",
+     "value": 1.79
+    },
+    {
+     "nutrientId": 1178,
+     "nutrientName": "Vitamin B-12",
+     "unitName": "UG",
+     "value": 5.36
+    },
+    {
+     "nutrientId": 1253,
+     "nutrientName": "Cholesterol",
+     "unitName": "MG",
+     "value": 0
+    },
+    {
+     "nutrientId": 1257,
+     "nutrientName": "Fatty acids, total trans",
+     "unitName": "G",
+     "value": 0
+    },
+    {
+     "nutrientId": 1258,
+     "nutrientName": "Fatty acids, total saturated",
+     "unitName": "G",
+     "value": 1.79
+    },
+    {
+     "nutrientId": 1292,
+     "nutrientName": "Fatty acids, total monounsaturated",
+     "unitName": "G",
+     "value": 1.79
+    },
+    {
+     "nutrientId": 1293,
+     "nutrientName": "Fatty acids, total polyunsaturated",
+     "unitName": "G",
+     "value": 1.79
+    }
+   ]
+  }
+ ]
+}

@@ -25,6 +25,7 @@ import type { Category, Nutrient } from '../../types'
 import { Logo } from '../Logo'
 import { ChoiceCards, Field, NumberField, Section, Segmented } from './Controls'
 import { DataSection } from './DataSection'
+import { FoodDatabases } from './FoodDatabases'
 import { LabsSection } from './LabsSection'
 
 export function SettingsPage() {
@@ -209,6 +210,8 @@ export function SettingsPage() {
               ]}
             />
           </Section>
+
+          <FoodDatabases />
 
           <LabsSection />
 

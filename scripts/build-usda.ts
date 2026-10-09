@@ -10,72 +10,13 @@
  */
 import { readdirSync, readFileSync, mkdirSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { USDA_ENERGY_IDS, USDA_NUTRIENT_MAP } from '../src/data/usdaNutrientMap'
 
 const RAW = join(import.meta.dir, '..', 'data', 'usda-raw')
 const OUT_DIR = join(import.meta.dir, '..', 'public', 'usda')
 
-// app nutrient id → list of [USDA nutrient id, factor]. The first one present wins,
-// except `sum` entries, which add all present parts (e.g. methionine + cystine).
-type Source = { ids: [number, number][]; sum?: boolean }
-const MAP: Record<string, Source> = {
-  protein: { ids: [[1003, 1]] },
-  fat: { ids: [[1004, 1]] },
-  carbs: { ids: [[1005, 1], [1050, 1]] },
-  fiber: { ids: [[1079, 1]] },
-  vitA: { ids: [[1106, 1]] },
-  // Hidden companion to vitA: the vitamin A UL covers preformed vitamin A (retinol) only, not beta-carotene.
-  retinol: { ids: [[1105, 1]] },
-  vitC: { ids: [[1162, 1]] },
-  vitD: { ids: [[1114, 1], [1110, 1 / 40]] }, // IU → mcg
-  vitE: { ids: [[1109, 1]] },
-  vitK: { ids: [[1185, 1]] },
-  calcium: { ids: [[1087, 1]] },
-  magnesium: { ids: [[1090, 1]] },
-  potassium: { ids: [[1092, 1]] },
-  iron: { ids: [[1089, 1]] },
-  zinc: { ids: [[1095, 1]] },
-  b1: { ids: [[1165, 1]] },
-  b2: { ids: [[1166, 1]] },
-  b3: { ids: [[1167, 1]] },
-  b5: { ids: [[1170, 1]] },
-  b6: { ids: [[1175, 1]] },
-  b7: { ids: [[1176, 1]] },
-  b9: { ids: [[1190, 1], [1177, 1]] }, // DFE, else total folate
-  b12: { ids: [[1178, 1]] },
-  copper: { ids: [[1098, 1000]] }, // mg → mcg
-  manganese: { ids: [[1101, 1]] },
-  selenium: { ids: [[1103, 1]] },
-  chromium: { ids: [[1096, 1]] },
-  molybdenum: { ids: [[1102, 1]] },
-  iodine: { ids: [[1100, 1]] },
-  phosphorus: { ids: [[1091, 1]] },
-  ala: { ids: [[1404, 1], [1270, 1]] }, // ALA, else total 18:3
-  epa: { ids: [[1278, 1000]] }, // g → mg
-  dha: { ids: [[1272, 1000]] },
-  la: { ids: [[1316, 1], [1269, 1]] }, // LA n-6, else total 18:2
-  leu: { ids: [[1213, 1000]] },
-  ile: { ids: [[1212, 1000]] },
-  val: { ids: [[1219, 1000]] },
-  lys: { ids: [[1214, 1000]] },
-  met: { ids: [[1215, 1000], [1216, 1000]], sum: true }, // methionine + cystine (target is Met+Cys)
-  trp: { ids: [[1210, 1000]] },
-  thr: { ids: [[1211, 1000]] },
-  phe: { ids: [[1217, 1000], [1218, 1000]], sum: true }, // phenylalanine + tyrosine (target is Phe+Tyr)
-  his: { ids: [[1221, 1000]] },
-  choline: { ids: [[1180, 1]] },
-  boron: { ids: [[1137, 0.001]] }, // mcg → mg
-  sulfur: { ids: [[1094, 0.001]] }, // mg → g
-  lutein: { ids: [[1121, 1], [1123, 1]] }, // SR Legacy only has lutein + zeaxanthin combined
-  zeaxanthin: { ids: [[1119, 1]] },
-  // Limits (stay under)
-  sodium: { ids: [[1093, 1]] },
-  satfat: { ids: [[1258, 1]] },
-  transfat: { ids: [[1257, 1]] },
-  cholesterol: { ids: [[1253, 1]] },
-  addedSugar: { ids: [[1235, 1]] },
-  caffeine: { ids: [[1057, 1]] },
-  alcohol: { ids: [[1018, 1]] },
-}
+// Nutrient ids and unit factors are shared with barcode lookups (USDA Branded Foods).
+const MAP = USDA_NUTRIENT_MAP
 
 /**
  * USDA rarely reports added sugar (4 foods), and Foundation Foods never report
@@ -98,7 +39,7 @@ function assumeZero(key: string, f: RawFood) {
   if (key === 'alcohol') return f.category !== 'Beverages' && !MAYBE_ALCOHOL.test(f.name)
   return false
 }
-const ENERGY_IDS = [1008, 2048, 2047]
+const ENERGY_IDS = USDA_ENERGY_IDS
 const NUTRIENT_ORDER = Object.keys(MAP)
 
 // ── CSV ──────────────────────────────────────────────────────────

@@ -77,7 +77,7 @@ The goal: make it good enough that you want to open it every day, and fix what d
 |---|---|---|---|
 | F1 | **Plan tomorrow:** pick 2–4 foods that close today's gaps together (not one at a time), preview them on the Atlas, log them in one tap tomorrow | Best next food finds one food; a plan fixes the week | M |
 | F2 | **Paste a recipe:** paste an ingredient list (from a website or notes), match each line to USDA foods and grams, review in the recipe builder | Building recipes by hand is still slow | M |
-| F3 | **Barcode in the log sheet:** typed barcode → Open Food Facts → log it (today barcodes only go to Products) | Packaged foods are the other hard-to-log group | S |
+| F3 ✅ | **Barcode in the log sheet:** typed or pasted (or USB-scanned) barcode → your foods → USDA Branded Foods → Open Food Facts, merged, then log it; saved for next time | Packaged foods are the other hard-to-log group | S |
 | F4 | **Long-term view per nutrient:** 90-day trend in the detail panel with blood-test results on the same timeline | Shows whether diet changes moved the lab numbers | S–M |
 | F5 | **Report extras:** compare two periods (e.g. before and after a change); include custom-target notes and a short "what I changed" field | Makes the clinician visit a before/after conversation | S |
 | F6 | **Accessibility pass:** NVDA screen-reader run through setup, logging, recipes and the report; fix what it finds | New screens since the last audit | S |
@@ -117,7 +117,7 @@ The goal: make it good enough that you want to open it every day, and fix what d
 2. **When ready:** hosting go-ahead (Phase B). This unlocks phone install and camera scanning.
 3. **Later:** AI budget (Phase C) and accounts (Phase D).
 
-**Recommended next session:** F3 + F1 (log packaged foods fast, then plan around your gaps), with a bug sweep and the e2e test. Anything from your week of use (A1) goes first.
+**Recommended next session:** F1 (plan tomorrow around your gaps), with a bug sweep and the e2e test. Anything from your week of use (A1) goes first.
 
 **Biggest unlock still waiting:** hosting (Phase B). It gets the app onto your phone and enables camera scanning everywhere. It's also the base for sync (D1) and AI photo logging (C3).
 
@@ -152,6 +152,10 @@ Details of how everything behaves are in [SPEC.md](../SPEC.md). This is the hist
 **Phase A (polish and trust):**
 - Shipped: light theme and colour-blind safe palette with shape markers, sun setting, What's new, the USDA Web Worker (main-thread blocking on a simulated slow phone halved), and the whole-app e2e test.
 - *Learned:* the daily app needed its own build folder, and headless browser tests must kill the whole process tree.
+
+**Barcode logging (F3):**
+- Shipped: barcodes in the log sheet from two free databases, USDA Branded Foods (manufacturer data, free key or demo key) and Open Food Facts, merged with USDA first; found foods are saved with the barcode for offline re-logging; an optional key in Settings → Food databases.
+- *Learned:* USDA stores barcodes as 12 or 14 digits, so one OR search covers every length. Both APIs allow browser calls (CORS), so this needs no server. The e2e test fakes both through the DevTools protocol, so it never spends the demo key's few lookups.
 
 **Phase E (depth and speed):**
 - Shipped: pages and log tabs loaded on demand, a lighter dashboard draw, the recipe builder, the clinician report, your own targets, the backup reminder and a pre-commit check.

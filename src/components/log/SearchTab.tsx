@@ -3,7 +3,9 @@ import type { Meal } from '../../db/db'
 import { logNewFood } from '../../db/logging'
 import { nameParts, nutrientsForGrams, type UsdaFood } from '../../data/usda'
 import { initUsda, searchFoods } from '../../data/usdaClient'
+import { parseBarcodeQuery } from '../../lib/barcode'
 import { useGuard } from '../../lib/useGuard'
+import { BarcodeLog } from './BarcodeLog'
 import { NutrientChips } from './NutrientChips'
 import { QuickAdd } from './QuickAdd'
 
@@ -16,6 +18,7 @@ export function SearchTab({ meal, date, onLogged }: { meal: Meal; date: string; 
   const [query, setQuery] = useState('')
   const [openId, setOpenId] = useState<number | null>(null)
   const deferred = useDeferredValue(query)
+  const barcode = parseBarcodeQuery(query)
 
   useEffect(() => {
     initUsda().then(setCount, (e: Error) => setError(e.message))
@@ -23,7 +26,7 @@ export function SearchTab({ meal, date, onLogged }: { meal: Meal; date: string; 
 
   // Searching runs in the background worker; ignore answers to queries that have since changed.
   useEffect(() => {
-    if (count == null || !deferred.trim()) return setResults([])
+    if (count == null || !deferred.trim() || parseBarcodeQuery(deferred)) return setResults([])
     let current = true
     searchFoods(deferred).then((r) => current && setResults(r), (e: Error) => current && setError(e.message))
     return () => {
@@ -42,7 +45,7 @@ export function SearchTab({ meal, date, onLogged }: { meal: Meal; date: string; 
             setQuery(e.target.value)
             setOpenId(null)
           }}
-          placeholder={count != null ? `Search ${count.toLocaleString()} USDA foods` : 'Loading food database…'}
+          placeholder={count != null ? `Search ${count.toLocaleString()} USDA foods, or type a barcode` : 'Loading food database…'}
           className="w-full rounded-lg border border-(--line) bg-(--panel-2) py-2.5 pr-3 pl-9 text-sm placeholder:text-(--muted) focus:border-(--c-above) focus:outline-none"
         />
         <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-(--muted)">⌕</span>
@@ -64,12 +67,14 @@ export function SearchTab({ meal, date, onLogged }: { meal: Meal; date: string; 
             ))}
           </div>
           <p className="mt-6 text-xs leading-relaxed text-(--muted)">
-            Whole foods from USDA FoodData Central (Foundation Foods and SR Legacy). For packaged or restaurant meals, use the AI estimate tab.
+            Whole foods from USDA FoodData Central (Foundation Foods and SR Legacy). Packaged food? Type or paste the barcode number (a USB barcode scanner works too). Restaurant meals: use the AI estimate tab.
           </p>
         </div>
       )}
 
-      {query.trim() && count != null && deferred === query && results.length === 0 && (
+      {barcode && <BarcodeLog code={barcode} meal={meal} date={date} onLogged={onLogged} />}
+
+      {!barcode && query.trim() && count != null && deferred === query && results.length === 0 && (
         <p className="mt-6 text-center text-sm text-(--muted)">No matches. Try fewer or simpler words. For packaged foods, use My foods → Create a food from its label, or the AI estimate tab.</p>
       )}
 

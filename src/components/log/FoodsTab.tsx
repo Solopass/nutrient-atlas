@@ -8,7 +8,7 @@ import { NutrientChips } from './NutrientChips'
 import { RecipeBuilder } from './RecipeBuilder'
 import { SavedMealsList } from './SavedMealsList'
 
-const SOURCE_LABEL: Record<Food['source'], string> = { usda: 'USDA', ai: 'AI', custom: 'Label' }
+const SOURCE_LABEL: Record<Food['source'], string> = { usda: 'USDA', ai: 'AI', custom: 'Label', barcode: 'Barcode' }
 
 export function FoodsTab({ meal, date, onLogged }: { meal: Meal; date: string; onLogged: (msg: string) => void }) {
   const [query, setQuery] = useState('')

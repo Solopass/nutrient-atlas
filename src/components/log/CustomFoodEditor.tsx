@@ -17,11 +17,14 @@ const CATS: Category[] = ['macro', 'limit', 'vitamin', 'mineral', 'bvitamin', 't
  */
 export function CustomFoodEditor({
   initial,
+  barcode,
   meal,
   date,
   onDone,
 }: {
   initial: Food | null
+  /** A new food for a barcode no database knows: saved with it, so the next scan finds it. */
+  barcode?: string
   meal: Meal
   date: string
   onDone: (msg?: string) => void
@@ -45,7 +48,7 @@ export function CustomFoodEditor({
     const data = { name: name.trim(), serving: serving.trim(), grams: Number(grams) > 0 ? Number(grams) : undefined, nutrients }
     let foodId = initial?.id
     if (initial) await db.foods.update(initial.id, data)
-    else foodId = await db.foods.add({ ...data, source: 'custom', favorite: 0, useCount: 0, createdAt: now, lastUsedAt: now } as Food)
+    else foodId = await db.foods.add({ ...data, source: 'custom', ...(barcode && { barcode }), favorite: 0, useCount: 0, createdAt: now, lastUsedAt: now } as Food)
     if (logToo && foodId != null) {
       await db.logs.add({ date, loggedAt: date === localDate() ? now : parseDate(date).getTime() + 12 * 3600_000, meal, foodId, name: data.name, serving: data.serving, multiplier: 1, nutrients } as LogEntry)
       await db.foods.update(foodId, { lastUsedAt: now, useCount: (initial?.useCount ?? 0) + 1 })
@@ -60,7 +63,10 @@ export function CustomFoodEditor({
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h3 className="font-medium">{initial ? `Edit ${initial.name}` : 'Create a food from its label'}</h3>
+        <h3 className="font-medium">
+          {initial ? `Edit ${initial.name}` : 'Create a food from its label'}
+          {barcode && <span className="ml-2 font-mono text-xs font-normal text-(--muted)">barcode {barcode}</span>}
+        </h3>
         <button onClick={() => onDone()} className="text-sm text-(--muted) hover:text-(--fg)">
           Cancel
         </button>

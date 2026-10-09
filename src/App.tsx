@@ -552,6 +552,7 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
             }}
             onShowAtlas={() => document.getElementById('atlas-svg')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
             onRecipes={() => openLog('foods')}
+            onSearch={() => openLog('search')}
           />
         )}
 
