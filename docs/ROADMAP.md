@@ -43,7 +43,7 @@ Four phases, ordered by what each one unlocks. **Phase A needs nothing from you.
 
 Every session, whatever the phase, ends the same way: a bug sweep (code review plus a click-through on a separate test port, so your data is never touched), a test for each fix, updated SPEC/ROADMAP, and a local commit.
 
-### Phase A: polish and trust. No hosting, no cost. Next 2–3 sessions
+### Phase A: polish and trust ✅ (all but A1 done, October 2026)
 
 The goal: make it good enough that you want to open it every day, and fix what daily use shows up.
 
@@ -58,6 +58,23 @@ The goal: make it good enough that you want to open it every day, and fix what d
 | A7 ✅ | **Speed:** USDA table, search, Best next food and weekly food ideas moved to a Web Worker. Simulated slow phone (6× CPU): main-thread blocking on dashboard load 2.07 s → 1.08 s, longest freeze 0.54 s → 0.35 s | First load on phones | S–M |
 | A8 ✅ | **End-to-end smoke test** (setup → log → dashboard → products) using the headless Edge script we already have | Catches regressions across the whole app | M |
 | A9 ✅ | *Stretch:* drag a wedge on the Atlas to adjust a portion | Makes the chart itself the logging tool | M |
+
+### Phase E: depth and speed. No hosting, no cost. Next 2–3 sessions
+
+What Phase A taught us:
+- **Rendering:** with the food table moved to a worker, most of what's left on a slow phone is drawing the dashboard.
+- **Bundle size:** the main JavaScript bundle is 640 KB, because every page loads up front.
+- **Features:** useful ones remain that need no server.
+
+| # | Item | Why | Size |
+|---|---|---|---|
+| E1 | **Load pages on demand** (Products, History, Settings and the log sheet tabs split from the main bundle) | The dashboard opens with about half the code | S |
+| E2 | **Lighter dashboard draw** (periodic table and limits render after the Atlas; measured with the production build at 6× throttle) | The remaining ~1 s of blocking on slow phones | S–M |
+| E3 | **Recipe builder** (search ingredients, set quantities and number of servings → a saved recipe with per-serving nutrients) | Home cooking is the hardest thing to log today | M |
+| E4 | **Report for your clinician** (one page: 30-day averages, persistent gaps, supplements and doses, lab trends; print or save as PDF) | Turns the data into a conversation with a doctor or dietitian | M |
+| E5 | **Your own targets** (override a nutrient's target, e.g. on clinician advice, shown as "custom") | DRIs are for healthy people; some people have different needs | S–M |
+| E6 | **Backup reminder** in the app (no backup in 14 days → a gentle banner with one-tap export) | Local-first data needs backups; this doesn't need hosting | S |
+| E7 | **Pre-commit check** (typecheck + tests on every commit; e2e before larger changes) | Keeps regressions out automatically | S |
 
 ### Phase B: live on your phone. **Decision: hosting** (free: private GitHub repo + Cloudflare Pages, see [HOSTING.md](HOSTING.md))
 
@@ -94,7 +111,9 @@ The goal: make it good enough that you want to open it every day, and fix what d
 2. **When ready:** hosting go-ahead (Phase B). This unlocks phone install and camera scanning.
 3. **Later:** AI budget (Phase C) and accounts (Phase D).
 
-**Recommended next session:** A3 + A4 + A6 (small, visible wins), then A2 (colour-blind safe + light theme), with a bug sweep.
+**Recommended next session:** E1 + E2 + E6 (faster and safer, all small), then E3 (recipe builder), with a bug sweep and the e2e test.
+
+**Biggest unlock still waiting:** hosting (Phase B). It gets the app onto your phone and enables camera scanning everywhere. It's also the base for sync (D1) and AI photo logging (C3).
 
 ## Milestone 3: Real history and weekly view ✅
 
