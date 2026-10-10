@@ -12,7 +12,7 @@ Double-click **`Nutrient Atlas.cmd`**. It builds the latest version, serves it i
 - **Install it once:** in that window, Edge menu → *Apps → Install Nutrient Atlas*. You get a Start menu / taskbar app that **works even when the server isn't running** (it's cached for offline use), and installed apps get protected storage.
 - **After updates:** run `Nutrient Atlas.cmd` again; the installed app picks up the new version on its next launch.
 - **Your data lives with `localhost:4173` in that browser.** Development uses other ports (5173 dev, 5174 test, 4199 automated test), so work in progress never touches it.
-- **Back up now and then:** Settings → Your data → Export backup (the dashboard reminds you every two weeks). To move to another browser or device, use **Restore a backup…** on the setup screen (or Settings → Import backup).
+- **Back up now and then:** Settings → Your data → Export backup; on a phone it's *Save backup to…*, which opens the share sheet (Files, Google Drive, iCloud Drive, email). The dashboard reminds you every two weeks. To move to another browser or device, use **Restore a backup…** on the setup screen (or Settings → Import backup).
 
 ## What's in it
 
@@ -29,7 +29,7 @@ Double-click **`Nutrient Atlas.cmd`**. It builds the latest version, serves it i
 - **Search** USDA foods with real portions; **Quick add** repeats a meal, a saved meal or a recent food.
 - **Barcode:** type or paste the number in the search box, use a USB scanner, or tap **▥ Scan** (built in on Android Chrome; on iPhone, switch on the optional free scanner add-on in Settings → Food databases). It checks your foods, then the free **USDA Branded Foods** and **Open Food Facts** databases; found foods are saved so the next time is instant. A free USDA key in Settings → Food databases raises the lookup limit.
 - **AI estimate:** copy a prompt into any chatbot and paste its JSON reply ([docs/AI_INTEGRATION.md](docs/AI_INTEGRATION.md)).
-- **Recipes:** build a dish from ingredients (your foods or USDA), say how many portions it makes, see one portion's nutrients, log a portion at a time; edit it later.
+- **Recipes:** build a dish from ingredients (your foods or USDA), or **paste an ingredient list** from a website (each line matched to USDA foods and grams for you to check); say how many portions it makes, see one portion's nutrients, log a portion at a time; edit it later.
 - **My foods:** paste a Nutrition Facts label to create a food; saved meals and recipes.
 - **Supplements** from their label, logged automatically each day.
 - **Today:** edit servings, remove (with Undo), save a meal.
@@ -47,6 +47,7 @@ Double-click **`Nutrient Atlas.cmd`**. It builds the latest version, serves it i
 **Insights and history**
 - **Weekly report:** score change, wins, persistent gaps with food ideas, limits, diet and life-stage risks, food-pairing tips, blood tests.
 - **History:** score calendar, persistent gaps, a 28-day nutrient heatmap.
+- **Long-term trends:** each nutrient's detail panel shows 90 days (weekly) or a year (monthly), with your blood tests on the same timeline.
 - **Report for your clinician:** 30/60/90-day averages vs targets, key findings, limits, supplements and blood tests on one printable page (or PDF).
 
 **Your targets and health context** (Settings)

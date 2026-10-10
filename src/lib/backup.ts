@@ -1,6 +1,6 @@
 import { applyDailySupplements } from './supplements'
 import { db, FDC_KEY_SETTING, MEALVISION_SETTING, localDate, type Food, type LogEntry, type Product, type SavedMeal, type Setting, type Supplement } from '../db/db'
-import { download } from './download'
+import { shareOrDownload, type SaveResult } from './download'
 
 export const EXPORT_VERSION = 4
 
@@ -33,13 +33,20 @@ export async function makeBackup(): Promise<ExportFile> {
   }
 }
 
-/** Download a full backup and remember when (for the backup reminder). */
-export async function exportBackup() {
+/**
+ * Save a full backup and remember when (for the backup reminder). On phones it
+ * opens the share sheet (Files, Google Drive, iCloud Drive, email); elsewhere
+ * it downloads. A cancelled share doesn't count as a backup.
+ */
+export async function exportBackup(): Promise<{ data: ExportFile; result: SaveResult }> {
   const data = await makeBackup()
-  download(`nutrient-atlas-${localDate()}.json`, JSON.stringify(data, null, 1), 'application/json')
-  await db.settings.put({ key: 'lastBackup', value: localDate() })
-  await db.settings.delete('backupSnoozedUntil')
-  return data
+  const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' })
+  const result = await shareOrDownload(blob, `nutrient-atlas-${localDate()}.json`, 'Nutrient Atlas backup')
+  if (result !== 'cancelled') {
+    await db.settings.put({ key: 'lastBackup', value: localDate() })
+    await db.settings.delete('backupSnoozedUntil')
+  }
+  return { data, result }
 }
 
 /** Read and check a backup file without touching the database. */

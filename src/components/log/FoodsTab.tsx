@@ -6,6 +6,7 @@ import { CustomFoodEditor } from './CustomFoodEditor'
 import { useGuard } from '../../lib/useGuard'
 import { NutrientChips } from './NutrientChips'
 import { RecipeBuilder } from './RecipeBuilder'
+import { PasteRecipe } from './PasteRecipe'
 import type { Incoming } from './LogSheet'
 
 const importNote = (warnings: string[]) => ['Imported: check the amounts, then save.', ...warnings].join(' ')
@@ -18,6 +19,7 @@ export function FoodsTab({ meal, date, onLogged, incoming }: { meal: Meal; date:
   const [editing, setEditing] = useState<Food | 'new' | null>(null)
   const [recipe, setRecipe] = useState<SavedMeal | 'new' | null>(null)
   const [draft, setDraft] = useState<Incoming | undefined>()
+  const [pasting, setPasting] = useState(false)
   useEffect(() => {
     if (!incoming) return
     setDraft(incoming)
@@ -30,6 +32,18 @@ export function FoodsTab({ meal, date, onLogged, incoming }: { meal: Meal; date:
   const foods = useLiveQuery(() => db.foods.orderBy('lastUsedAt').reverse().toArray(), [])
 
   if (!foods) return null
+  if (pasting) {
+    return (
+      <PasteRecipe
+        onCancel={() => setPasting(false)}
+        onDone={(d) => {
+          setPasting(false)
+          setDraft({ kind: 'recipe', ...d, warnings: [], nonce: Date.now() })
+          setRecipe('new')
+        }}
+      />
+    )
+  }
   if (recipe) {
     return (
       <RecipeBuilder
@@ -74,6 +88,16 @@ export function FoodsTab({ meal, date, onLogged, incoming }: { meal: Meal; date:
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-medium">Build a recipe</span>
           <span className="block text-xs text-(--muted)">Home cooking: add ingredients and how many portions it makes; log one portion at a time.</span>
+        </span>
+      </button>
+      <button
+        onClick={() => setPasting(true)}
+        className="mb-2 flex w-full items-center gap-3 rounded-lg bg-(--panel-2) p-3 text-left shadow-[inset_0_0_0_1px_var(--line)] transition hover:shadow-[inset_0_0_0_1px_var(--c-above)]"
+      >
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-(--c-above)/15 text-base text-(--c-above)">≡</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium">Paste a recipe</span>
+          <span className="block text-xs text-(--muted)">Paste an ingredient list from a website; each line is matched to USDA foods and grams for you to check.</span>
         </span>
       </button>
       <button

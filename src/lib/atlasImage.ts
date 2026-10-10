@@ -1,3 +1,4 @@
+export { shareOrDownload } from './download'
 /**
  * Render the Atlas SVG to a PNG. The chart's colours come from CSS variables,
  * which don't exist once the SVG is drawn as an image, so every element's
@@ -84,24 +85,3 @@ export async function atlasPng(svg: SVGSVGElement, info: SnapshotInfo, size = 14
   }
 }
 
-/** Share sheet on phones (where saving to Photos is the natural place), download elsewhere. */
-export async function shareOrDownload(blob: Blob, filename: string) {
-  const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' })
-  if (matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: 'Nutrient Atlas' })
-      return 'shared'
-    } catch (e) {
-      if ((e as Error).name === 'AbortError') return 'cancelled'
-    }
-  }
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.append(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 30_000)
-  return 'downloaded'
-}

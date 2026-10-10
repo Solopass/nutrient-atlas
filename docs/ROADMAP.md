@@ -76,9 +76,9 @@ The goal: make it good enough that you want to open it every day, and fix what d
 | # | Item | Why | Size |
 |---|---|---|---|
 | F1 ✅ | **Plan tomorrow:** 2–4 foods that close the gaps of a typical day together (greedy: each pick targets what the others leave), preview on the Atlas, swap one at a time, save; next day a checklist with one-tap logging | Best next food finds one food; a plan fixes the week | M |
-| F2 | **Paste a recipe:** paste an ingredient list (from a website or notes), match each line to USDA foods and grams, review in the recipe builder | Building recipes by hand is still slow | M |
+| F2 ✅ | **Paste a recipe:** paste an ingredient list (from a website or notes), match each line to USDA foods and grams, review in the recipe builder | Building recipes by hand is still slow | M |
 | F3 ✅ | **Barcode in the log sheet:** typed or pasted (or USB-scanned) barcode → your foods → USDA Branded Foods → Open Food Facts, merged, then log it; saved for next time | Packaged foods are the other hard-to-log group | S |
-| F4 | **Long-term view per nutrient:** 90-day trend in the detail panel with blood-test results on the same timeline | Shows whether diet changes moved the lab numbers | S–M |
+| F4 ✅ | **Long-term view per nutrient:** 90-day trend in the detail panel with blood-test results on the same timeline | Shows whether diet changes moved the lab numbers | S–M |
 | F5 | **Report extras:** compare two periods (e.g. before and after a change); include custom-target notes and a short "what I changed" field | Makes the clinician visit a before/after conversation | S |
 | F6 | **Accessibility pass:** NVDA screen-reader run through setup, logging, recipes and the report; fix what it finds | New screens since the last audit | S |
 
@@ -89,7 +89,7 @@ The goal: make it good enough that you want to open it every day, and fix what d
 | B1 ✅ | **Live at https://nutrient-atlas.pages.dev** (2026-10-09): Cloudflare Pages, deployed from this PC with `bun run deploy` (Wrangler); no GitHub needed. See [HOSTING.md](HOSTING.md) | S |
 | B2 | Install on your phone; one-week field test (offline, notch, keyboard, storage protection when installed) | – |
 | B3 ✅ (needs a real-phone check) | Camera scanning: built in on Android Chrome; on iPhone an opt-in add-on the browser downloads itself (nothing bundled). Done early, in phone prep | M |
-| B4 | "Export to Files/Drive" on phones (the in-app reminder is done, E6) | S |
+| B4 ✅ | Backups and CSV exports open the share sheet on phones (Files, Google Drive, iCloud Drive, email); the in-app reminder is E6 | S |
 | B5 | Optional reminders: "log dinner?", "took your supplements?" (web push works for installed apps, iOS 16.4+) | M |
 
 ### Phase C: AI that just works. **Decision: API key and a monthly budget cap** (typical use is cents a day)
@@ -117,7 +117,7 @@ The goal: make it good enough that you want to open it every day, and fix what d
 2. **Now:** install it on your phone (B2) and move your data over; a week of real use is the field test.
 3. **Later:** AI budget (Phase C) and accounts (Phase D).
 
-**Recommended next session:** F2 (paste a recipe) or F4 (90-day trends), with a bug sweep and the e2e test. Anything from your week of use (A1) goes first.
+**Recommended next session:** F5 (report before/after) and F6 (accessibility pass), or a decision on sync (D1). Anything from your week of use (A1) goes first.
 
 **Hosting is done (B1).** Next unlocks: the phone field test (B2), then sync (D1) and AI photo logging (C3), which build on the same Cloudflare account.
 
@@ -152,6 +152,10 @@ Details of how everything behaves are in [SPEC.md](../SPEC.md). This is the hist
 **Phase A (polish and trust):**
 - Shipped: light theme and colour-blind safe palette with shape markers, sun setting, What's new, the USDA Web Worker (main-thread blocking on a simulated slow phone halved), and the whole-app e2e test.
 - *Learned:* the daily app needed its own build folder, and headless browser tests must kill the whole process tree.
+
+**Paste a recipe (F2), long-term trends (F4), phone backups (B4):**
+- Shipped: ingredient-list parsing (fractions, ranges, units, cans, counts) with recipe-aware USDA matching and portion-based grams, reviewed before the recipe builder; 90-day / 1-year trends per nutrient with blood tests on the same timeline; share-sheet backups and CSVs on phones.
+- *Learned:* the food search ignored the leading group word in USDA names, so "olive oil" never found "Oil, olive"; fixed for every search. Recipe lines need their own ranking ("olive oil" is the oil, not mayonnaise made with it).
 
 **Plan tomorrow (F1):**
 - Shipped: a greedy day planner on top of Best next food (2–4 foods, typical day from the last 7 complete days, kcal budget, variety rules), preview, per-food swap that keeps the rest, plans saved per day, Today's plan with one-tap logging and progress.

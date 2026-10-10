@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import type { LogEntry } from '../db/db'
 import { hasFood, intakeFromLogs } from '../db/logging'
 import type { Nutrient } from '../types'
-import { addDays, averageIntake, contributors, dailyRange, dateRange, groupByDate, mealBreakdown, nutrientSeries, streakEndingAt } from './history'
+import { addDays, averageIntake, bucketAverages, contributors, dailyRange, dateRange, groupByDate, mealBreakdown, nutrientSeries, streakEndingAt } from './history'
 
 let id = 0
 const entry = (date: string, nutrients: Record<string, number>, extra: Partial<LogEntry> = {}): LogEntry => ({
@@ -144,5 +144,21 @@ describe('Atlas meal split and daily range', () => {
   test('daily range spans the lowest and highest logged day', () => {
     expect(dailyRange(vitC, byDate, days)).toEqual({ min: 30, max: 130, days: 2 })
     expect(dailyRange(vitC, byDate, [days[1]])).toBeNull() // one day is not a range
+  })
+})
+
+describe('bucketAverages', () => {
+  test('weeks end on the last date; days without data are skipped, not zeros', () => {
+    const dates = dateRange('2026-10-14', 14)
+    const series = [...Array(7).fill(null), 50, null, 70, 90, null, null, 110]
+    const b = bucketAverages(series, dates, 7)
+    expect(b.map((x) => [x.start, x.end])).toEqual([['2026-10-01', '2026-10-07'], ['2026-10-08', '2026-10-14']])
+    expect(b[0].avg).toBeNull()
+    expect(b[1].avg).toBe(80)
+    expect(b[1].days).toBe(4)
+  })
+  test('a short first bucket when the range does not divide evenly', () => {
+    const dates = dateRange('2026-10-10', 10)
+    expect(bucketAverages(Array(10).fill(100), dates, 7).map((x) => x.days)).toEqual([3, 7])
   })
 })

@@ -150,10 +150,32 @@ const steps: [string, () => Promise<void>][] = [
     },
   ],
   [
+    'paste a recipe: ingredient lines matched to USDA foods and grams, then the recipe builder',
+    async () => {
+      const sheet = '[role=dialog][aria-label="Log food"]'
+      await click('+ Log food')
+      await click('My foods', LOG)
+      await waitFor('My foods', `[...document.querySelectorAll('${sheet} button')].some((b) => b.textContent.includes('Paste a recipe'))`)
+      await js(`[...document.querySelectorAll('${sheet} button')].find((b) => b.textContent.includes('Paste a recipe')).click()`)
+      await click('Try an example', LOG)
+      await click('Read ingredients', LOG)
+      await waitFor('matched ingredients', `document.querySelectorAll('${sheet} [aria-label="Matched ingredients"] > li').length === 8`, 20_000)
+      const picked = await js<string[]>(`return [...document.querySelectorAll('${sheet} [aria-label="Matched ingredients"] select')].map((s) => s.options[s.selectedIndex].text)`)
+      if (!picked.some((n) => /^Oil, olive/.test(n))) throw new Error(`Olive oil not matched: ${picked.join(' | ')}`)
+      if (!picked.some((n) => /canned/i.test(n) && /tomato/i.test(n))) throw new Error('Canned tomatoes not matched as canned')
+      await waitFor('salt left out', `/Left out:.*Salt and pepper/.test(${LOG}.innerText)`)
+      await click('Open in recipe builder', LOG)
+      await waitFor('the pre-filled recipe builder', `${LOG}.querySelector('input[placeholder="e.g. Lentil dal"]')?.value === 'Lentil soup' && /One portion · \\d+ kcal/.test(${LOG}.innerText)`)
+      await js(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
+    },
+  ],
+  [
     'nutrient detail panel opens and closes',
     async () => {
       await js(`document.querySelector('[aria-label^="Potassium"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))`)
       await waitFor('the detail panel', `document.querySelector('aside[role=dialog]')?.innerText.includes('Potassium')`)
+      // Long-term trend (90 days / 1 year) is there; with one logged day it asks for more weeks.
+      await waitFor('the long-term trend', `/Long-term trend/i.test(document.querySelector('aside[role=dialog]').innerText)`)
       await js(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
       await waitFor('the panel to close', `document.querySelector('aside[role=dialog]')?.getAttribute('aria-hidden') === 'true'`)
     },

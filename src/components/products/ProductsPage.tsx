@@ -16,7 +16,7 @@ import { BarcodeLookup } from './BarcodeLookup'
 import { ProductImport, productKey } from './ProductImport'
 import { certificationInfo } from '../../lib/products/certifications'
 import type { OffProduct } from '../../lib/products/openFoodFacts'
-import { shareOrDownload } from '../../lib/atlasImage'
+import { shareOrDownload } from '../../lib/download'
 import { useScoreContext } from './useScoreContext'
 
 type Sort = 'overall' | 'gaps' | 'value' | 'rating' | 'newest'

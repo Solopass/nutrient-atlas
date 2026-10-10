@@ -134,3 +134,26 @@ export function dailyRange(n: Nutrient, byDate: Map<string, LogEntry[]>, dates: 
   const v = nutrientSeries(n, byDate, dates).filter((x): x is number => x != null && Number.isFinite(x))
   return v.length >= 2 ? { min: Math.min(...v), max: Math.max(...v), days: v.length } : null
 }
+
+export interface Bucket {
+  start: string
+  end: string
+  /** Average of the days with data; null when none had data. */
+  avg: number | null
+  days: number
+}
+
+/**
+ * Group a daily series into buckets of `size` days (weeks, months), aligned so
+ * the last bucket ends on the last date. Days without data (null) are skipped,
+ * not counted as zero; an over-a-zero-limit day (Infinity) counts as 200%.
+ */
+export function bucketAverages(series: (number | null)[], dates: string[], size: number): Bucket[] {
+  const out: Bucket[] = []
+  for (let end = series.length; end > 0; end -= size) {
+    const start = Math.max(0, end - size)
+    const vals = series.slice(start, end).filter((v): v is number => v != null).map((v) => (Number.isFinite(v) ? v : 200))
+    out.unshift({ start: dates[start], end: dates[end - 1], avg: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null, days: vals.length })
+  }
+  return out
+}

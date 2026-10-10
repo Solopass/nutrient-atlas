@@ -8,6 +8,7 @@ import { useProfile } from '../state/profile'
 import type { NutrientState } from '../types'
 import { LabGauge } from './LabGauge'
 import { LabTrend } from './LabTrend'
+import { LongTrend } from './LongTrend'
 
 export interface NutrientHistory {
   dates: string[]
@@ -178,6 +179,7 @@ function PanelBody({ state, onClose, history }: { state: NutrientState; onClose:
       {history ? (
         <>
           <Trend series={history.series} dates={history.dates} title="Last 30 days" limit={isLimit} />
+          <LongTrend nutrient={n} end={history.dates[history.dates.length - 1]} />
           <Contributors rows={history.contributors} unit={n.unit} title={`Top sources · ${history.rangeLabel}`} />
         </>
       ) : (

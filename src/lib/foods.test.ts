@@ -22,6 +22,8 @@ describe('USDA search ranking', () => {
     ['rice', /^Rice, /],
     ['apple', /^Apples, raw/],
     ['banana', /^Bananas, raw$/],
+    ['olive oil', /^Oil, olive/],
+    ['canola oil', /^Oil, canola/],
   ])('"%s" puts the plain food first', (q, expected) => {
     expect(searchUsda(db, q, 1)[0]?.name).toMatch(expected)
   })

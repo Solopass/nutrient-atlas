@@ -104,6 +104,11 @@ export function searchUsda(db: UsdaDb, query: string, limit = 40): UsdaFood[] {
     for (const t of tokens) {
       const i = words.findIndex((w) => matches(w, t))
       if (i < 0) {
+        // The group word set aside above still counts: "olive oil" finds "Oil, olive, …".
+        if (words !== food.words && matches(food.words[0], t)) {
+          score += 4
+          continue
+        }
         ok = false
         break
       }

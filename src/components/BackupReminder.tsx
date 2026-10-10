@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { db, localDate } from '../db/db'
 import { exportBackup } from '../lib/backup'
+import { sharesFiles } from '../lib/download'
 import { addDays, formatDay } from '../lib/history'
 import { SNOOZE_DAYS, backupDue, daysBetween } from '../lib/backupReminder'
 
@@ -56,7 +57,7 @@ export function BackupReminder() {
           Remind me in a week
         </button>
         <button onClick={backUp} disabled={busy} className="rounded-full bg-(--c-above) px-3.5 py-1.5 text-[13px] font-semibold text-white disabled:opacity-60">
-          {busy ? 'Exporting…' : 'Export backup'}
+          {busy ? 'Saving…' : sharesFiles() ? 'Save backup to…' : 'Export backup'}
         </button>
       </div>
     </section>
