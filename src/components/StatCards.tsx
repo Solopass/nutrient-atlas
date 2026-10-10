@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { nameParts, nutrientsForGrams } from '../data/usda'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { nameParts } from '../data/usda'
 import { suggestNextFoods } from '../data/usdaClient'
-import { useLiveQuery } from 'dexie-react-hooks'
-import { db, localDate, mealForTime } from '../db/db'
-import { logNewFood, logSavedFood } from '../db/logging'
+import { localDate, mealForTime } from '../db/db'
 import { useProfile } from '../state/profile'
 import { STATUS_META, fmt, scoreColor, type DayScore } from '../lib/status'
-import type { FoodSuggestion, OwnCandidate } from '../lib/suggestUsda'
-import { itemsKcal, logSavedMeal } from '../lib/quickLog'
+import type { FoodSuggestion } from '../lib/suggestUsda'
 import type { NutrientState, Status } from '../types'
+import { useOwnCandidates } from './useOwnCandidates'
+import { logPick, toPickToLog } from '../lib/logPick'
 
 interface Props {
   states: NutrientState[]
@@ -256,27 +255,7 @@ function NextFoodCard({
   const { profile } = useProfile()
   const [logged, setLogged] = useState<string | null>(null)
   const logging = useRef(new Set<string>())
-  // Your saved foods and meals compete with USDA foods (with a small nudge, since you already eat them).
-  const myFoods = useLiveQuery(() => db.foods.toArray(), [])
-  const myMeals = useLiveQuery(() => db.meals.toArray(), [])
-  // Packaged foods you rated in Products compete too (not the ones you rated 1–2 stars).
-  const myProducts = useLiveQuery(() => db.products.where('kind').equals('food').toArray(), [])
-  const own = useMemo<OwnCandidate[]>(
-    () => [
-      ...(myFoods ?? [])
-        .filter((f) => f.source !== 'usda') // USDA foods are already candidates
-        .map((f) => ({ kind: 'mine' as const, key: `food-${f.id}`, name: f.name, portion: f.serving, nutrients: f.nutrients, kcal: itemsKcal([{ multiplier: 1, nutrients: f.nutrients }]), foodId: f.id })),
-      ...(myMeals ?? []).map((m) => {
-        const nutrients: Record<string, number> = {}
-        for (const i of m.items) for (const [k, v] of Object.entries(i.nutrients)) nutrients[k] = (nutrients[k] ?? 0) + (v * i.multiplier) / m.servings
-        return { kind: 'meal' as const, key: `meal-${m.id}`, name: m.name, portion: m.servings > 1 ? `1 of ${m.servings} portions` : 'saved meal', nutrients, kcal: itemsKcal(m.items) / m.servings, mealId: m.id }
-      }),
-      ...(myProducts ?? [])
-        .filter((p) => (p.rating ?? 3) >= 3)
-        .map((p) => ({ kind: 'product' as const, key: `product-${p.id}`, name: p.brand ? `${p.brand} ${p.name}` : p.name, portion: p.serving, nutrients: p.nutrients, kcal: p.kcal ?? itemsKcal([{ multiplier: 1, nutrients: p.nutrients }]), productId: p.id, grams: p.grams })),
-    ],
-    [myFoods, myMeals, myProducts],
-  )
+  const own = useOwnCandidates()
   // Ranking ~8,000 foods runs in the background worker, so the dashboard never stalls.
   const [picks, setPicks] = useState<FoodSuggestion[] | null>(null)
   useEffect(() => {
@@ -295,17 +274,7 @@ function NextFoodCard({
     if (logging.current.has(s.key)) return
     logging.current.add(s.key)
     setTimeout(() => logging.current.delete(s.key), 2000)
-    const meal = date === localDate() ? mealForTime() : 'snack'
-    if (s.kind === 'usda' && s.food && s.grams) {
-      await logNewFood({ name: s.food.name, serving: s.portion, grams: s.grams, nutrients: nutrientsForGrams(s.food, s.grams), source: 'usda' }, meal, 1, date)
-    } else if (s.kind === 'mine' && s.foodId != null) {
-      const food = await db.foods.get(s.foodId)
-      if (food) await logSavedFood(food, meal, 1, date)
-    } else if (s.kind === 'meal' && s.mealId != null) {
-      await logSavedMeal(s.mealId, date, meal)
-    } else if (s.kind === 'product') {
-      await logNewFood({ name: s.name, serving: s.portion, grams: s.grams, nutrients: s.nutrients, source: 'custom' }, meal, 1, date)
-    }
+    await logPick(toPickToLog(s), date, date === localDate() ? mealForTime() : 'snack')
     setLogged(s.key)
     setTimeout(() => setLogged(null), 2000)
     // It's in the log now; a ghost on top would count it twice.
@@ -399,7 +368,7 @@ function NextFoodCard({
   )
 }
 
-function OwnBadge({ kind }: { kind: 'mine' | 'meal' | 'product' }) {
+export function OwnBadge({ kind }: { kind: 'mine' | 'meal' | 'product' }) {
   return (
     <span className="ml-1.5 rounded bg-(--c-above)/15 px-1 align-middle font-mono text-[9.5px] font-normal text-(--c-above) uppercase">
       {kind === 'meal' ? 'your meal' : kind === 'product' ? 'rated' : 'your food'}
@@ -408,7 +377,7 @@ function OwnBadge({ kind }: { kind: 'mine' | 'meal' | 'product' }) {
 }
 
 /** "Spinach, cooked, boiled, drained" → "Spinach, cooked". */
-function shortName(name: string) {
+export function shortName(name: string) {
   const [prefix, head, rest] = nameParts(name)
   const qualifier = rest.split(', ').filter(Boolean)[0]
   return `${head}${qualifier ? `, ${qualifier}` : ''}`.replace(/^./, (c) => c.toUpperCase()) + (prefix && !head ? prefix : '')

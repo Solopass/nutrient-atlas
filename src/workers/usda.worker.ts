@@ -7,7 +7,7 @@
  */
 import { buildUsdaDb, searchUsda, type RawFile, type UsdaDb } from '../data/usda'
 import { weeklyReport } from '../lib/insights'
-import { suggestFoods } from '../lib/suggestUsda'
+import { planDay, suggestFoods } from '../lib/suggestUsda'
 
 let url = ''
 let db: Promise<UsdaDb> | null = null
@@ -34,6 +34,7 @@ const handlers: Record<string, (a: Args) => Promise<unknown>> = {
   },
   search: async (a) => searchUsda(await load(), a.query, a.limit),
   suggest: async (a) => suggestFoods(a.states, await load(), a.diet, a.eatenNames, a.count, a.own),
+  plan: async (a) => planDay(a.states, await load(), a.diet, a.exclude, a.own, a.opts),
   weekly: async (a) => weeklyReport({ ...(a.opts as Parameters<typeof weeklyReport>[0]), usda: await load() }),
 }
 

@@ -75,7 +75,7 @@ The goal: make it good enough that you want to open it every day, and fix what d
 
 | # | Item | Why | Size |
 |---|---|---|---|
-| F1 | **Plan tomorrow:** pick 2–4 foods that close today's gaps together (not one at a time), preview them on the Atlas, log them in one tap tomorrow | Best next food finds one food; a plan fixes the week | M |
+| F1 ✅ | **Plan tomorrow:** 2–4 foods that close the gaps of a typical day together (greedy: each pick targets what the others leave), preview on the Atlas, swap one at a time, save; next day a checklist with one-tap logging | Best next food finds one food; a plan fixes the week | M |
 | F2 | **Paste a recipe:** paste an ingredient list (from a website or notes), match each line to USDA foods and grams, review in the recipe builder | Building recipes by hand is still slow | M |
 | F3 ✅ | **Barcode in the log sheet:** typed or pasted (or USB-scanned) barcode → your foods → USDA Branded Foods → Open Food Facts, merged, then log it; saved for next time | Packaged foods are the other hard-to-log group | S |
 | F4 | **Long-term view per nutrient:** 90-day trend in the detail panel with blood-test results on the same timeline | Shows whether diet changes moved the lab numbers | S–M |
@@ -117,7 +117,7 @@ The goal: make it good enough that you want to open it every day, and fix what d
 2. **Now:** install it on your phone (B2) and move your data over; a week of real use is the field test.
 3. **Later:** AI budget (Phase C) and accounts (Phase D).
 
-**Recommended next session:** F1 (plan tomorrow around your gaps), with a bug sweep and the e2e test. Anything from your week of use (A1) goes first.
+**Recommended next session:** F2 (paste a recipe) or F4 (90-day trends), with a bug sweep and the e2e test. Anything from your week of use (A1) goes first.
 
 **Hosting is done (B1).** Next unlocks: the phone field test (B2), then sync (D1) and AI photo logging (C3), which build on the same Cloudflare account.
 
@@ -152,6 +152,10 @@ Details of how everything behaves are in [SPEC.md](../SPEC.md). This is the hist
 **Phase A (polish and trust):**
 - Shipped: light theme and colour-blind safe palette with shape markers, sun setting, What's new, the USDA Web Worker (main-thread blocking on a simulated slow phone halved), and the whole-app e2e test.
 - *Learned:* the daily app needed its own build folder, and headless browser tests must kill the whole process tree.
+
+**Plan tomorrow (F1):**
+- Shipped: a greedy day planner on top of Best next food (2–4 foods, typical day from the last 7 complete days, kcal budget, variety rules), preview, per-food swap that keeps the rest, plans saved per day, Today's plan with one-tap logging and progress.
+- *Learned:* the shared food scorer still suggested oddities once several foods were combined (a diabetes supplement drink, 100 g of dry buckwheat, 100 g of ground flax); fixing them improved Best next food too. Watch heredoc escapes: a lost backslash turned `\s` into `s` in a regex.
 
 **MealVision hand-over:**
 - Shipped: Atlas accepts MealVision's meal, recipe and single-food exports by link (`#/log?import=…`) or paste, always to a review screen first; an opt-in Photo step that calls MealVision on this PC; retinol accepted from imports; MealVision now keeps real zeros in its exports (its repo, `bd38208`).

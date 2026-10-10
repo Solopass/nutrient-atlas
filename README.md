@@ -22,6 +22,7 @@ Double-click **`Nutrient Atlas.cmd`**. It builds the latest version, serves it i
 - **By status / By meal** colouring; dots for the share from supplements; a tick at yesterday's (or last week's) level; 7-day low–high whiskers.
 - **Replay 30 days**, **Save image**, keyboard navigation and a screen-reader summary.
 - **Best next food** across 8,000 USDA foods plus your own; hover or ◎ Preview to see what it would add.
+- **Plan tomorrow:** 2–4 foods that close your gaps together, built on a typical day from your last week. Preview it on the Atlas, swap any food, save it; the next day it's a checklist with one-tap logging.
 - Tap a food under the chart for its **footprint**, then **drag it (or − / +) to change the portion**.
 
 **Logging** (the + button)

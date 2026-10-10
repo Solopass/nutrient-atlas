@@ -1,7 +1,7 @@
 import { nameParts, nutrientsForGrams, type UsdaDb, type UsdaFood } from '../data/usda'
 import type { Diet } from './profile'
 import type { NutrientState } from '../types'
-import { amountAgainstUL, ulPart } from './status'
+import { amountAgainstUL, dayScore, nutrientState, ulPart } from './status'
 
 export interface FoodSuggestion {
   /** Where the pick comes from: the USDA table, your saved foods or meals, or a food you rated in Products. */
@@ -33,7 +33,7 @@ const SKIP_GROUPS = new Set([
 const MEAT = new Set(['Beef Products', 'Pork Products', 'Poultry Products', 'Lamb, Veal, and Game Products'])
 const ANIMAL = /\b(beef|pork|chicken|turkey|lamb|veal|fish|salmon|tuna|cod|shrimp|egg|duck|goose)\b/i
 const SKIP_NAME =
-  /fortified|dried|dehydrated|powder|\bdry\b|frozen|canned|with salt added|imitation|formula|infant|by-products|variety meats|liver|kidney|brain|\bheart\b|spleen|lung|tongue|pancreas|thymus|flour|\bmeal\b|\bbran\b|\bgerm\b|isolate|concentrate|meatless|vegetarian|analog|sauteed|fried|in oil|\boil\b|leaves, raw|mature seeds, raw|sprouted|butter(?!nut)|\blard\b|shortening|cottonseed|smoothie|juice|beverage|drink/i
+  /fortified|dried|dehydrated|powder|\bdry\b|frozen|canned|with salt added|imitation|formula|infant|by-products|variety meats|liver|kidney|brain|\bheart\b|spleen|lung|tongue|pancreas|thymus|flour|\bmeal\b|\bbran\b|\bgerm\b|isolate|concentrate|meatless|vegetarian|analog|sauteed|fried|in oil|\boil\b|leaves, raw|mature seeds, raw|sprouted|butter(?!nut)|\blard\b|shortening|cottonseed|smoothie|juice|beverage|drink|supplement|nutritional|shake|meal replacement/i
 
 function allowedForDiet(f: UsdaFood, diet: Diet) {
   const meat = MEAT.has(f.category)
@@ -82,7 +82,9 @@ function portionOf(f: UsdaFood) {
   // Energy-dense foods (seeds, nuts, oils) are eaten by the tablespoon, so allow smaller portions for them.
   const min = (f.kcal ?? 0) > 350 ? 10 : 25
   const p = f.portions.filter((x) => x.grams >= min && x.grams <= 350 && !PACKAGING.test(x.label)).sort((a, b) => a.grams - b.grams)[0]
-  return p ? { grams: p.grams, label: `${p.label} (${Math.round(p.grams)} g)` } : { grams: 100, label: '100 g' }
+  if (p) return { grams: p.grams, label: `${p.label} (${Math.round(p.grams)} g)` }
+  // No usable USDA portion: an ounce of energy-dense foods (raw almonds, walnut halves, ground flax), not 100 g (500+ kcal).
+  return (f.kcal ?? 0) > 350 ? { grams: 28, label: '1 oz (28 g)' } : { grams: 100, label: '100 g' }
 }
 
 /** Brand-name entries (USDA writes brands in capitals, e.g. "SILK") and unusual eggs make poor suggestions. */
@@ -168,6 +170,8 @@ export function suggestFoods(
   const scored: FoodSuggestion[] = []
   for (const f of usda.foods) {
     if (SKIP_GROUPS.has(f.category) || SKIP_NAME.test(f.name) || isOdd(f) || !allowedForDiet(f, diet)) continue
+    // Grains and pasta: suggest them cooked, not by the 100 g of dry grain.
+    if (f.category === 'Cereal Grains and Pasta' && !/cooked|boiled|steamed/i.test(f.name)) continue
     // Suggest cooked meat and fish, not raw.
     if ((MEAT.has(f.category) || f.category === 'Finfish and Shellfish Products' || ANIMAL.test(f.name)) && /\braw\b/i.test(f.name) && !/egg/i.test(f.name)) continue
     if (eaten.has(nameParts(f.name)[1].toLowerCase())) continue
@@ -203,4 +207,86 @@ export function suggestFoods(
     if (out.length === count) break
   }
   return out
+}
+
+// ── Plan tomorrow ──────────────────────────────────────────────────
+
+/** States after eating `add` on top of each state's intake (coverage kept; a new nutrient counts as reported). */
+export function addToStates(states: NutrientState[], add: Record<string, number>): NutrientState[] {
+  return states.map((s) => {
+    const id = s.nutrient.id
+    const v = add[id]
+    if (!v) return s
+    const i = s.intake
+    const intake = i
+      ? { ...i, amount: i.amount + v, ulAmount: i.ulAmount != null ? i.ulAmount + ulPart(id, add, false) : undefined }
+      : { amount: v, coverage: 1 }
+    return nutrientState(s.nutrient, intake)
+  })
+}
+
+export interface DayPlan {
+  picks: FoodSuggestion[]
+  /** Score of the starting day (e.g. your 7-day average) and of that day plus the plan. */
+  before: number
+  after: number
+  /** Nutrients the plan lifts from under 80% to 80%+. */
+  closed: NutrientState[]
+  kcal: number
+}
+
+/**
+ * A few foods that close the gaps *together*: pick the best next food, add it
+ * to the day, recompute the gaps, and pick again, so each food covers what the
+ * others leave. Stops at `max` foods, when nothing helps enough, or when the
+ * next food would take the plan over `kcalBudget` (the first two are always
+ * allowed). Same rules as Best next food: realistic portions, the diet, no
+ * pushing a limit or upper limit over. For variety, at most one USDA food per
+ * food group, and no two foods with the same name head ("soy milk" = "soymilk").
+ */
+export function planDay(
+  states: NutrientState[],
+  usda: UsdaDb,
+  diet: Diet,
+  exclude: string[],
+  own: OwnCandidate[] = [],
+  opts: { max?: number; kcalBudget?: number; keep?: FoodSuggestion[] } = {},
+): DayPlan {
+  const max = opts.max ?? 4
+  const budget = opts.kcalBudget ?? 900
+  const picks: FoodSuggestion[] = []
+  const used = [...exclude]
+  let cur = states
+  let kcal = 0
+  const groups = new Set<string>()
+  const heads = new Set<string>()
+  // One family per first word, for variety: "soy milk" = "soymilk" = "soybeans", "peanuts" = "peanut spread".
+  const headOf = (name: string) =>
+    (nameParts(name)[1].toLowerCase().replace(/\(.*?\)/g, '').trim().split(/[\s,]+/)[0] ?? '')
+      .replace(/-/g, '')
+      .replace(/(milk|beans?)$/, '')
+      .replace(/s$/, '')
+  // Foods you swapped out rule out their whole family.
+  for (const n of exclude) heads.add(headOf(n))
+  const add = (p: FoodSuggestion) => {
+    picks.push(p)
+    used.push(p.name)
+    heads.add(headOf(p.name))
+    if (p.food) groups.add(p.food.category)
+    kcal += p.kcal ?? 0
+    cur = addToStates(cur, p.nutrients)
+  }
+  // Swapping one food keeps the others: they go in first, and only the gap is filled.
+  for (const p of opts.keep ?? []) add(p)
+  while (picks.length < max) {
+    // A wide pool, so the variety rules below still leave good choices.
+    const candidates = suggestFoods(cur, usda, diet, used, 40, own.filter((o) => !picks.some((p) => p.key === o.key)))
+    const best = candidates.find((c) => !heads.has(headOf(c.name)) && !(c.food && groups.has(c.food.category)))
+    if (!best) break
+    if (picks.length >= 2 && kcal + (best.kcal ?? 0) > budget) break
+    add(best)
+  }
+  const wasLow = new Set(states.filter((s) => s.pct != null && s.pct < 80).map((s) => s.nutrient.id))
+  const closed = cur.filter((s) => wasLow.has(s.nutrient.id) && s.pct != null && s.pct >= 80 && !s.nutrient.sunCovered && s.nutrient.category !== 'limit')
+  return { picks, before: Math.round(dayScore(states).score), after: Math.round(dayScore(cur).score), closed, kcal: Math.round(kcal) }
 }

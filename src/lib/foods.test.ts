@@ -3,7 +3,7 @@ import { searchUsda, type UsdaDb } from '../data/usda'
 import { usdaDb } from '../test/usdaFixture'
 import { DEFAULT_PROFILE } from './profile'
 import { nutrientState } from './status'
-import { suggestFoods, topFoodsFor } from './suggestUsda'
+import { addToStates, planDay, suggestFoods, topFoodsFor } from './suggestUsda'
 import { personalize } from './targets'
 import type { Intake } from '../types'
 
@@ -108,4 +108,81 @@ describe('food ideas per nutrient', () => {
     const ideas = topFoodsFor('b12', 2.4, db, 'vegan', 5)
     for (const f of ideas) expect(f.name).not.toMatch(/^(beef|clams?|fish|salmon|eggs?|cheese|milk|yogurt)\b/i) // names are the food itself, e.g. "Soy milk" is fine
   })
+})
+
+describe('plan tomorrow', () => {
+  test('2–4 foods from different families that work together', () => {
+    const plan = planDay(day({}), db, 'omnivore', [])
+    expect(plan.picks.length).toBeGreaterThanOrEqual(2)
+    expect(plan.picks.length).toBeLessThanOrEqual(4)
+    const heads = plan.picks.map((p) => p.name.split(',')[0])
+    expect(new Set(heads).size).toBe(heads.length)
+    expect(plan.after).toBeGreaterThan(plan.before)
+    expect(plan.closed.length).toBeGreaterThan(0)
+  })
+
+  test('each pick targets what the earlier ones left, not the same gap again', () => {
+    const states = day({})
+    const plan = planDay(states, db, 'omnivore', [])
+    // The second pick comes from the best foods for the day *after* the first one (variety rules may skip some).
+    const afterFirst = addToStates(states, plan.picks[0].nutrients)
+    const ranked = suggestFoods(afterFirst, db, 'omnivore', [plan.picks[0].name], 40).map((s) => s.key)
+    expect(ranked).toContain(plan.picks[1].key)
+    expect(ranked.indexOf(plan.picks[1].key)).toBeLessThan(10)
+  })
+
+  test('stays within the calorie budget after the first two foods', () => {
+    const plan = planDay(day({}), db, 'omnivore', [], [], { kcalBudget: 300 })
+    const firstTwo = plan.picks.slice(0, 2).reduce((a, p) => a + (p.kcal ?? 0), 0)
+    if (plan.picks.length > 2) expect(plan.kcal).toBeLessThanOrEqual(Math.max(300, firstTwo))
+  })
+
+  test('respects the diet and skips excluded foods', () => {
+    const vegan = planDay(day({}, 'vegan'), db, 'vegan', [])
+    for (const p of vegan.picks) expect(['Beef Products', 'Pork Products', 'Poultry Products', 'Finfish and Shellfish Products', 'Dairy and Egg Products']).not.toContain(p.food?.category)
+    const first = planDay(day({}), db, 'omnivore', []).picks[0]
+    expect(planDay(day({}), db, 'omnivore', [first.name]).picks.map((p) => p.key)).not.toContain(first.key)
+  })
+
+  test('nothing to plan when every gap is closed', () => {
+    const full = personalize(DEFAULT_PROFILE).map((n) => nutrientState(n, { amount: n.category === 'limit' ? 0 : (n.target ?? 1) * 1.1, coverage: 1 }))
+    expect(planDay(full, db, 'omnivore', []).picks).toEqual([])
+  })
+})
+
+test('plan variety: one food per USDA food group, "soy milk" and "soymilk" count as the same', () => {
+  const states = personalize({ ...DEFAULT_PROFILE, diet: 'vegan' }).map((n) => nutrientState(n, { amount: (n.target ?? 0) * (n.category === 'limit' ? 0.3 : 0.6), coverage: 1 }))
+  const plan = planDay(states, db, 'vegan', [])
+  const groups = plan.picks.map((p) => p.food?.category).filter(Boolean)
+  expect(new Set(groups).size).toBe(groups.length)
+  const soy = plan.picks.filter((p) => /soy ?milk/i.test(p.name))
+  expect(soy.length).toBeLessThanOrEqual(1)
+})
+
+test('plan variety: soybeans and soymilk (any spelling) are one family', () => {
+  const states = personalize({ ...DEFAULT_PROFILE, diet: 'pescatarian' }).map((n) => nutrientState(n, { amount: (n.target ?? 0) * (n.category === 'limit' ? 0.3 : 0.5), coverage: 1 }))
+  const soy = planDay(states, db, 'pescatarian', []).picks.filter((p) => /^soy/i.test(p.name))
+  expect(soy.length).toBeLessThanOrEqual(1)
+})
+
+test('energy-dense foods without a USDA portion get an ounce, not 100 g', () => {
+  const states = personalize(DEFAULT_PROFILE).map((n) => nutrientState(n, { amount: (n.target ?? 0) * (n.category === 'limit' ? 0.3 : 0.5), coverage: 1 }))
+  const all = suggestFoods(states, db, 'vegan', [], 40)
+  for (const s of all) if ((s.food?.kcal ?? 0) > 350) expect(s.portion).not.toBe('100 g')
+  expect(all.some((s) => s.portion === '1 oz (28 g)')).toBe(true)
+})
+
+test('swapping one plan food keeps the others', () => {
+  const states = personalize(DEFAULT_PROFILE).map((n) => nutrientState(n, { amount: (n.target ?? 0) * (n.category === 'limit' ? 0.3 : 0.5), coverage: 1 }))
+  const plan = planDay(states, db, 'omnivore', [])
+  const [gone, ...kept] = plan.picks
+  const swapped = planDay(states, db, 'omnivore', [gone.name], [], { keep: kept })
+  expect(swapped.picks.slice(0, kept.length).map((p) => p.key)).toEqual(kept.map((p) => p.key))
+  expect(swapped.picks.map((p) => p.key)).not.toContain(gone.key)
+})
+
+test('a swapped-out food rules out its family ("peanuts" → no "peanut spread")', () => {
+  const states = personalize(DEFAULT_PROFILE).map((n) => nutrientState(n, { amount: (n.target ?? 0) * (n.category === 'limit' ? 0.3 : 0.5), coverage: 1 }))
+  const plan = planDay(states, db, 'omnivore', ['Peanuts, all types, raw'])
+  expect(plan.picks.some((p) => /^peanut/i.test(p.name))).toBe(false)
 })

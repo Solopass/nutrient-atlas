@@ -18,6 +18,7 @@ import { LogSheet, type Incoming, type LogTab } from './components/log/LogSheet'
 import { BottomNav } from './components/BottomNav'
 import type { OnboardingExit } from './components/onboarding/Onboarding'
 import { InsightsCard, useWeeklyReport } from './components/insights/Insights'
+import { PlanCard } from './components/PlanCard'
 import { MOCK_INTAKE } from './data/mockIntake'
 import { SCORE_HISTORY } from './data/mockHistory'
 import { CORE_CATEGORIES } from './data/nutrients'
@@ -229,6 +230,12 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
   }, [demo, week, byDate, week7, dayLogs])
 
   const states = useMemo(() => nutrients.map((n) => nutrientState(n, intake[n.id])), [nutrients, intake])
+  // A typical day for Plan tomorrow: the last 7 complete days averaged, whichever view the Atlas shows.
+  const typical = useMemo(() => {
+    if (demo) return null
+    const avg = averageIntake(byDate, week7)
+    return avg.loggedDays ? nutrients.map((n) => nutrientState(n, avg.intake[n.id])) : null
+  }, [demo, byDate, week7, nutrients])
 
   // Per-meal split for the "By meal" colouring, and the daily low–high range for the 7-day whiskers.
   const meals = useMemo(
@@ -571,6 +578,10 @@ function Dashboard({ date, openLog }: { date: string; openLog: (tab?: LogTab) =>
         )}
 
         {!demo && <InsightsCard report={report} onSelect={setSelectedId} />}
+
+        {!demo && date === today && (
+          <PlanCard typical={typical} today={today} eatenToday={eatenNames} onSelect={setSelectedId} onPreview={onPreview} pinnedPreview={pinnedPreview?.key ?? null} />
+        )}
 
         <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)_300px] xl:items-center">
           <div className="order-2 xl:order-none">

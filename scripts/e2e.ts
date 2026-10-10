@@ -253,6 +253,40 @@ const steps: [string, () => Promise<void>][] = [
     },
   ],
   [
+    'plan tomorrow: make, swap, save, then log from it the next day',
+    async () => {
+      const PLAN = `document.querySelector('[aria-label="Plan tomorrow"]')`
+      const TODAY = `document.querySelector('[aria-label="Today\\'s plan"]')`
+      await send('Page.navigate', { url: BASE })
+      // The plan builds on complete days; today counts once it's marked done.
+      await click('Done for today')
+      await waitFor('the Plan tomorrow card', `!!${PLAN}`, 20_000)
+      await click('Make a plan', PLAN)
+      await waitFor('a plan', `/Typical day \\d+% → \\d+%/.test(${PLAN}.innerText) && ${PLAN}.querySelectorAll('li').length >= 2`, 20_000)
+      const names = () => js<string[]>(`return [...${PLAN}.querySelectorAll('li .truncate.text-sm')].map((e) => e.textContent)`)
+      const before = await names()
+      await js(`[...${PLAN}.querySelectorAll('button')].find((b) => /Swap/.test(b.textContent)).click()`)
+      await waitFor('the swap', `!${JSON.stringify(before)}.every((n, i) => n === [...${PLAN}.querySelectorAll('li .truncate.text-sm')].map((e) => e.textContent)[i])`, 20_000)
+      const after = await names()
+      if (after.includes(before[0])) throw new Error('Swap kept the swapped food')
+      if (!before.slice(1).every((n) => after.includes(n))) throw new Error('Swap replaced foods it should have kept')
+      await click('Save for tomorrow', PLAN)
+      await waitFor('the saved plan', `/Saved ✓/.test(${PLAN}.innerText)`)
+      // "Tomorrow": move the saved plan to today in the browser's database, then reload.
+      await js(`const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+        const t = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); const tomorrow = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
+        const idb = await new Promise((res, rej) => { const r = indexedDB.open('nutrition-app'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error) });
+        const store = idb.transaction('settings', 'readwrite').objectStore('settings');
+        const row = await new Promise((res) => { const g = store.get('dayPlan:' + tomorrow); g.onsuccess = () => res(g.result) });
+        await new Promise((res) => { const p = store.put({ key: 'dayPlan:' + today, value: { ...row.value, date: today } }); p.onsuccess = res });
+        idb.close(); return 1`)
+      await send('Page.navigate', { url: BASE })
+      await waitFor("today's plan", `/0 of \\d+ eaten/i.test(${TODAY}?.innerText ?? '')`, 20_000)
+      await click('+ Log', TODAY)
+      await waitFor('the eaten item', `/1 of \\d+ eaten/i.test(${TODAY}.innerText)`)
+    },
+  ],
+  [
     'MealVision hand-over: import links and the Photo step (MealVision faked locally)',
     async () => {
       const meal = { items: [{ name: 'Grilled Salmon Fillet', quantity: '180g', grams: 180, confidence: 'high', nutrients: { protein: 39.2, vitD: 19.8, retinol: 21, alcohol: 0 } }, { name: 'Steamed Broccoli', quantity: '120g', grams: 120, confidence: 'medium', nutrients: { vitC: 78, fiber: 4, cholesterol: 0 } }, { name: 'Mystery Sauce', quantity: '40g', grams: 40, confidence: 'low', nutrients: {} }], notes: 'Analyzed via MealVision engine. No USDA match, so nutrients unknown (not zero): Mystery Sauce.' }

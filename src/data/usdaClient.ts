@@ -1,6 +1,6 @@
 import type { Diet } from '../lib/profile'
 import { weeklyReport, type WeeklyReport } from '../lib/insights'
-import { suggestFoods, type FoodSuggestion, type OwnCandidate } from '../lib/suggestUsda'
+import { suggestFoods, type FoodSuggestion, type OwnCandidate, planDay, type DayPlan } from '../lib/suggestUsda'
 import type { NutrientState } from '../types'
 import { loadUsda, searchUsda, type UsdaFood } from './usda'
 
@@ -62,6 +62,12 @@ export async function searchFoods(query: string, limit = 40): Promise<UsdaFood[]
 export async function suggestNextFoods(states: NutrientState[], diet: Diet, eatenNames: string[], count: number, own: OwnCandidate[]): Promise<FoodSuggestion[]> {
   await initUsda()
   return call<FoodSuggestion[]>('suggest', { states, diet, eatenNames, count, own }).catch(async () => suggestFoods(states, await loadUsda(), diet, eatenNames, count, own))
+}
+
+/** A few foods that close the gaps together (Plan tomorrow); see planDay. */
+export async function planNextDay(states: NutrientState[], diet: Diet, exclude: string[], own: OwnCandidate[], opts?: { max?: number; kcalBudget?: number; keep?: FoodSuggestion[] }): Promise<DayPlan> {
+  await initUsda()
+  return call<DayPlan>('plan', { states, diet, exclude, own, opts }).catch(async () => planDay(states, await loadUsda(), diet, exclude, own, opts))
 }
 
 /** The weekly report with food ideas (the part that needs the food table). */
