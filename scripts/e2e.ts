@@ -252,6 +252,51 @@ const steps: [string, () => Promise<void>][] = [
       }
     },
   ],
+  [
+    'MealVision hand-over: import links and the Photo step (MealVision faked locally)',
+    async () => {
+      const meal = { items: [{ name: 'Grilled Salmon Fillet', quantity: '180g', grams: 180, confidence: 'high', nutrients: { protein: 39.2, vitD: 19.8, retinol: 21, alcohol: 0 } }, { name: 'Steamed Broccoli', quantity: '120g', grams: 120, confidence: 'medium', nutrients: { vitC: 78, fiber: 4, cholesterol: 0 } }], notes: 'Analyzed via MealVision engine.' }
+      // 1. "Open on Cloudflare Atlas": the link opens the review, and the payload leaves the address bar.
+      await send('Page.navigate', { url: `${BASE}#/log?import=${encodeURIComponent(JSON.stringify(meal))}` })
+      await waitFor('the imported meal in review', `/Grilled Salmon Fillet/.test(${LOG}?.innerText ?? '') && /Log 2 items/.test(${LOG}.innerText)`, 20_000)
+      if (await js<boolean>(`return location.hash.includes('import')`)) throw new Error('The import payload stayed in the address bar')
+      await click('Log 2 items', LOG)
+      await waitFor('the Today list', `[...document.querySelectorAll('[aria-label="Log food"] li')].some((li) => /Steamed Broccoli/.test(li.textContent))`)
+      await js(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
+      // 2. A recipe card link opens the recipe builder, pre-filled, without saving anything yet.
+      const recipe = { name: 'MealVision Dish', servings: 2, items: [{ name: 'Brown rice', serving: '150g', multiplier: 1, nutrients: { carbs: 35, magnesium: 64 } }] }
+      await send('Page.navigate', { url: `${BASE}#/log?import=${encodeURIComponent(JSON.stringify(recipe))}` })
+      await waitFor('the pre-filled recipe builder', `${LOG}?.querySelector('input[placeholder="e.g. Lentil dal"]')?.value === 'MealVision Dish' && /Brown rice/.test(${LOG}.innerText) && /Imported: check the amounts/.test(${LOG}.innerText)`, 20_000)
+      await js(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
+      // 3. Photo step: switch MealVision on, then a photo goes to it and the answer opens in review.
+      const seen: string[] = []
+      onRequestPaused = ({ requestId, request }) => {
+        seen.push(request.url)
+        const body = request.url.endsWith('/health') ? { status: 'healthy', foods_indexed: 8062 } : meal
+        send('Fetch.fulfillRequest', { requestId, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Access-Control-Allow-Origin', value: '*' }], body: Buffer.from(JSON.stringify(body)).toString('base64') }).catch(() => {})
+      }
+      await send('Fetch.enable', { patterns: [{ urlPattern: 'http://127.0.0.1:8085/*' }] })
+      try {
+        await js(`location.hash = '#/settings'`)
+        await waitFor('the companion apps switch', `[...document.querySelectorAll('label')].some((l) => /MealVision on this PC/.test(l.textContent))`)
+        await js(`[...document.querySelectorAll('label')].find((l) => /MealVision on this PC/.test(l.textContent)).querySelector('input').click()`)
+        await waitFor('MealVision connected', `/Connected \\(8,062 foods indexed\\)/.test(document.body.innerText)`)
+        await js(`location.hash = '#/'`)
+        await click('+ Log food')
+        await click('AI estimate', LOG)
+        await waitFor('the Photo step', `/Photo, analysed by MealVision/.test(${LOG}.innerText)`)
+        const doc = await send('DOM.getDocument', { depth: -1 })
+        const { nodeId } = await send('DOM.querySelector', { nodeId: doc.root.nodeId, selector: '[aria-label="Log food"] input[type=file][accept="image/*"]' })
+        await send('DOM.setFileInputFiles', { nodeId, files: [join(ROOT, 'public/icons/icon-192.png')] })
+        await waitFor('the photo estimate in review', `/Log 2 items/.test(${LOG}.innerText)`)
+        if (!seen.some((u) => u.endsWith('/v1/estimate'))) throw new Error('The photo was not sent to MealVision')
+        await js(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
+      } finally {
+        await send('Fetch.disable')
+        onRequestPaused = null
+      }
+    },
+  ],
 ]
 
 // ── Run ───────────────────────────────────────────────────────────────────────

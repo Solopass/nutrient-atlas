@@ -18,6 +18,7 @@ const CATS: Category[] = ['macro', 'limit', 'vitamin', 'mineral', 'bvitamin', 't
 export function CustomFoodEditor({
   initial,
   barcode,
+  draft,
   meal,
   date,
   onDone,
@@ -25,14 +26,18 @@ export function CustomFoodEditor({
   initial: Food | null
   /** A new food for a barcode no database knows: saved with it, so the next scan finds it. */
   barcode?: string
+  /** A new food pre-filled from an import (e.g. MealVision's single-food card). */
+  draft?: { name: string; serving: string; grams?: number; nutrients: Record<string, number>; note?: string }
   meal: Meal
   date: string
   onDone: (msg?: string) => void
 }) {
-  const [name, setName] = useState(initial?.name ?? '')
-  const [serving, setServing] = useState(initial?.serving ?? '1 serving')
-  const [grams, setGrams] = useState(initial?.grams ? String(initial.grams) : '')
-  const [rows, setRows] = useState<Row[]>(initial ? rowsFrom(initial.nutrients) : [])
+  const start = initial ?? draft
+  const [name, setName] = useState(start?.name ?? '')
+  const [serving, setServing] = useState(start?.serving ?? '1 serving')
+  const [grams, setGrams] = useState(start?.grams ? String(start.grams) : '')
+  // The editor lists label nutrients only; hidden companions like retinol aren't editable rows.
+  const [rows, setRows] = useState<Row[]>(start ? rowsFrom(Object.fromEntries(Object.entries(start.nutrients).filter(([id]) => id !== 'retinol'))) : [])
   const [calories, setCalories] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const guard = useGuard()
@@ -73,7 +78,7 @@ export function CustomFoodEditor({
       </div>
 
       <LabelPaste
-        defaultOpen={!initial}
+        defaultOpen={!start}
         onUse={(label) => {
           setRows(() => rowsFrom(label.nutrients))
           if (label.servingLabel) setServing(label.servingLabel)

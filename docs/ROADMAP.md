@@ -153,6 +153,10 @@ Details of how everything behaves are in [SPEC.md](../SPEC.md). This is the hist
 - Shipped: light theme and colour-blind safe palette with shape markers, sun setting, What's new, the USDA Web Worker (main-thread blocking on a simulated slow phone halved), and the whole-app e2e test.
 - *Learned:* the daily app needed its own build folder, and headless browser tests must kill the whole process tree.
 
+**MealVision hand-over:**
+- Shipped: Atlas accepts MealVision's meal, recipe and single-food exports by link (`#/log?import=…`) or paste, always to a review screen first; an opt-in Photo step that calls MealVision on this PC; retinol accepted from imports; MealVision now keeps real zeros in its exports (its repo, `bd38208`).
+- *Learned:* a link that silently lands on the dashboard is worse than no link; every hand-over now has an e2e test, and a real MealVision export was run through Atlas's reader.
+
 **Phone prep (before hosting):**
 - Shipped: a phone pass over every screen at 375 px (no overflow anywhere); Back-to-Atlas buttons hidden where the tab bar does that job; iPhone tap-to-zoom prevented on form fields; the report table readable on phones; plural and wording fixes; a Scan button in the log sheet with an opt-in, never-bundled scanner add-on for iPhone; the e2e test scans with a fake camera.
 - *Learned:* the built-in browser pane's emulated screenshots can be misleading; real phone-size captures come from headless Edge with device metrics. A supplement-only upper limit (magnesium) shouldn't warn about a food target above it.

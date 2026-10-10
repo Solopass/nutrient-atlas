@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Meal } from '../../db/db'
 import { logNewFood } from '../../db/logging'
 import { parseMealResponse } from '../../lib/ai/parse'
 import { buildMealPrompt } from '../../lib/ai/prompt'
 import type { Confidence } from '../../lib/ai/types'
+import { readImport, type AtlasImport } from '../../lib/atlasImport'
+import { mealVisionEstimate, mealVisionUrl } from '../../lib/mealVision'
 import { useGuard } from '../../lib/useGuard'
+import type { Incoming } from './LogSheet'
 import { NutrientChips } from './NutrientChips'
 
 const DRAFT_KEY = 'ai-log-draft'
@@ -37,7 +41,20 @@ function loadDraft() {
   }
 }
 
-export function AiTab({ meal, date, onLogged }: { meal: Meal; date: string; onLogged: (msg: string) => void }) {
+export function AiTab({
+  meal,
+  date,
+  onLogged,
+  incoming,
+  onOpenImport,
+}: {
+  meal: Meal
+  date: string
+  onLogged: (msg: string) => void
+  /** A meal handed over by link (e.g. MealVision's "Open on Cloudflare Atlas"): goes straight to review. */
+  incoming?: Incoming
+  onOpenImport?: (imp: AtlasImport) => void
+}) {
   const [description, setDescription] = useState(() => loadDraft().description ?? '')
   const [response, setResponse] = useState(() => loadDraft().response ?? '')
   const [copied, setCopied] = useState(false)
@@ -56,8 +73,20 @@ export function AiTab({ meal, date, onLogged }: { meal: Meal; date: string; onLo
     }
   }, [description, response])
 
+  useEffect(() => {
+    if (incoming?.kind !== 'meal') return
+    setResponse(incoming.text)
+    setDescription((d) => d || 'Imported meal')
+  }, [incoming])
+
   const prompt = useMemo(() => buildMealPrompt(description || '(describe your meal here)'), [description])
-  const parsed = useMemo(() => parseMealResponse(response), [response])
+  // A recipe or single-food card (e.g. from MealVision) pasted here belongs in My foods.
+  const pastedCard = useMemo(() => {
+    if (!response.trim()) return null
+    const imp = readImport(response)
+    return imp.kind === 'meal' ? null : imp
+  }, [response])
+  const parsed = useMemo(() => (pastedCard ? { estimate: null, errors: [], warnings: [] } : parseMealResponse(response)), [response, pastedCard])
   const items = parsed.estimate?.items ?? []
 
   useEffect(() => {
@@ -107,6 +136,13 @@ export function AiTab({ meal, date, onLogged }: { meal: Meal; date: string; onLo
 
   return (
     <div className="space-y-6">
+      <MealVisionPhoto
+        onResult={(text, fileName) => {
+          setResponse(text)
+          setDescription((d) => d || `Photo: ${fileName}`)
+        }}
+      />
+
       <Step n={1} title="Describe what you ate" done={description.trim().length > 0}>
         <textarea
           value={description}
@@ -150,6 +186,20 @@ export function AiTab({ meal, date, onLogged }: { meal: Meal; date: string; onLo
           placeholder='Paste the whole reply here. Code fences and extra text are fine; the JSON is found automatically.'
           className="w-full resize-y rounded-lg border border-(--line) bg-(--panel-2) px-3 py-2 font-mono text-xs placeholder:font-sans placeholder:text-(--muted) focus:border-(--c-above) focus:outline-none"
         />
+        {pastedCard && (
+          <div className="mt-2 rounded-lg border border-(--c-above)/40 bg-(--c-above)/10 p-3 text-xs text-(--dim)">
+            This is a {pastedCard.kind === 'recipe' ? `recipe card (“${pastedCard.name}”, ${pastedCard.items.length} ingredients)` : `single food (“${pastedCard.name}”)`}, not a meal to log.
+            <button
+              onClick={() => {
+                onOpenImport?.(pastedCard)
+                setResponse('')
+              }}
+              className="ml-2 font-medium text-(--c-above) hover:underline"
+            >
+              Open it in {pastedCard.kind === 'recipe' ? 'the recipe builder' : 'My foods'} →
+            </button>
+          </div>
+        )}
         {parsed.errors.length > 0 && (
           <ul className="mt-2 space-y-1 rounded-lg border border-(--c-deficient)/40 bg-(--c-deficient)/10 p-3 text-xs text-(--c-deficient)">
             {parsed.errors.map((e) => (
@@ -241,5 +291,62 @@ export function AiTab({ meal, date, onLogged }: { meal: Meal; date: string; onLo
         </Step>
       )}
     </div>
+  )
+}
+
+/**
+ * Photo step, shown only when the MealVision companion is switched on for this
+ * PC (Settings → Companion apps). Sends the photo to it and fills in the reply.
+ */
+function MealVisionPhoto({ onResult }: { onResult: (text: string, fileName: string) => void }) {
+  const base = useLiveQuery(mealVisionUrl, [])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const input = useRef<HTMLInputElement>(null)
+  const abort = useRef<AbortController | null>(null)
+  useEffect(() => () => abort.current?.abort(), [])
+  if (!base) return null
+
+  const send = async (file: File) => {
+    abort.current?.abort()
+    abort.current = new AbortController()
+    setBusy(true)
+    setError(null)
+    try {
+      onResult(await mealVisionEstimate(base, file, abort.current.signal), file.name)
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="rounded-lg bg-(--panel-2) p-3 shadow-[inset_0_0_0_1px_var(--line)]">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-(--c-above)/15 text-(--c-above)" aria-hidden>
+          ◉
+        </span>
+        <span className="min-w-0 flex-1 text-sm">
+          <span className="font-medium">Photo, analysed by MealVision</span>
+          <span className="block text-xs text-(--muted)">On this PC. Or describe the meal below.</span>
+        </span>
+        <button onClick={() => input.current?.click()} disabled={busy} className="rounded-lg bg-(--c-above) px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
+          {busy ? 'Analysing…' : 'Choose photo'}
+        </button>
+        <input
+          ref={input}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            e.target.value = ''
+            if (file) send(file)
+          }}
+        />
+      </div>
+      {error && <p className="mt-2 text-xs text-(--c-deficient)">{error}</p>}
+    </section>
   )
 }

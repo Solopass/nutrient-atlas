@@ -1,19 +1,31 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { db, type Food, type Meal, type SavedMeal } from '../../db/db'
 import { logSavedFood } from '../../db/logging'
 import { CustomFoodEditor } from './CustomFoodEditor'
 import { useGuard } from '../../lib/useGuard'
 import { NutrientChips } from './NutrientChips'
 import { RecipeBuilder } from './RecipeBuilder'
+import type { Incoming } from './LogSheet'
+
+const importNote = (warnings: string[]) => ['Imported: check the amounts, then save.', ...warnings].join(' ')
 import { SavedMealsList } from './SavedMealsList'
 
 const SOURCE_LABEL: Record<Food['source'], string> = { usda: 'USDA', ai: 'AI', custom: 'Label', barcode: 'Barcode' }
 
-export function FoodsTab({ meal, date, onLogged }: { meal: Meal; date: string; onLogged: (msg: string) => void }) {
+export function FoodsTab({ meal, date, onLogged, incoming }: { meal: Meal; date: string; onLogged: (msg: string) => void; incoming?: Incoming }) {
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState<Food | 'new' | null>(null)
   const [recipe, setRecipe] = useState<SavedMeal | 'new' | null>(null)
+  const [draft, setDraft] = useState<Incoming | undefined>()
+  useEffect(() => {
+    if (!incoming) return
+    setDraft(incoming)
+    if (incoming.kind === 'recipe') setRecipe('new')
+    if (incoming.kind === 'food') setEditing('new')
+  }, [incoming])
+  const recipeDraft = recipe === 'new' && draft?.kind === 'recipe' ? draft : undefined
+  const foodDraft = editing === 'new' && draft?.kind === 'food' ? draft : undefined
   const guard = useGuard()
   const foods = useLiveQuery(() => db.foods.orderBy('lastUsedAt').reverse().toArray(), [])
 
@@ -22,10 +34,12 @@ export function FoodsTab({ meal, date, onLogged }: { meal: Meal; date: string; o
     return (
       <RecipeBuilder
         initial={recipe === 'new' ? null : recipe}
+        draft={recipeDraft && { name: recipeDraft.name, servings: recipeDraft.servings, items: recipeDraft.items, note: importNote(recipeDraft.warnings) }}
         meal={meal}
         date={date}
         onDone={(logged) => {
           setRecipe(null)
+          setDraft(undefined)
           if (logged) onLogged(logged)
         }}
       />
@@ -35,10 +49,12 @@ export function FoodsTab({ meal, date, onLogged }: { meal: Meal; date: string; o
     return (
       <CustomFoodEditor
         initial={editing === 'new' ? null : editing}
+        draft={foodDraft && { name: foodDraft.name, serving: foodDraft.serving, grams: foodDraft.grams, nutrients: foodDraft.nutrients, note: importNote(foodDraft.warnings) }}
         meal={meal}
         date={date}
         onDone={(msg) => {
           setEditing(null)
+          setDraft(undefined)
           if (msg?.startsWith('Saved and logged')) onLogged(msg)
         }}
       />

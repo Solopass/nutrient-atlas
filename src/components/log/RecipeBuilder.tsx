@@ -18,10 +18,23 @@ const field = 'rounded border border-(--line) bg-(--bg) px-2 py-1.5 text-sm text
  * saved meal; logging it later adds one portion. `onDone` gets a message only
  * when something was logged (the sheet then shows Today).
  */
-export function RecipeBuilder({ initial, meal, date, onDone }: { initial: SavedMeal | null; meal: Meal; date: string; onDone: (logged?: string) => void }) {
-  const [name, setName] = useState(initial?.name ?? '')
-  const [servings, setServings] = useState(initial?.servings ?? 4)
-  const [items, setItems] = useState<MealItem[]>(initial?.items ?? [])
+export function RecipeBuilder({
+  initial,
+  draft,
+  meal,
+  date,
+  onDone,
+}: {
+  initial: SavedMeal | null
+  /** A new recipe pre-filled from an import (e.g. MealVision's recipe card). */
+  draft?: { name: string; servings: number; items: MealItem[]; note?: string }
+  meal: Meal
+  date: string
+  onDone: (logged?: string) => void
+}) {
+  const [name, setName] = useState(initial?.name ?? draft?.name ?? '')
+  const [servings, setServings] = useState(initial?.servings ?? draft?.servings ?? 4)
+  const [items, setItems] = useState<MealItem[]>(initial?.items ?? draft?.items ?? [])
   const guard = useGuard()
 
   const portion = useMemo(() => perPortion(items, servings), [items, servings])
@@ -51,6 +64,7 @@ export function RecipeBuilder({ initial, meal, date, onDone }: { initial: SavedM
         </button>
         <h3 className="text-sm font-semibold">{initial ? 'Edit recipe' : 'New recipe'}</h3>
       </div>
+      {draft?.note && <p className="mb-4 rounded-lg bg-(--c-above)/10 px-3 py-2 text-xs text-(--dim)">{draft.note}</p>}
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="min-w-0 flex-1 basis-48 text-xs text-(--muted)">

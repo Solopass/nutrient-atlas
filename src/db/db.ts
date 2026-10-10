@@ -8,6 +8,9 @@ export type FoodSource = 'ai' | 'custom' | 'usda' | 'barcode'
 /** Settings key for your free USDA FoodData Central API key (barcode lookups). Belongs to the device, not your data. */
 export const FDC_KEY_SETTING = 'fdcApiKey'
 
+/** Settings key for the MealVision companion's address on this PC (Log food → AI estimate → Photo). Device-only. */
+export const MEALVISION_SETTING = 'mealVisionUrl'
+
 /** A reusable food. Nutrients are totals for one `serving`, keyed by nutrient id. */
 export interface Food {
   id: number

@@ -33,6 +33,11 @@ Double-click **`Nutrient Atlas.cmd`**. It builds the latest version, serves it i
 - **Supplements** from their label, logged automatically each day.
 - **Today:** edit servings, remove (with Undo), save a meal.
 
+**MealVision** (companion app, `D:\Workspace\meal-vision`): photograph a meal and it identifies the foods and portions using the same USDA table.
+- **Open on Cloudflare Atlas** opens Nutrient Atlas with the meal ready to review (works with the live site; nothing is logged until you confirm).
+- **Copy Meal Log / Recipe Card / Single Food**: paste into Log food → AI estimate; recipes and foods open in the right editor.
+- **Photo step in Atlas:** Settings → Companion apps → *MealVision on this PC*, then Log food → AI estimate → *Choose photo* (PC only, with MealVision running).
+
 **Products** (rate brands)
 - Add supplements and packaged foods from a pasted label, a **barcode** (Open Food Facts), a CSV, a shared list, or label photos read by any AI chat.
 - A personal **A–E score**: fills your gaps, dose and upper limits, ingredient forms, nutrient density, value, third-party testing.

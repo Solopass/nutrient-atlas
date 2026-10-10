@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { localDate, mealForTime, type Meal, MEALS } from '../../db/db'
 import { formatDay } from '../../lib/history'
 import { lazyPage } from '../../lib/lazyPage'
+import type { AtlasImport } from '../../lib/atlasImport'
 
 // Tabs load the first time the sheet opens, keeping them out of the dashboard's startup code.
 const SearchTab = lazyPage(() => import('./SearchTab'), 'SearchTab')
@@ -11,6 +12,8 @@ const SupplementsTab = lazyPage(() => import('./SupplementsTab'), 'SupplementsTa
 const TodayTab = lazyPage(() => import('./TodayTab'), 'TodayTab')
 
 export type LogTab = 'search' | 'ai' | 'foods' | 'supplements' | 'today'
+/** Something handed over by link or paste (see lib/atlasImport); `nonce` makes the same payload re-open. */
+export type Incoming = AtlasImport & { nonce: number }
 type Tab = LogTab
 
 const TABS: { id: Tab; label: string }[] = [
@@ -28,13 +31,21 @@ interface Props {
   initialTab: LogTab
   /** Day being logged to (YYYY-MM-DD). */
   date: string
+  incoming?: Incoming
 }
 
-export function LogSheet({ open, onClose, todayCount, date, initialTab }: Props) {
+export function LogSheet({ open, onClose, todayCount, date, initialTab, incoming: incomingProp }: Props) {
   const isToday = date === localDate()
   const [tab, setTab] = useState<Tab>('search')
   const [meal, setMeal] = useState<Meal>(mealForTime())
   const [flash, setFlash] = useState<string | null>(null)
+  const [incoming, setIncoming] = useState<Incoming | undefined>(incomingProp)
+  useEffect(() => setIncoming(incomingProp), [incomingProp])
+  // A recipe or food card pasted into AI estimate opens in My foods instead.
+  const openImport = (imp: AtlasImport) => {
+    setIncoming({ ...imp, nonce: Date.now() })
+    setTab(imp.kind === 'meal' ? 'ai' : 'foods')
+  }
 
   useEffect(() => {
     if (!open) return
@@ -116,8 +127,8 @@ export function LogSheet({ open, onClose, todayCount, date, initialTab }: Props)
           {open && (
           <Suspense fallback={<p role="status" className="text-sm text-(--muted)">Loading…</p>}>
           {tab === 'search' && <SearchTab meal={meal} date={date} onLogged={onLogged} />}
-          {tab === 'ai' && <AiTab meal={meal} date={date} onLogged={onLogged} />}
-          {tab === 'foods' && <FoodsTab meal={meal} date={date} onLogged={onLogged} />}
+          {tab === 'ai' && <AiTab meal={meal} date={date} onLogged={onLogged} incoming={incoming?.kind === 'meal' ? incoming : undefined} onOpenImport={openImport} />}
+          {tab === 'foods' && <FoodsTab meal={meal} date={date} onLogged={onLogged} incoming={incoming && incoming.kind !== 'meal' ? incoming : undefined} />}
           {tab === 'supplements' && <SupplementsTab date={date} />}
           {tab === 'today' && <TodayTab date={date} />}
           </Suspense>

@@ -1,5 +1,5 @@
 import { applyDailySupplements } from './supplements'
-import { db, FDC_KEY_SETTING, localDate, type Food, type LogEntry, type Product, type SavedMeal, type Setting, type Supplement } from '../db/db'
+import { db, FDC_KEY_SETTING, MEALVISION_SETTING, localDate, type Food, type LogEntry, type Product, type SavedMeal, type Setting, type Supplement } from '../db/db'
 import { download } from './download'
 
 export const EXPORT_VERSION = 4
@@ -17,7 +17,7 @@ export interface ExportFile {
 }
 
 /** Settings that belong to this device, not to your data: kept out of backup files and kept on restore. */
-const DEVICE_SETTINGS = [FDC_KEY_SETTING]
+const DEVICE_SETTINGS = [FDC_KEY_SETTING, MEALVISION_SETTING]
 
 export async function makeBackup(): Promise<ExportFile> {
   return {

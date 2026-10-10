@@ -5,8 +5,42 @@ const BY_ID = new Map(NUTRIENTS.map((n) => [n.id, n]))
 const BY_LOWER = new Map(NUTRIENTS.map((n) => [n.id.toLowerCase(), n.id]))
 const CONFIDENCE: Confidence[] = ['high', 'medium', 'low']
 
+/**
+ * Hidden companions the app keeps alongside nutrients: `retinol` (preformed
+ * vitamin A, the part the vitamin A upper limit applies to). Sources grounded
+ * in the USDA table (e.g. MealVision) send it; without it, all vitamin A would
+ * count toward the limit.
+ */
+const HIDDEN_IDS = new Set(['retinol'])
+
+/** Map keys to app nutrient ids and check values; unknown keys are reported, not kept. */
+export function cleanNutrients(input: Record<string, unknown>, label: string, unknownIds: Set<string>, warnings: string[]) {
+  const nutrients: Record<string, number> = {}
+  for (const [key, value] of Object.entries(input)) {
+    const id = BY_ID.has(key) || HIDDEN_IDS.has(key) ? key : BY_LOWER.get(key.toLowerCase())
+    if (!id) {
+      unknownIds.add(key)
+      continue
+    }
+    const num = typeof value === 'number' ? value : typeof value === 'string' ? parseFloat(value) : NaN
+    if (!Number.isFinite(num) || num < 0) {
+      warnings.push(`${label}: ignored invalid value for ${id}.`)
+      continue
+    }
+    nutrients[id] = num
+
+    // Catch likely unit mix-ups (e.g. mg reported as mcg).
+    const n = BY_ID.get(id)
+    const ref = n && (n.upperLimit ?? n.target)
+    if (n && ref && num > ref * 20) {
+      warnings.push(`${label}: ${n.name} = ${num} ${n.unit} looks too high. Check the units.`)
+    }
+  }
+  return nutrients
+}
+
 /** Pull the JSON object out of a chatbot reply: tolerates code fences and surrounding prose. */
-function extractJson(text: string): string | null {
+export function extractJson(text: string): string | null {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)
   const body = fenced ? fenced[1] : text
   const start = body.indexOf('{')
@@ -44,27 +78,7 @@ export function parseMealResponse(text: string): ParseResult {
       errors.push(`${label}: missing "nutrients" object.`)
       return
     }
-    const nutrients: Record<string, number> = {}
-    for (const [key, value] of Object.entries(it.nutrients as Record<string, unknown>)) {
-      const id = BY_ID.has(key) ? key : BY_LOWER.get(key.toLowerCase())
-      if (!id) {
-        unknownIds.add(key)
-        continue
-      }
-      const num = typeof value === 'number' ? value : typeof value === 'string' ? parseFloat(value) : NaN
-      if (!Number.isFinite(num) || num < 0) {
-        warnings.push(`${label}: ignored invalid value for ${id}.`)
-        continue
-      }
-      nutrients[id] = num
-
-      // Catch likely unit mix-ups (e.g. mg reported as mcg).
-      const n = BY_ID.get(id)!
-      const ref = n.upperLimit ?? n.target
-      if (ref && num > ref * 20) {
-        warnings.push(`${label}: ${n.name} = ${num} ${n.unit} looks too high. Check the units.`)
-      }
-    }
+    const nutrients = cleanNutrients(it.nutrients as Record<string, unknown>, label, unknownIds, warnings)
     const confidence = CONFIDENCE.includes(it.confidence) ? (it.confidence as Confidence) : 'medium'
     const grams = typeof it.grams === 'number' && it.grams > 0 ? it.grams : undefined
     items.push({
@@ -74,7 +88,8 @@ export function parseMealResponse(text: string): ParseResult {
       confidence,
       nutrients,
     })
-    if (Object.keys(nutrients).length < 5) warnings.push(`${label}: only ${Object.keys(nutrients).length} nutrients reported.`)
+    const shown = Object.keys(nutrients).filter((k) => !HIDDEN_IDS.has(k)).length
+    if (shown < 5) warnings.push(`${label}: only ${shown} nutrients reported.`)
   })
 
   if (unknownIds.size) warnings.push(`Ignored unknown nutrient ids: ${[...unknownIds].join(', ')}.`)

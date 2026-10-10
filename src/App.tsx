@@ -14,7 +14,7 @@ import { LimitsPanel } from './components/LimitsPanel'
 import { PeriodicTable } from './components/PeriodicTable'
 import { CategoryPanel, GapsPanel } from './components/SidePanels'
 import { StatCards, type FoodPreview } from './components/StatCards'
-import { LogSheet, type LogTab } from './components/log/LogSheet'
+import { LogSheet, type Incoming, type LogTab } from './components/log/LogSheet'
 import { BottomNav } from './components/BottomNav'
 import type { OnboardingExit } from './components/onboarding/Onboarding'
 import { InsightsCard, useWeeklyReport } from './components/insights/Insights'
@@ -33,6 +33,7 @@ import { dayScore, nutrientState, scoreColor } from './lib/status'
 import { atlasPng, shareOrDownload } from './lib/atlasImage'
 import { itemsKcal } from './lib/quickLog'
 import { lazyPage } from './lib/lazyPage'
+import { importFromRoute, readImport } from './lib/atlasImport'
 import { useProfile } from './state/profile'
 import { setTodayComplete, useDayComplete } from './state/dayComplete'
 import type { Category, Intake } from './types'
@@ -78,8 +79,19 @@ function useHashRoute() {
 /** Routes: #/  ·  #/day/YYYY-MM-DD  ·  #/history  ·  #/products  ·  #/report  ·  #/settings  ·  #/welcome (setup) */
 export default function App() {
   const route = useHashRoute()
-  const [log, setLog] = useState<{ open: boolean; tab: LogTab }>({ open: false, tab: 'search' })
+  const [log, setLog] = useState<{ open: boolean; tab: LogTab; incoming?: Incoming }>({ open: false, tab: 'search' })
   const openLog = useCallback((tab: LogTab = 'search') => setLog({ open: true, tab }), [])
+
+  // "#/log" opens Log food; "#/log?import=…" (from MealVision or another app) opens it with that meal, recipe or food
+  // ready to review. The payload is removed from the address right away, so it isn't kept in history.
+  useEffect(() => {
+    if (route !== 'log' && !route.startsWith('log?')) return
+    const payload = importFromRoute(route)
+    location.replace(`${location.pathname}${location.search}#/`)
+    if (!payload) return openLog('search')
+    const imp = readImport(payload)
+    setLog({ open: true, tab: imp.kind === 'meal' ? 'ai' : 'foods', incoming: { ...imp, nonce: Date.now() } })
+  }, [route, openLog])
   const closeLog = useCallback(() => setLog((l) => ({ ...l, open: false })), [])
   const today = useToday()
   useSupplementSync(today)
@@ -136,7 +148,7 @@ export default function App() {
     <>
       <Suspense fallback={<PageLoading />}>{page}</Suspense>
       {route !== 'welcome' && !needsSetup && <BottomNav route={route} openLog={openLog} />}
-      <LogSheet open={log.open} initialTab={log.tab} onClose={closeLog} todayCount={dayCount} date={date} />
+      <LogSheet open={log.open} initialTab={log.tab} incoming={log.incoming} onClose={closeLog} todayCount={dayCount} date={date} />
     </>
   )
 }
