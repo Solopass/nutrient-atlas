@@ -89,7 +89,8 @@ export function parseMealResponse(text: string): ParseResult {
       nutrients,
     })
     const shown = Object.keys(nutrients).filter((k) => !HIDDEN_IDS.has(k)).length
-    if (shown < 5) warnings.push(`${label}: only ${shown} nutrients reported.`)
+    if (shown === 0) warnings.push(`${label}: no nutrient data.`)
+    else if (shown < 5) warnings.push(`${label}: only ${shown} nutrients reported.`)
   })
 
   if (unknownIds.size) warnings.push(`Ignored unknown nutrient ids: ${[...unknownIds].join(', ')}.`)

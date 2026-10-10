@@ -255,12 +255,14 @@ const steps: [string, () => Promise<void>][] = [
   [
     'MealVision hand-over: import links and the Photo step (MealVision faked locally)',
     async () => {
-      const meal = { items: [{ name: 'Grilled Salmon Fillet', quantity: '180g', grams: 180, confidence: 'high', nutrients: { protein: 39.2, vitD: 19.8, retinol: 21, alcohol: 0 } }, { name: 'Steamed Broccoli', quantity: '120g', grams: 120, confidence: 'medium', nutrients: { vitC: 78, fiber: 4, cholesterol: 0 } }], notes: 'Analyzed via MealVision engine.' }
+      const meal = { items: [{ name: 'Grilled Salmon Fillet', quantity: '180g', grams: 180, confidence: 'high', nutrients: { protein: 39.2, vitD: 19.8, retinol: 21, alcohol: 0 } }, { name: 'Steamed Broccoli', quantity: '120g', grams: 120, confidence: 'medium', nutrients: { vitC: 78, fiber: 4, cholesterol: 0 } }, { name: 'Mystery Sauce', quantity: '40g', grams: 40, confidence: 'low', nutrients: {} }], notes: 'Analyzed via MealVision engine. No USDA match, so nutrients unknown (not zero): Mystery Sauce.' }
       // 1. "Open on Cloudflare Atlas": the link opens the review, and the payload leaves the address bar.
       await send('Page.navigate', { url: `${BASE}#/log?import=${encodeURIComponent(JSON.stringify(meal))}` })
-      await waitFor('the imported meal in review', `/Grilled Salmon Fillet/.test(${LOG}?.innerText ?? '') && /Log 2 items/.test(${LOG}.innerText)`, 20_000)
+      await waitFor('the imported meal in review', `/Grilled Salmon Fillet/.test(${LOG}?.innerText ?? '') && /Log 3 items/.test(${LOG}.innerText)`, 20_000)
+      // A food MealVision couldn't match arrives without nutrients and says what logging it means.
+      await waitFor('the no-data explanation', `/No nutrient data\\. Untick to skip it/.test(${LOG}.innerText)`)
       if (await js<boolean>(`return location.hash.includes('import')`)) throw new Error('The import payload stayed in the address bar')
-      await click('Log 2 items', LOG)
+      await click('Log 3 items', LOG)
       await waitFor('the Today list', `[...document.querySelectorAll('[aria-label="Log food"] li')].some((li) => /Steamed Broccoli/.test(li.textContent))`)
       await js(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
       // 2. A recipe card link opens the recipe builder, pre-filled, without saving anything yet.
@@ -288,7 +290,7 @@ const steps: [string, () => Promise<void>][] = [
         const doc = await send('DOM.getDocument', { depth: -1 })
         const { nodeId } = await send('DOM.querySelector', { nodeId: doc.root.nodeId, selector: '[aria-label="Log food"] input[type=file][accept="image/*"]' })
         await send('DOM.setFileInputFiles', { nodeId, files: [join(ROOT, 'public/icons/icon-192.png')] })
-        await waitFor('the photo estimate in review', `/Log 2 items/.test(${LOG}.innerText)`)
+        await waitFor('the photo estimate in review', `/Log 3 items/.test(${LOG}.innerText)`)
         if (!seen.some((u) => u.endsWith('/v1/estimate'))) throw new Error('The photo was not sent to MealVision')
         await js(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
       } finally {

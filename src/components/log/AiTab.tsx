@@ -13,6 +13,9 @@ import { NutrientChips } from './NutrientChips'
 
 const DRAFT_KEY = 'ai-log-draft'
 
+/** Any nutrient values besides hidden companions like retinol. */
+const hasData = (n: Record<string, number>) => Object.keys(n).some((k) => k !== 'retinol')
+
 const CONF_COLOR: Record<Confidence, string> = {
   high: 'var(--c-good)',
   medium: 'var(--c-attention)',
@@ -248,10 +251,17 @@ export function AiTab({
                         >
                           {it.confidence}
                         </span>
-                        <span className="font-mono text-[10.5px] text-(--muted)">{Object.keys(it.nutrients).length} nutrients</span>
+                        {hasData(it.nutrients) && <span className="font-mono text-[10.5px] text-(--muted)">{Object.keys(it.nutrients).length} nutrients</span>}
                       </div>
                       <div className="mt-1.5">
-                        <NutrientChips nutrients={it.nutrients} multiplier={mult} />
+                        {hasData(it.nutrients) ? (
+                          <NutrientChips nutrients={it.nutrients} multiplier={mult} />
+                        ) : (
+                          // e.g. MealVision found no USDA match: say what logging it means instead of showing nothing.
+                          <p className="rounded bg-(--c-attention)/10 px-2 py-1 text-xs text-(--c-attention)">
+                            No nutrient data. Untick to skip it, or log it as a placeholder: the day then shows these nutrients as partly unknown, not as zero.
+                          </p>
+                        )}
                       </div>
                     </div>
                     <label className="flex shrink-0 items-center gap-1 text-xs text-(--muted)">

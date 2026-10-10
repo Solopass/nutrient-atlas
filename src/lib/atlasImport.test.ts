@@ -34,6 +34,12 @@ describe('imports from MealVision and other apps', () => {
     expect(r).toMatchObject({ kind: 'food', name: 'Custom Meal Plate', serving: '1 plate (350g)', grams: 350, nutrients: { protein: 40, iron: 3 } })
   })
 
+  test('a food MealVision could not match arrives with no data, not zeros', () => {
+    const r = parseMealResponse(JSON.stringify({ items: [{ name: 'Mystery Sauce', quantity: '40g', grams: 40, confidence: 'low', nutrients: {} }] }))
+    expect(r.estimate!.items[0].nutrients).toEqual({})
+    expect(r.warnings).toContain('Mystery Sauce: no nutrient data.')
+  })
+
   test('anything else lands in the review, which explains the problem', () => {
     expect(readImport('not json').kind).toBe('meal')
   })
