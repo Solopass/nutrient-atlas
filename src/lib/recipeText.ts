@@ -271,10 +271,10 @@ const WEIGHT: Partial<Record<Unit, number>> = { g: 1, kg: 1000, oz: 28.35, lb: 4
 const VOLUME_ML: Partial<Record<Unit, number>> = { ml: 1, l: 1000, cup: 236.6, tbsp: 14.79, tsp: 4.93, floz: 29.57 }
 const COUNT_WORD: Partial<Record<Unit, RegExp>> = { clove: /clove/, slice: /slice/, stick: /stick/, large: /\blarge\b/, medium: /\bmedium\b/, small: /\bsmall\b/ }
 
-/** The number at the start of a portion label ("1 cup" → 1, "0.5 cup" → 0.5, "3 cloves" → 3). */
+/** The number at the start of a portion label ("1 cup" → 1, "0.5 cup" → 0.5, "1/2 cup" → 0.5, "3 cloves" → 3). */
 const leading = (label: string) => {
-  const m = label.match(/^(\d*\.?\d+)/)
-  return m ? Number(m[1]) : 1
+  const m = label.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d*\.?\d+|[½⅓⅔¼¾⅕⅛⅜⅝⅞⅙])/)
+  return m ? toNumber(m[1]) ?? 1 : 1
 }
 
 export interface GramsResult {

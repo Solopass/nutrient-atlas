@@ -50,12 +50,13 @@ export function CustomFoodEditor({
   const doSave = async (logToo: boolean) => {
     setSaving(true)
     const now = Date.now()
-    const data = { name: name.trim(), serving: serving.trim(), grams: Number(grams) > 0 ? Number(grams) : undefined, nutrients }
+    const allNutrients = { ...nutrients, ...(start?.nutrients?.retinol != null ? { retinol: start.nutrients.retinol } : {}) }
+    const data = { name: name.trim(), serving: serving.trim(), grams: Number(grams) > 0 ? Number(grams) : undefined, nutrients: allNutrients }
     let foodId = initial?.id
     if (initial) await db.foods.update(initial.id, data)
     else foodId = await db.foods.add({ ...data, source: 'custom', ...(barcode && { barcode }), favorite: 0, useCount: 0, createdAt: now, lastUsedAt: now } as Food)
     if (logToo && foodId != null) {
-      await db.logs.add({ date, loggedAt: date === localDate() ? now : parseDate(date).getTime() + 12 * 3600_000, meal, foodId, name: data.name, serving: data.serving, multiplier: 1, nutrients } as LogEntry)
+      await db.logs.add({ date, loggedAt: date === localDate() ? now : parseDate(date).getTime() + 12 * 3600_000, meal, foodId, name: data.name, serving: data.serving, multiplier: 1, nutrients: allNutrients } as LogEntry)
       await db.foods.update(foodId, { lastUsedAt: now, useCount: (initial?.useCount ?? 0) + 1 })
       onDone(`Saved and logged ${data.name} to ${meal}`)
     } else {
