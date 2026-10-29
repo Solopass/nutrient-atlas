@@ -1,6 +1,6 @@
 # Hosting
 
-**Live at https://nutrient-atlas.pages.dev** since 2026-10-09: Cloudflare Pages (classic), project `nutrient-atlas`, deployed straight from this PC with Wrangler. No GitHub; the code stays on this PC and only the built site is uploaded.
+**Live at https://nutrient-atlas.pages.dev** since 2026-10-09: Cloudflare Pages (classic), project `nutrient-atlas`, deployed straight from this PC with Wrangler. The source is public at https://github.com/Solopass/nutrient-atlas; only the built site is uploaded to Cloudflare.
 
 ## Deploying an update
 

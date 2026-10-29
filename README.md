@@ -133,3 +133,7 @@ then open `http://<this-PC's-IP>:4173` on the phone. Each device keeps its own d
 - [docs/HOSTING.md](docs/HOSTING.md): deployment plan
 
 Not medical advice: targets are the Dietary Reference Intakes for healthy people. Talk to a clinician about supplements, medical conditions, medications and blood test results.
+
+## License
+
+Source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE.md): free for personal and other noncommercial use. For commercial use see [COMMERCIAL.md](COMMERCIAL.md). The bundled USDA food data is public domain.
